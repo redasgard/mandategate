@@ -1,0 +1,93 @@
+---
+doc: scope
+status: draft
+---
+
+# MandateGate
+
+One line: a zero-trust payment authority layer for companies running autonomous operations agents.
+
+## The Unique Kernel
+
+MandateGate separates AI reasoning from financial authority. Operations agents can request payments, but MandateGate independently evaluates invoice context, behavioral risk, and approved policy before it can move money.
+
+AI may interpret and propose. Deterministic policy decides. MandateGate alone executes the PayPal payment.
+
+## Who It's For
+
+Companies using autonomous operations agents to process and pay vendor invoices.
+
+The operations agent handles normal AP work, but the company still needs a trustworthy boundary between machine-generated payment intent and actual money movement.
+
+## The Core Loop
+
+An operations agent submits a real vendor invoice to MandateGate.
+
+MandateGate extracts the invoice, compares it with historical AP behavior and active policy, evaluates risk, and returns one of three outcomes:
+
+- ALLOW -> execute the PayPal payment
+- ESCALATE -> require one-time admin approval or rejection
+- DENY -> stop the payment
+
+Admins also review inferred policy rules before activating them.
+
+## Inspiration & Identity
+
+The product should feel like a security control rather than another finance dashboard: restrained, direct, and explainable.
+
+Visual direction: warm, minimal, Norse-inspired design with dark charcoal, amber, muted gold/copper, and subtle Scandinavian geometry.
+
+The core message is: **the firewall between AI agents and your money.**
+
+## Why This Matters to the Learner
+
+The project sits at the intersection of AI security, authorization, and real financial action. The interesting problem is not teaching an agent how to pay. It is enforcing what the agent is actually allowed to pay when the agent, invoice, or surrounding context may be wrong or manipulated.
+
+## What "Working" Looks Like
+
+A real operations agent submits a real invoice document through the MandateGate API.
+
+The proof-of-concept demonstrates:
+
+1. a normal known-vendor invoice is analyzed, allowed, and paid through PayPal Sandbox;
+2. a subtle near-duplicate or unusual-amount invoice is detected from historical context, escalated, and rejected without payment;
+3. a changed payment destination is denied and placed into vendor re-verification rather than being approved as an ordinary exception.
+
+The compelling moment is seeing an invoice that looks legitimate get stopped because MandateGate recognizes that it does not fit the company's established payment behavior.
+
+## The POC Boundary
+
+In scope:
+
+- operations-agent API submission of PDF/image invoices
+- invoice extraction and structured facts
+- AP history import from CSV/ERP export
+- vendor-specific and company-wide behavioral baselines
+- inferred policy rules with admin review/edit/activation
+- ALLOW / ESCALATE / DENY decisions
+- near-duplicate and unusual-amount detection
+- trusted vendor payment destinations
+- simulated out-of-band vendor re-verification workflow
+- admin review of escalated payments
+- PayPal Sandbox payment execution
+- idempotent payment handling
+- append-only audit events and structured explanations
+
+## Later
+
+- live QuickBooks, NetSuite, or ERP integrations
+- email ingestion
+- real external vendor identity/re-verification integrations
+- richer anomaly models
+- multiple payment rails
+- broader procurement and agent-to-agent commerce
+- organization-wide finance/security observability
+
+## Explicitly Cut
+
+- consumer shopping-agent workflows, because the MVP is enterprise AP
+- direct payment authority for the operations agent, because it defeats the trust boundary
+- unrestricted LLM payment decisions, because AI output is advisory rather than authoritative
+- live accounting-system connectors, because CSV/ERP export proves the historical-policy concept with far less integration cost
+- real external vendor verification providers, because the workflow and state transition are enough for the POC
+- email ingestion, because API-submitted invoice documents keep the primary path focused
