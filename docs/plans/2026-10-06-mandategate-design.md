@@ -192,7 +192,7 @@ The request must escalate or deny when critical evidence is unavailable or incon
 
 Retries must not create duplicate payments.
 
-Each payment attempt uses a stable idempotency identity derived from the payment request and invoice identity, including vendor, amount, and applicable policy version.
+Each logical payment request uses a stable idempotency identity derived from immutable payment-request and invoice identity. Policy version is recorded as evaluation evidence but does not change the payment idempotency key, so reevaluation cannot turn a retry into a second payment.
 
 ## Explainability
 
