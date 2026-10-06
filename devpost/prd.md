@@ -302,6 +302,115 @@ Acceptance criteria:
 - [ ] The confirmation shows the proposed effect.
 - [ ] Required explanation rules remain enforced when the action originated in chat.
 
+
+## AI Security, Authority, and Traceability
+
+AI security is a cross-cutting product requirement, not a chatbot-only concern.
+
+MandateGate treats all AI-mediated inputs and outputs as untrusted until validated against authoritative product state.
+
+### Authority boundary
+
+AI may:
+- observe
+- interpret
+- infer
+- explain
+- summarize
+- recommend
+- prepare actions
+
+AI may not itself:
+- approve or decline payments
+- change standing policy
+- trust a new vendor destination
+- bypass a block
+- execute or schedule a consequential payment action
+- alter authoritative audit history
+
+A consequential action is committed only through MandateGate's normal confirmation and authorization flow.
+
+### Prompt-injection and untrusted-content boundary
+
+The following are treated as data, never as authority:
+- chat input
+- invoice text
+- OCR output
+- attachments
+- imported AP history
+- vendor notes
+- retrieved records
+- sponsor-tool output
+- externally fetched content
+
+Instructions embedded inside untrusted content must not override MandateGate policy, system authority, or confirmation requirements.
+
+### Prepared-action boundary
+
+Assistant-prepared actions must be explicit objects with:
+- proposed action
+- target
+- current state
+- evidence consulted
+- policy/risk context
+- expected resulting state
+- whether explanation is required
+- whether explicit confirmation is required
+
+If relevant state changes before confirmation, the prepared action becomes stale and must be regenerated before it can be confirmed.
+
+### Provenance and explanation
+
+The product distinguishes:
+- observed facts
+- inferred findings
+- policy results
+- AI-generated explanations
+- human decisions
+
+A human-readable explanation may be regenerated, but original reason codes, evidence references, policy context, and decision inputs remain attached to the event that produced the decision.
+
+### Comprehensive logging
+
+Every meaningful control-flow event must be logged, including:
+- every inbound API call
+- every assistant request
+- every internal service/tool call that affects analysis or control flow
+- every decision
+- every route taken
+- every policy evaluation
+- every vendor-trust check
+- every anomaly/risk evaluation
+- every prepared action
+- every admin confirmation or rejection
+- every payment execution attempt and result
+- every re-verification transition
+- every degraded/fallback path
+- every authorization failure
+- every AI/model invocation relevant to a decision
+
+The product must make it possible to reconstruct the complete path of a payment request from intake through final state.
+
+For each logged event, the product should preserve enough context to answer:
+- what happened
+- when it happened
+- who or what initiated it
+- which route/component handled it
+- what evidence or inputs were used
+- what decision/result was produced
+- what state existed before and after
+- what downstream action followed
+
+The assistant may summarize these logs, but cannot alter them.
+
+Acceptance criteria:
+- [ ] A payment request can be traced end-to-end across all major processing steps.
+- [ ] Admin-confirmed and AI-prepared actions are distinguishable.
+- [ ] A consequential decision shows its evidence and route history.
+- [ ] Internal routing/fallback choices are visible in the activity/audit history.
+- [ ] AI/model calls relevant to a decision are traceable to that decision.
+- [ ] Failed and denied paths are logged with the same rigor as successful ones.
+
 ## Activity and Accountability
 
 Source: `scope.md > Platform Boundary`.
