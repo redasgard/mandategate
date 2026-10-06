@@ -370,7 +370,22 @@ The product distinguishes:
 
 A human-readable explanation may be regenerated, but original reason codes, evidence references, policy context, and decision inputs remain attached to the event that produced the decision.
 
-### Comprehensive logging
+### Comprehensive logging and tamper-protected trails
+
+Every meaningful control-flow event must be logged, and every consequential trail must be protected against silent modification, not only through the admin UI but against compromise of the application or primary datastore.
+
+The product requirement is stronger than ordinary append-only logging:
+
+- existing trail records cannot be silently edited
+- corrections are represented as new events
+- deletion, truncation, reordering, or replacement of historical events must be detectable
+- compromise of the primary application/database must not be enough to rewrite history without detection
+- the product must preserve independent integrity evidence outside the mutable primary trail
+- payment, policy, vendor-trust, AI-decision, admin-action, routing, and execution histories are all covered by the same integrity requirement
+- a verifier must be able to detect a broken or incomplete chain of custody
+- trail integrity status itself must be visible and auditable
+
+The exact cryptographic/storage mechanism belongs in `4-spec`. Acceptable implementation directions may include cryptographic event chaining, signed checkpoints, write-once retention, independently stored integrity proofs, Merkle commitments, or external anchoring. A blockchain may be used as an external integrity anchor, but MandateGate does not require all audit data to live on-chain.
 
 Every meaningful control-flow event must be logged, including:
 - every inbound API call
@@ -410,6 +425,10 @@ Acceptance criteria:
 - [ ] Internal routing/fallback choices are visible in the activity/audit history.
 - [ ] AI/model calls relevant to a decision are traceable to that decision.
 - [ ] Failed and denied paths are logged with the same rigor as successful ones.
+- [ ] Historical trail edits, deletions, truncation, reordering, or replacement are detectable.
+- [ ] Compromise of the primary application/database alone is insufficient to silently rewrite the authoritative trail.
+- [ ] Corrections are represented as new events rather than mutations of prior evidence.
+- [ ] Trail integrity can be independently verified and its status is visible.
 
 ## Activity and Accountability
 
