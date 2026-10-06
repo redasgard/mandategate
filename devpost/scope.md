@@ -73,6 +73,43 @@ In scope:
 - idempotent payment handling
 - append-only audit events and structured explanations
 
+
+## Platform Boundary
+
+MandateGate is the product, not a thin orchestrator over sponsor services.
+
+MandateGate owns the domain semantics that create durable value:
+
+- payment mandate and authority model
+- vendor trust and destination state
+- policy lifecycle and admin approval
+- invoice normalization and canonical payment request
+- decision semantics and reason codes
+- ALLOW / ESCALATE / DENY enforcement
+- idempotency and payment execution boundary
+- audit/event model and decision provenance
+
+Sponsor tools should provide replaceable capabilities around that core. They may supply storage, search, UI, deployment, scheduling, integrations, agent runtime, or developer tooling, but they must not own the meaning of a MandateGate decision or the authority to bypass it.
+
+A useful rule for the architecture: **replacing a sponsor tool may change implementation, performance, or UX, but it should not change what MandateGate means or who is allowed to move money.**
+
+## Sponsor Strategy
+
+Use as many sponsor tools as make the product better or materially reduce implementation work, without creating fake features solely for prize eligibility.
+
+Likely fits:
+
+- AG Grid for the admin investigation and policy/risk surface
+- Elastic for invoice similarity, history, anomaly context, and audit search if it proves useful
+- Render for backend, workers, and deployment if it remains the best runtime fit
+- APIMatic for PayPal integration tooling
+- Bryntum for due-date, review, and payment-risk timelines if the calendar view adds real operational value
+- Zapier as one external operations-agent/integration path
+- Postman for the public/testable MandateGate API
+- Astropods only if it materially improves the external agent runtime
+
+Sponsor integrations remain subordinate to the core MandateGate authorization and payment-control model.
+
 ## Later
 
 - live QuickBooks, NetSuite, or ERP integrations
