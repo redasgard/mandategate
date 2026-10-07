@@ -601,13 +601,13 @@ Official docs:
 - https://www.elastic.co/docs/reference/elasticsearch/clients/javascript
 - https://www.elastic.co/docs/solutions/search
 
-#### APIMatic
+#### APIMatic (optional / deferred)
 
-Use the APIMatic Context Plugin for PayPal during implementation and verification of the PayPal integration.
+APIMatic Context Plugin is not a mandatory dependency for Slice 2 or for the core PayPal release path.
 
-APIMatic is a build-time/developer-context dependency, not a runtime payment authority. The committed implementation and tests remain the source of truth at runtime.
+If the plugin becomes available and materially improves implementation or documentation, it may be used as an optional sponsor integration. Any resulting sponsor-prize claim must retain reproducible usage evidence.
 
-The project should retain reproducible evidence that the Context Plugin was used for the PayPal integration for sponsor-submission purposes.
+Its absence must not block the direct server-side PayPal Payouts integration, Sandbox verification, webhook reconciliation, or Slice 2 completion.
 
 Hackathon resource:
 - https://paypalaihackathon.devpost.com/details/apimatic
@@ -673,7 +673,7 @@ Official/current references:
 
 The sponsor set is locked, but it follows the same release tiers instead of becoming one giant critical path.
 
-1. **P0 foundation:** Render runtime plus PayPal integration built with APIMatic context.
+1. **P0 foundation:** Render runtime plus the direct PayPal Sandbox integration.
 2. **P1 product/UI:** AG Studio / AG Grid and Bryntum.
 3. **P2 integrations/differentiation:** Elastic, Postman, and Zapier MCP.
 
@@ -1358,10 +1358,12 @@ Locked:
 Locked sponsor integrations:
 - AG Studio / AG Grid
 - Elastic
-- APIMatic Context Plugin for PayPal
 - Postman
 - Bryntum Scheduler
 - Zapier MCP
+
+Optional/deferred sponsor integration:
+- APIMatic Context Plugin for PayPal
 
 Intentionally excluded initially:
 - Channel3
@@ -1424,7 +1426,7 @@ Locked:
 - Base Sepolia (chain ID 84532) append-only `CheckpointRegistry` as the hackathon external checkpoint witness; the committed registry deployment is the verifier root rather than a local transaction pointer
 - AG Studio / AG Grid for dashboard and investigation
 - Elastic as a non-authoritative searchable/analytical projection
-- APIMatic Context Plugin for PayPal build-time integration context
+- APIMatic Context Plugin for PayPal is optional/deferred and is not a release gate
 - Postman for public/testable API documentation
 - Bryntum Scheduler for payment timelines and deadlines
 - Zapier MCP as a scoped external operations-agent ingress
