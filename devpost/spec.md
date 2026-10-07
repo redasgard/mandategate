@@ -1082,6 +1082,20 @@ Canonicalization and chaining:
 - corrections are new events and never mutations
 - sequence gaps, duplicate sequence numbers, broken previous hashes, forks, and reordered events are integrity failures
 
+Append serialization and transactional consistency:
+- PostgreSQL owns one `trail_stream_heads` row per organization/stream containing the current sequence and head hash
+- appending an event locks that stream-head row with `SELECT ... FOR UPDATE`, derives `sequence = head.sequence + 1` and `previous_event_hash = head.event_hash`, inserts the immutable event, then advances the stream head in the same transaction
+- database constraints enforce `UNIQUE (stream_id, sequence)` and `UNIQUE (stream_id, event_hash)`
+- ordinary application code has no UPDATE/DELETE path for `trail_events`; corrections are append-only successor events
+- consequential local state changes such as admin decisions, policy activation, vendor-trust transitions, and scheduling are written in the same PostgreSQL transaction as their corresponding trail event where both are local database effects
+- external PayPal execution is split deliberately: the durable execution claim + pre-call trail event commit first, the network call happens after commit, then the observed response/reconciliation result is appended as a new event
+- failure after the pre-call commit is represented as an uncertain/reconciliation state rather than rewriting or deleting the pre-call event
+
+Concurrency verification:
+- parallel event writers for one organization must produce a single contiguous sequence with no forks
+- forced transaction rollback must leave neither the business-state mutation nor its paired trail event committed
+- process failure after a payment pre-call commit must preserve enough evidence/idempotency state to reconcile without minting a new payment identity
+
 The POC does not require a synchronous external witness receipt for every event. Consequential events are committed to the canonical local trail before the corresponding state transition or external payment call.
 
 Events newer than the latest externally anchored checkpoint are explicitly marked as pending external anchoring. They must never be presented as externally verified.
@@ -1159,7 +1173,10 @@ The authoritative model will include at minimum:
 - admin decisions
 - artifacts
 - evidence references
+- trail stream heads
 - trail events
+  - unique `(stream_id, sequence)`
+  - unique `(stream_id, event_hash)`
 - integrity checkpoints
 - integrity anchors
 
