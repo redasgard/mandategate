@@ -228,7 +228,19 @@ Recomputes event hashes and Merkle roots and checks checkpoint signatures and ex
 
 ## Data Model
 
-Detailed SQL schema is pending ORM choice, but the authoritative model will include at minimum:
+### Data access layer
+
+- Drizzle ORM 0.44.7 stable
+- node-postgres
+- explicit SQL migrations committed to the repository
+
+Drizzle is used as a thin typed data-access layer rather than as a substitute for PostgreSQL semantics. Security-sensitive invariants, transactional payment-state transitions, uniqueness/idempotency constraints, append-only trail constraints, and integrity-related database rules remain explicit and inspectable.
+
+Official docs:
+- https://orm.drizzle.team/
+- https://node-postgres.com/
+
+The authoritative model will include at minimum:
 
 - organizations
 - actors / API principals
@@ -297,7 +309,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- ORM/data-access layer
 - authentication approach
 - AI/model provider and document-analysis path
 - exact PayPal API/SDK surface
@@ -330,6 +341,7 @@ Every dependency must be rechecked against current official documentation before
 
 Locked:
 - TypeScript/Next.js-centric architecture
+- Drizzle ORM 0.44.7 stable + node-postgres for data access
 - Node.js 24 LTS baseline
 - PostgreSQL 18 authoritative operational database
 - Render-centric deployment
@@ -343,7 +355,6 @@ Current useful uncertainty:
 - the exact trust-boundary implementation for isolated checkpoint signing, immutable retention, and external witnessing remains deliberately unresolved until the specific services are selected and validated.
 
 Open before approval:
-- ORM
 - authentication
 - AI/model/document path
 - PayPal surface
