@@ -82,8 +82,31 @@ Not yet verified, therefore Slice 2 is not complete:
 2. Live webhook signature/reconciliation against the configured `PAYPAL_WEBHOOK_ID` on a reachable app URL.
 3. APIMatic Context Plugin usage evidence required by the approved checklist. APIMatic is not available in the current connected plugin/tool inventory, so this evidence has not been fabricated.
 
+## Render Sandbox Deployment
+
+Render workspace: `Yevhen's workspace`.
+
+Created:
+- PostgreSQL 18: `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`), moved by the user into the existing `MandateGate` project.
+- Web service: `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), source branch `build/slice-2-gated`, public URL `https://mandategate-web.onrender.com`.
+- Webhook path once live: `https://mandategate-web.onrender.com/api/paypal/webhooks`.
+
+Render-specific verification:
+- private GitHub repository access is working.
+- Render Node 24.21.0 is selected from package.json.
+- `pnpm install --frozen-lockfile` succeeds.
+- Next.js compilation and TypeScript succeed on Render.
+- current Render build stops at page-data collection because `DATABASE_URL` is not yet connected to the Render Postgres instance.
+- an earlier disposable service `mandategate-sandbox` was created with an incompatible `corepack enable` build command; do not use it.
+
+Non-secret runtime configuration and generated demo/auth credentials have been set on `mandategate-web`. PayPal credentials and the Render database connection string are intentionally not stored in source control.
+
 ## Current blocker
 
-The code/toolchain gate is green. Remaining blockers require external sponsor/payment configuration that is not exposed to the current runtime: PayPal Sandbox credentials + receiver/webhook configuration, and APIMatic Context Plugin availability.
+The code/toolchain gate is green. To make the Render service live, connect the database's **Internal Database URL** to `mandategate-web` as `DATABASE_URL`. The current Render connector does not expose that generated credential value or a fromDatabase reference operation, so this one binding must be made in the Render Dashboard.
 
-Do not check or merge Slice 2 until all three missing verification items above are satisfied.
+After the service is live, add the PayPal Sandbox runtime secrets (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DEMO_PAYPAL_RECEIVER_EMAIL`), create the PayPal webhook at the URL above, and add `PAYPAL_WEBHOOK_ID`.
+
+APIMatic Context Plugin evidence is still unavailable and must not be fabricated.
+
+Do not check or merge Slice 2 until the real Sandbox payout, live webhook reconciliation, and APIMatic evidence are satisfied.
