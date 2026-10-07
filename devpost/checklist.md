@@ -19,7 +19,7 @@ Build mode: fast
   Learner check: Sign in locally, submit or trigger the three seeded requests, and confirm the control surface makes it obvious that the agent requested payment but MandateGate made the decision.
   Commit: `build decision kernel`
 
-- [ ] **2. An allowed request can execute exactly one real PayPal Sandbox payout**
+- [x] **2. An allowed request can execute exactly one real PayPal Sandbox payout**
   Becomes usable: The normal seeded request crosses the real payment boundary, creates a one-item PayPal Sandbox payout, persists its remote identifiers/state, and cannot create a duplicate payment under concurrent or repeated execution.
   Why now: PayPal entitlement, payout semantics, webhooks/reconciliation, and duplicate-money protection are the highest external risk in the core journey. Proving them before document AI avoids building a polished analyzer around an unproven money-movement path.
   PRD ref: `prd.md > The Core Journey`, `prd.md > Payment Detail and Decision Evidence`, `prd.md > AI Security, Authority, and Traceability`
