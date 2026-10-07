@@ -213,6 +213,95 @@ Official references:
 - https://api.typesafe.ai/redoc
 - https://github.com/NandhaKishorM/laya/releases
 
+### PayPal payment execution
+
+MandateGate uses the PayPal Payouts REST API v1 for vendor AP disbursement.
+
+Why this surface:
+- MandateGate sends money to a vendor after internal authorization; this is a payout/disbursement flow, not buyer checkout
+- the TypeScript implementation uses direct server-side REST via native `fetch` behind a narrow `PayPalPayoutsClient` adapter
+- no PayPal SDK is required for the POC payment path
+
+Environment:
+- Sandbox base URL: `https://api-m.sandbox.paypal.com`
+- production base URL is out of scope for the hackathon POC
+
+Authentication:
+- OAuth 2.0 client-credentials flow via `POST /v1/oauth2/token`
+- credentials remain server-side only
+- access tokens are cached according to the returned `expires_in`; the application never assumes a fixed token lifetime
+- `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are deployment secrets and never enter the trail
+
+Execution:
+- one logical invoice payment maps to one Payouts batch containing one item in the POC
+- create payout: `POST /v1/payments/payouts`
+- reconcile batch: `GET /v1/payments/payouts/{payout_batch_id}`
+- reconcile item: `GET /v1/payments/payouts-item/{payout_item_id}`
+
+Idempotency and correlation:
+- every PayPal POST includes `PayPal-Request-Id`
+- `sender_batch_id` is deterministically derived from the immutable MandateGate logical payment identity
+- `sender_item_id` is deterministically derived from the same logical payment identity at item scope
+- retries reuse the same identifiers
+- policy version, model result, retry count, and reevaluation state never alter the logical payment identity
+
+Authority boundary:
+1. payment request is in authoritative `ALLOW` or admin-`APPROVED` state
+2. exact amount/currency/vendor destination are re-read from authoritative state
+3. prepared-action/state digest checks pass where applicable
+4. current admin/policy/vendor-trust authorization checks pass
+5. required trail event obtains an independent witness receipt
+6. only then may `PayPalPayoutsClient` issue the payout request
+
+The operations agent, browser, assistant, model providers, and bounded-decision models never receive PayPal credentials or direct access to the payout adapter.
+
+Asynchronous outcome:
+- creation of a payout is not treated as payment completion
+- PayPal payout IDs are persisted immediately
+- authoritative payment state is reconciled from verified PayPal events and API retrieval when required
+
+MandateGate mapping:
+- PayPal `PENDING` -> `EXECUTING`
+- PayPal `SUCCESS` -> `PAID`
+- PayPal `FAILED` -> `PAYMENT_FAILED`
+- PayPal `BLOCKED` -> `PAYMENT_BLOCKED`
+- PayPal `ONHOLD` -> `PAYMENT_HELD`
+- PayPal `UNCLAIMED` -> `PAYMENT_UNCLAIMED`
+- PayPal `RETURNED` -> `PAYMENT_RETURNED`
+- PayPal `REFUNDED` -> `PAYMENT_REFUNDED`
+
+Webhook handling:
+- subscribe only to payout event types required by the product
+- item-level events are authoritative for per-invoice payout state where available
+- verify every webhook signature through PayPal before changing authoritative state
+- webhook processing is idempotent
+- handler acknowledges promptly and performs reconciliation asynchronously when necessary
+- duplicate, delayed, or out-of-order webhook delivery must not regress payment state
+
+Required payout events include:
+- `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`
+- `PAYMENT.PAYOUTS-ITEM.FAILED`
+- `PAYMENT.PAYOUTS-ITEM.BLOCKED`
+- `PAYMENT.PAYOUTS-ITEM.HELD`
+- `PAYMENT.PAYOUTS-ITEM.UNCLAIMED`
+- `PAYMENT.PAYOUTS-ITEM.RETURNED`
+- `PAYMENT.PAYOUTS-ITEM.REFUNDED`
+
+Batch-level success/denial events may be retained for reconciliation/operations but do not replace item-level state.
+
+Uncertain execution:
+- timeout/5xx/connection loss after submission never causes an immediate second payout with new identifiers
+- reconcile by existing MandateGate/PayPal identifiers first
+- retry only with the same idempotency/correlation identifiers
+- if outcome remains uncertain, expose `PAYMENT_UNKNOWN` / reconciliation-required state and do not issue a logically new payment
+
+Official docs:
+- https://developer.paypal.com/payouts/
+- https://developer.paypal.com/api/payments.payouts-batch/v1/
+- https://developer.paypal.com/api/rest/authentication/
+- https://developer.paypal.com/api/rest/webhooks/
+- https://developer.paypal.com/payouts/webhooks/
+
 ### Scheduled integrity work
 
 - Render Cron for periodic checkpoint/anchor triggers if scheduling is required independently of user traffic.
@@ -256,7 +345,7 @@ Planned services:
 
 The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
 
-Exact start commands and environment variables will be finalized once the remaining PayPal, object-storage, and integrity-witness choices are locked.
+Exact start commands and environment variables will be finalized once the remaining object-storage and integrity-witness choices are locked.
 
 ## Look and Feel
 
@@ -328,7 +417,15 @@ Implements:
 - `prd.md > The Core Journey`
 - `prd.md > Escalation Review`
 
-The only component allowed to hold/use PayPal payment credentials. It executes only from an authoritative ALLOW/approved state and enforces stable idempotency independent of policy reevaluation.
+The only component allowed to hold/use PayPal payment credentials.
+
+Implementation:
+- wraps the PayPal Payouts REST API v1 behind `PayPalPayoutsClient`
+- performs the final authoritative-state, destination, amount/currency, idempotency, and witness checks immediately before the external call
+- uses stable `PayPal-Request-Id`, `sender_batch_id`, and `sender_item_id`
+- persists PayPal batch/item IDs and never equates payout creation with completion
+- reconciles asynchronous outcomes from verified webhooks and direct retrieval
+- never retries an uncertain payment under a new logical identity
 
 ### AI Gateway
 
@@ -531,7 +628,9 @@ mandategate/
 │   ├── risk/                    # behavioral analysis
 │   ├── policy/                  # deterministic policy engine
 │   ├── vendors/                 # trust + re-verification
-│   ├── payments/                # state machine + executor
+│   ├── payments/
+│   │   ├── executor/            # payment state machine + authority checks
+│   │   └── paypal/              # Payouts REST adapter + webhook reconciliation
 │   ├── ai/
 │   │   ├── gateway/             # Experiential/provider-neutral generative interface
 │   │   ├── decisions/           # Jev/Laya bounded judgments
@@ -557,6 +656,9 @@ mandategate/
 ## External Services and Dependencies
 
 Locked:
+- PayPal Payouts REST API v1 for vendor disbursement
+- direct server-side TypeScript REST integration via native fetch
+- OAuth client credentials, stable payout idempotency identifiers, verified payout webhooks, and reconciliation
 - Render Web Service
 - Render Postgres
 - Render Key Value / Valkey
@@ -564,7 +666,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- exact PayPal API/SDK surface
 - invoice/object storage
 - signer/KMS boundary
 - immutable archive target
@@ -581,7 +682,8 @@ Every dependency must be rechecked against current official documentation before
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
 - **Trail witness unavailable** -> fail closed for payment execution, policy changes, vendor-trust changes, blocks/unblocks, and admin consequential decisions; read-only work may continue only as UNWITNESSED.
 - **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid receipt/signature, or anchor mismatch all fail verification.
-- **PayPal execution uncertainty** -> reconcile using authoritative payment/idempotency identifiers before any retry.
+- **PayPal execution uncertainty** -> persist the uncertain state and reconcile using existing MandateGate/PayPal identifiers before any retry. Never mint a new logical payout identity merely because the network response was lost.
+- **PayPal webhook invalid/duplicate/out-of-order** -> reject invalid signatures; process valid events idempotently; do not allow stale events to regress authoritative payment state.
 
 ## What Was Simplified and Why
 
@@ -594,6 +696,8 @@ Every dependency must be rechecked against current official documentation before
 ## Decisions and Open Issues
 
 Locked:
+- PayPal Payouts REST API v1 as the payment execution surface
+- direct TypeScript REST adapter, OAuth client credentials, stable dual idempotency/correlation IDs, verified payout webhooks, and reconciliation-first retry behavior
 - TypeScript/Next.js-centric architecture
 - Drizzle ORM 0.45.3 stable + node-postgres 8.23.1 for data access
 - Better Auth 1.7.7 for admin sessions and scoped organization API keys
