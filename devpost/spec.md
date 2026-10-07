@@ -267,7 +267,13 @@ Asynchronous outcome:
 - PayPal payout IDs are persisted immediately
 - authoritative payment state is reconciled from verified PayPal events and API retrieval when required
 
-MandateGate mapping:
+MandateGate pre-execution states:
+- `APPROVED` -> immediate execution path
+- `SCHEDULED` -> delayed execution waiting for `scheduled_for`
+- `SCHEDULE_REVIEW_REQUIRED` -> scheduled authorization became stale/unsafe and requires human review
+- `CANCELLED` -> scheduled payment intentionally stopped before execution
+
+MandateGate PayPal mapping:
 - PayPal `PENDING` -> `EXECUTING`
 - PayPal `SUCCESS` -> `PAID`
 - PayPal `FAILED` -> `PAYMENT_FAILED`
@@ -406,9 +412,49 @@ Official/current references:
 - https://github.com/ethereum/solidity/releases
 - https://www.npmjs.com/package/viem
 
-### Scheduled integrity work
+### Scheduled jobs
 
-- Render Cron for periodic checkpoint/anchor triggers if scheduling is required independently of user traffic.
+Render Cron provides the POC's periodic triggers. Render guarantees at most one active run of a given cron job at a time, but MandateGate still treats PostgreSQL/idempotency as the authority because manual runs, retries, and other callers can overlap.
+
+#### Due-payment runner
+
+- cron cadence: every minute in UTC
+- command: `pnpm jobs:due-payments`
+- delayed admin approval writes `scheduled_for TIMESTAMPTZ` and transitions the payment to `SCHEDULED`
+- the confirmed prepared-action digest binds the exact scheduled execution timestamp
+- PostgreSQL stores timestamps in UTC; the UI renders them in the organization's configured timezone
+- the runner selects only `SCHEDULED` rows with `scheduled_for <= now()`
+- due rows are claimed with a PostgreSQL transaction using row locking / atomic state transition so two runners cannot independently create two executions
+- the permanent `payment_executions.logical_payment_id` uniqueness boundary remains the final duplicate-payment guard
+
+Immediately before a scheduled payment crosses the PayPal boundary, MandateGate re-runs:
+1. payment is still `SCHEDULED` and has not been cancelled/replaced
+2. the original approving admin identity remains valid for the authority that was exercised
+3. amount, currency, vendor, and destination still match the confirmed action digest
+4. vendor destination is still trusted and not in re-verification
+5. applicable standing policy has not changed in a way that invalidates the authorization
+6. no new hard block exists
+7. permanent payment-idempotency claim succeeds
+8. the execution trail event is committed
+
+If any authorization/trust/policy check is stale or fails, transition to `SCHEDULE_REVIEW_REQUIRED` and do not call PayPal. A schedule is permission to attempt execution at that time, not permission to ignore state changes that happened meanwhile.
+
+State paths:
+- immediate accepted escalation: `ESCALATED -> APPROVED -> EXECUTING -> ...`
+- delayed accepted escalation: `ESCALATED -> APPROVED -> SCHEDULED -> EXECUTING -> ...`
+- stale scheduled authorization: `SCHEDULED -> SCHEDULE_REVIEW_REQUIRED`
+- admin cancellation before execution: `SCHEDULED -> CANCELLED`
+
+Verification before demo freeze:
+- schedule a payment and prove it remains non-executed before `scheduled_for`
+- restart the web service and prove schedule state survives
+- invoke the due runner twice concurrently and prove at most one logical payout execution is created
+- change vendor trust/policy after scheduling and prove the due runner moves the request to `SCHEDULE_REVIEW_REQUIRED` without calling PayPal
+- cancel a scheduled payment and prove the runner cannot execute it
+
+#### Integrity checkpoint runner
+
+Use a separate Render Cron job for periodic checkpoint/anchor triggers so payment scheduling and trail anchoring have independent run/failure histories.
 
 Official docs:
 - https://render.com/docs/cronjobs
@@ -845,6 +891,8 @@ The authoritative model will include at minimum:
 - vendor destinations
 - invoices
 - payment requests
+  - `scheduled_for TIMESTAMPTZ` when delayed execution is selected
+  - explicit `SCHEDULED`, `SCHEDULE_REVIEW_REQUIRED`, and `CANCELLED` states in addition to ordinary evaluation states
 - payment decisions
 - payment executions
   - permanent unique `logical_payment_id`
@@ -897,6 +945,7 @@ mandategate/
 │   ├── integrations/
 │   │   └── zapier/              # scoped external-agent ingress
 │   ├── scheduling/
+│   │   ├── due-payments.ts      # due-payment claim + revalidation runner
 │   │   └── bryntum/             # payment/deadline timeline adapter
 │   ├── trail/                   # event canonicalization + hashing
 │   ├── integrity/
@@ -934,7 +983,7 @@ Locked:
 - Render Postgres
 - Render Key Value / Valkey
 - Render Workflows
-- Render Cron where required
+- Render Cron for the due-payment runner and integrity checkpoint runner
 
 Locked sponsor integrations:
 - AG Studio / AG Grid
@@ -956,6 +1005,8 @@ Every dependency/service must be rechecked against current official documentatio
 - **AI/model unavailable, malformed output, or privacy-policy mismatch** -> deterministic controls remain authoritative; requests that require missing evidence fail closed into escalation/denial. A model response that does not prove the required Experiential ZDR route is rejected as evidence.
 - **Valkey unavailable** -> bypass cache and continue against authoritative state; never relax authorization.
 - **PostgreSQL unavailable** -> do not move money.
+- **Due-payment Cron delayed/unavailable** -> keep payment in `SCHEDULED`; never infer that it executed. A later run may claim it only after full execution-time revalidation.
+- **Scheduled authorization became stale** -> transition to `SCHEDULE_REVIEW_REQUIRED`; do not execute under the old approval.
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
 - **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid signature, or anchor mismatch all fail verification.
 - **External anchor unavailable** -> continue local append-only operation but mark new history `LOCAL_VERIFIED_PENDING_ANCHOR`; do not represent it as externally verified.
