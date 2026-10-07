@@ -237,7 +237,7 @@ If a destination differs from the trusted profile:
 - the vendor enters re-verification-required state
 - ordinary payment approval cannot make the new destination trusted
 
-The POC may represent the external verification step explicitly without pretending it is a real third-party verification service.
+The hackathon release may represent the external verification step explicitly without pretending it is a real third-party verification service.
 
 Acceptance criteria:
 - [ ] A destination mismatch is visible as a vendor-trust issue.
@@ -370,11 +370,11 @@ The product distinguishes:
 
 A human-readable explanation may be regenerated, but original reason codes, evidence references, policy context, and decision inputs remain attached to the event that produced the decision.
 
-### POC trail-integrity model
+### Hackathon trail-integrity model
 
 MandateGate will demonstrate tamper-evident consequential trails without turning the hackathon into a storage-compliance procurement exercise.
 
-The POC implements:
+The hackathon release implements:
 
 1. canonical append-only events
 2. per-event hash chaining
@@ -385,15 +385,15 @@ The POC implements:
 
 The external witness stores only cryptographic commitments and minimal checkpoint metadata, never invoice contents, vendor data, amounts, explanations, or other sensitive business records.
 
-The POC explicitly distinguishes:
+The hackathon release explicitly distinguishes:
 
 - **local integrity**: does the current trail match its internal hash chain and checkpoint?
 - **anchored integrity**: does the checkpoint match a commitment outside MandateGate?
 - **recoverability**: can deleted underlying evidence be restored independently?
 
-The POC proves the first two. It does **not** claim production-grade independent recoverability before a separate immutable archive is deployed.
+The hackathon release proves the first two. It does **not** claim production-grade independent recoverability before a separate immutable archive is deployed.
 
-A primary-database/application compromise after an external checkpoint is anchored must not permit silent rewriting of the anchored history. The POC's Base Sepolia append-only checkpoint registry enforces monotonically increasing checkpoint sequence and previous-checkpoint continuity so a compromised application cannot replace an already anchored sequence merely by changing its local transaction pointer. Events newer than the latest external anchor are an acknowledged POC limitation and are shown as pending external anchoring rather than falsely represented as fully externally verified.
+A primary-database/application compromise after an external checkpoint is anchored must not permit silent rewriting of the anchored history. The hackathon release's Base Sepolia append-only checkpoint registry enforces monotonically increasing checkpoint sequence and previous-checkpoint continuity so a compromised application cannot replace an already anchored sequence merely by changing its local transaction pointer. Events newer than the latest external anchor are an acknowledged hackathon-release limitation and are shown as pending external anchoring rather than falsely represented as fully externally verified.
 
 #### Production hardening recommendation
 
@@ -412,7 +412,7 @@ Acceptance criteria:
 - [ ] Trail verification can be performed independently of the current MandateGate UI/backend.
 - [ ] The UI/verifier distinguishes locally verified, externally anchored, pending-anchor, incomplete, and broken history.
 - [ ] Sensitive business data is not published to the external witness.
-- [ ] The documentation clearly states that independent WORM recoverability is a production hardening recommendation, not a POC claim.
+- [ ] The documentation clearly states that independent WORM recoverability is a production hardening recommendation, not a hackathon-release claim.
 
 ## Product Decisions
 
@@ -427,8 +427,8 @@ Acceptance criteria:
 - AI assistance is persistent across the product rather than replacing the product with a chatbot.
 - The assistant can prepare actions, but an authenticated admin must explicitly confirm consequential actions.
 - Explanations are required only for consequential actions.
-- POC tamper evidence is layered: hash-chained events, Merkle checkpoints, checkpoint signatures, and periodic external anchoring. Independent WORM retention and isolated signing are production hardening recommendations.
-- MandateGate can verify trails locally, while externally anchored checkpoints provide the POC's independent trust reference.
+- Hackathon-release tamper evidence is layered: hash-chained events, Merkle checkpoints, checkpoint signatures, and periodic external anchoring. Independent WORM retention and isolated signing are production hardening recommendations.
+- MandateGate can verify trails locally, while externally anchored checkpoints provide the hackathon release's independent trust reference.
 
 ## What We're Building
 
