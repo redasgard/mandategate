@@ -89,5 +89,5 @@ No production money or production PayPal credentials are used.
 
 ## Hackathon submission
 
-The repository is intentionally private during active development. Before Devpost submission it must be made public and include an approved open-source `LICENSE` file. The final submission also needs the hosted/testable build instructions, public YouTube demo under three minutes, and the Devpost project description/tool disclosures required by the current official rules.
+The repository is intentionally private during active development. Before Devpost submission it must be made public. The project is licensed under MIT; see `LICENSE`. The final submission also needs the hosted/testable build instructions, public YouTube demo under three minutes, and the Devpost project description/tool disclosures required by the current official rules.
 
