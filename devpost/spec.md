@@ -388,7 +388,8 @@ Network:
 - Base Sepolia
 - chain ID `84532`
 - Solidity `0.8.37`
-- `viem` `2.57.2` for TypeScript reads/writes at the current baseline
+- Foundry `1.8.5` for contract compilation and tests
+- `viem` `2.57.2` for TypeScript deployment and registry reads/writes
 - dedicated faucet-funded MandateGate testnet EOA as the only writer
 
 `CheckpointRegistry` is deliberately minimal and non-upgradeable:
@@ -404,6 +405,12 @@ Network:
 - no overwrite, delete, reset, proxy, upgrade, ownership transfer, or arbitrary admin mutation path
 
 The first checkpoint uses a zero previous-checkpoint hash. Once a sequence is anchored, neither the writer nor the MandateGate application can replace that sequence with a different commitment.
+
+Contract build/deploy:
+- `contracts/foundry.toml` pins Solidity `0.8.37`
+- `forge build` compiles the registry and `forge test` runs sequence/fork/rewrite tests
+- deployment is performed by `pnpm anchor:deploy`, a small server-side TypeScript script using viem and `BASE_SEPOLIA_ANCHOR_PRIVATE_KEY`; the private key is read from the environment and is not passed as a Foundry command-line argument
+- after successful deployment the script writes `config/integrity/base-sepolia.json` with chain ID, registry address, deployment transaction/block, and deployed-bytecode hash for human review and commit
 
 Root of trust:
 - the Base Sepolia chain ID, registry contract address, deployment transaction/block, and expected contract bytecode hash are committed to the repository verifier configuration after deployment
@@ -444,6 +451,7 @@ Official/current references:
 - https://docs.base.org/base-chain/api-reference/ethereum-json-rpc-api/eth_chainId
 - https://docs.base.org/cookbook/use-case-guides/finance/access-real-time-asset-data-pyth-price-feeds/
 - https://github.com/ethereum/solidity/releases
+- https://github.com/foundry-rs/foundry/releases
 - https://www.npmjs.com/package/viem
 
 ### Scheduled jobs
@@ -646,6 +654,7 @@ Current checked baseline on 2026-10-07:
 - node-postgres / `pg` 8.23.1
 - Better Auth 1.7.7
 - Render TypeScript SDK `@renderinc/sdk` 1.1.0
+- Foundry 1.8.5
 
 Rules:
 - security-sensitive and infrastructure dependencies are pinned to exact versions in the package manifest
@@ -698,6 +707,15 @@ Open:
 - API health/readiness endpoint: `http://localhost:3000/api/health`
 
 `pnpm demo:seed` creates only synthetic hackathon fixtures: the demo organization, trusted vendors, historical AP rows, active/proposed policies, the three canonical invoice scenarios, a local demo admin, and a scoped operations-agent API principal. It must be idempotent. Generated admin/API credentials are printed once or explicitly supplied through local-only seed variables; credentials are never committed.
+
+Contract verification/deployment when working on the witness:
+
+```bash
+cd contracts && forge build && forge test && cd ..
+pnpm anchor:deploy
+```
+
+`pnpm anchor:deploy` is only required when creating/replacing the hackathon Base Sepolia registry deployment. Normal local startup does not deploy contracts.
 
 The core application can run locally with external anchoring disabled. In that mode integrity remains `LOCAL_VERIFIED_PENDING_ANCHOR`; the application must not claim external verification. Full anchor writes require a developer-supplied Base Sepolia test wallet and the committed registry deployment configuration.
 
@@ -1217,7 +1235,7 @@ mandategate/
 │   ├── invoices/
 │   │   ├── schema.ts            # Zod canonical invoice extraction contract
 │   │   ├── pdf.ts               # bounded PDF.js text/raster preparation
-│   │   ├── extract.ts           # strict-tool GLM extraction + validation
+│   │   ├── extract.ts           # strict JSON-schema GLM extraction + validation
 │   │   └── normalize.ts         # deterministic amount/date/currency normalization
 │   ├── risk/                    # behavioral analysis
 │   ├── imports/
@@ -1246,8 +1264,18 @@ mandategate/
 │   │   ├── anchor/              # Base Sepolia registry client + committed deployment config
 │   │   └── verify/              # independent local + on-chain verification
 ├── contracts/
-│   ├── CheckpointRegistry.sol   # minimal non-upgradeable append-only witness
-│   └── test/                    # sequence/fork/rewrite contract tests
+│   ├── foundry.toml             # Solidity 0.8.37 / Foundry project config
+│   ├── src/
+│   │   └── CheckpointRegistry.sol
+│   └── test/
+│       └── CheckpointRegistry.t.sol
+├── scripts/
+│   └── deploy-checkpoint-registry.ts  # viem deployment + committed root config output
+├── config/
+│   └── integrity/
+│       ├── base-sepolia.json    # committed chain/address/deployment/bytecode root
+│       └── keys/                # committed checkpoint-signing public keys only
+├── src/
 │   ├── workflows/               # Render Workflow task definitions
 │   └── shared/
 ├── tests/
