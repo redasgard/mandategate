@@ -24,11 +24,14 @@ function assertAuthorized(payment: AuthoritativePayment) {
   if (payment.currency !== "USD") throw new ExecutionRejectedError("UNSUPPORTED_PAYOUT_CURRENCY");
 }
 
+type ReconcileOptions = { auditEventId?: string };
+
 async function reconcile(
   store: ExecutionStore,
   gateway: PaymentGateway,
   execution: ExecutionRecord,
   now: Date,
+  options: ReconcileOptions = {},
 ): Promise<ExecutionRecord> {
   let snapshot;
   if (execution.paypalPayoutItemId) {
@@ -40,14 +43,20 @@ async function reconcile(
   }
 
   const mapped = mapPayPalItemStatus(snapshot.transactionStatus);
-  const updated = await store.applyRemoteStatus(execution.logicalPaymentId, snapshot, mapped, now);
-  await store.appendEvent(execution.logicalPaymentId, "PAYPAL_RECONCILED", {
-    rawStatus: snapshot.transactionStatus,
-    mappedStatus: mapped,
-    payoutBatchId: snapshot.payoutBatchId,
-    payoutItemId: snapshot.payoutItemId,
-  });
-  return updated;
+  const result = await store.applyRemoteStatus(execution.logicalPaymentId, snapshot, mapped, now);
+  await store.appendEvent(
+    execution.logicalPaymentId,
+    result.applied ? "PAYPAL_RECONCILED" : "PAYPAL_STALE_STATUS_IGNORED",
+    {
+      rawStatus: snapshot.transactionStatus,
+      mappedStatus: mapped,
+      currentStatus: result.execution.status,
+      payoutBatchId: snapshot.payoutBatchId,
+      payoutItemId: snapshot.payoutItemId,
+    },
+    options.auditEventId,
+  );
+  return result.execution;
 }
 
 async function submitClaimed(
@@ -180,8 +189,9 @@ export async function executeAuthorizedPayment(
 export async function reconcileExecution(
   logicalPaymentId: string,
   deps: { store: ExecutionStore; gateway: PaymentGateway; now?: () => Date },
+  options: ReconcileOptions = {},
 ) {
   const execution = await deps.store.getExecution(logicalPaymentId);
   const now = deps.now?.() ?? new Date();
-  return reconcile(deps.store, deps.gateway, execution, now);
+  return reconcile(deps.store, deps.gateway, execution, now, options);
 }
