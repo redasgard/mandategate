@@ -379,7 +379,7 @@ The hackathon participant credit is used before adding unrelated infrastructure.
 #### AG Grid / AG Studio
 
 - AG Studio 3.0.0
-- AG Grid 36.2.x compatibility line
+- AG Grid 36.2.0 compatibility line
 
 Use AG Studio as the primary investigation/dashboard surface for:
 - payment and invoice analytics
@@ -390,6 +390,8 @@ Use AG Studio as the primary investigation/dashboard surface for:
 
 The MandateGate Assistant may ask AG Studio to build/filter/query dashboard views through the Studio Agent Framework, but Studio receives read-oriented analytical data and never gains authority to execute payments, change trust, activate policy, or confirm prepared actions.
 
+The Studio Agent Framework must call a server-side MandateGate adapter. Provider credentials and Experiential gateway secrets are never shipped to the browser. The adapter exposes only read-oriented dashboard/query tools and routes model requests through the existing AI Gateway security/privacy controls.
+
 Pin `ag-studio` and `ag-studio-react` to the same exact version. Any standalone AG Grid/AG Charts packages must match AG Studio's documented compatibility line.
 
 Official docs:
@@ -399,7 +401,7 @@ Official docs:
 #### Elastic
 
 - Elastic Cloud Serverless during the hackathon trial/extension window
-- `@elastic/elasticsearch` 9.6.x client line if the official client is used
+- `@elastic/elasticsearch` 9.6.0 if the official client is used
 
 Elastic is a secondary, rebuildable search/analytics index for:
 - historical invoice similarity
@@ -462,7 +464,7 @@ Official docs:
 
 #### Zapier MCP
 
-Zapier MCP provides one real external operations-agent/integration ingress path.
+Zapier MCP provides one real external operations-agent/integration ingress path. Use **API by Zapier** from Zapier MCP for authenticated calls to MandateGate so the scoped MandateGate API key is stored in a Zapier app connection rather than plaintext tool/webhook fields.
 
 Permitted:
 - submit an invoice/payment request to MandateGate
@@ -479,8 +481,19 @@ Forbidden:
 
 Zapier identities map to ordinary scoped machine principals. Zapier is therefore an integration client of MandateGate, not an authority layer.
 
-Hackathon resource:
+Official/current references:
 - https://paypalaihackathon.devpost.com/details/zapier
+- https://help.zapier.com/hc/en-us/articles/44391646192397-Ways-to-make-API-requests-in-Zapier
+
+#### Sponsor implementation priority
+
+The sponsor set is locked, but it is not one giant critical path.
+
+1. **Core/demo-critical:** Render, AG Studio/AG Grid, Bryntum, PayPal integration built with APIMatic context.
+2. **Important but degradable:** Elastic. PostgreSQL remains authoritative and the core payment path must still run if the search projection is unavailable.
+3. **Submission/integration surfaces:** Postman and Zapier MCP. They prove API usability and external-agent ingress but cannot block the core ALLOW/ESCALATE/DENY + PayPal demo.
+
+This preserves meaningful sponsor usage without allowing seven integrations to become seven ways to miss the submission deadline.
 
 #### Intentionally excluded sponsors
 
