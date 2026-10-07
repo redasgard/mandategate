@@ -376,7 +376,7 @@ Network:
 - Base Sepolia
 - chain ID `84532`
 - Solidity `0.8.37`
-- `viem` `2.57.3` for TypeScript reads/writes at the current baseline
+- `viem` `2.57.2` for TypeScript reads/writes at the current baseline
 - dedicated faucet-funded MandateGate testnet EOA as the only writer
 
 `CheckpointRegistry` is deliberately minimal and non-upgradeable:
