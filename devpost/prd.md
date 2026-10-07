@@ -370,6 +370,41 @@ The product distinguishes:
 
 A human-readable explanation may be regenerated, but original reason codes, evidence references, policy context, and decision inputs remain attached to the event that produced the decision.
 
+### Locked trail-integrity model
+
+MandateGate will use a layered integrity model for consequential trails:
+
+1. canonical append-only events
+2. per-event hash chaining
+3. periodic Merkle checkpoints over event batches
+4. checkpoint signing by a signer outside the normal application authority boundary
+5. independently retained immutable/WORM archive copies
+6. periodic anchoring of signed checkpoint commitments to a public blockchain or equivalent external witness
+
+The blockchain/external witness stores only cryptographic commitments and minimal checkpoint metadata, never invoice contents, vendor data, amounts, explanations, or other sensitive business records.
+
+MandateGate may verify its own local chain continuously, but MandateGate is not the sole trust anchor. A verifier must be able to recompute event hashes and Merkle roots and compare them against signed checkpoints and externally witnessed commitments without trusting the current MandateGate application state.
+
+The product must distinguish:
+
+- **integrity**: does the current trail match the committed history?
+- **authenticity**: was the checkpoint signed by the expected signer?
+- **availability/recoverability**: can the underlying evidence still be recovered from an independent immutable copy?
+- **external witness**: does an independently held commitment prove that the checkpoint existed before any later compromise?
+
+A primary-database or application compromise may cause disruption or deletion, but must not permit silent historical rewriting without detectable integrity failure.
+
+Acceptance criteria:
+- [ ] Event modification breaks verification.
+- [ ] Event deletion or truncation breaks verification.
+- [ ] Event reordering or replacement breaks verification.
+- [ ] Recomputed Merkle roots can be checked against signed checkpoints.
+- [ ] Checkpoint signatures are verifiable independently of the application.
+- [ ] At least one immutable copy exists outside the primary application datastore.
+- [ ] At least one externally witnessed checkpoint commitment exists outside MandateGate's administrative trust boundary.
+- [ ] Trail verification can be performed independently of the current MandateGate UI/backend.
+- [ ] Sensitive business data is not published to the external witness.
+
 ### Comprehensive logging and tamper-protected trails
 
 Every meaningful control-flow event must be logged, and every consequential trail must be protected against silent modification, not only through the admin UI but against compromise of the application or primary datastore.
@@ -475,6 +510,8 @@ Acceptance criteria:
 - AI assistance is persistent across the product rather than replacing the product with a chatbot.
 - The assistant can prepare actions, but an authenticated admin must explicitly confirm consequential actions.
 - Explanations are required only for consequential actions.
+- Tamper protection is layered: hash-chained events, Merkle checkpoints, isolated checkpoint signatures, immutable independent retention, and periodic external anchoring.
+- MandateGate may verify trails locally but is never the sole verifier or trust anchor.
 
 ## What We're Building
 
