@@ -5,7 +5,7 @@ status: draft
 
 # MandateGate — Technical Spec
 
-> Baseline dependency/version check: 2026-10-06. Re-check current official versions and platform support immediately before installing or upgrading any external dependency.
+> Baseline dependency/version check: 2026-10-07. Re-check current official versions and platform support immediately before installing or upgrading any external dependency.
 
 ## How This Works, In Plain Language
 
@@ -361,11 +361,136 @@ Official docs:
 Official docs:
 - https://render.com/docs/cronjobs
 
+### Sponsor integrations
+
+MandateGate uses sponsor tools only where they strengthen an existing product surface. Sponsor integrations are replaceable capabilities; none owns payment authority, policy semantics, vendor trust, or trail truth.
+
+#### Render
+
+Already locked as the primary deployment/runtime platform:
+- Next.js web service
+- PostgreSQL
+- Key Value / Valkey
+- Workflows
+- Cron where needed
+
+The hackathon participant credit is used before adding unrelated infrastructure.
+
+#### AG Grid / AG Studio
+
+- AG Studio 3.0.0
+- AG Grid 36.2.x compatibility line
+
+Use AG Studio as the primary investigation/dashboard surface for:
+- payment and invoice analytics
+- escalation/risk views
+- vendor behavior
+- policy outcomes
+- trail/integrity investigation
+
+The MandateGate Assistant may ask AG Studio to build/filter/query dashboard views through the Studio Agent Framework, but Studio receives read-oriented analytical data and never gains authority to execute payments, change trust, activate policy, or confirm prepared actions.
+
+Pin `ag-studio` and `ag-studio-react` to the same exact version. Any standalone AG Grid/AG Charts packages must match AG Studio's documented compatibility line.
+
+Official docs:
+- https://www.ag-grid.com/studio/react/installation/
+- https://www.ag-grid.com/studio/react/compatibility/
+
+#### Elastic
+
+- Elastic Cloud Serverless during the hackathon trial/extension window
+- `@elastic/elasticsearch` 9.6.x client line if the official client is used
+
+Elastic is a secondary, rebuildable search/analytics index for:
+- historical invoice similarity
+- vendor behavior/context retrieval
+- anomaly investigation
+- fast trail search and correlation
+
+PostgreSQL remains authoritative. Elastic results are evidence/search context only and cannot directly authorize ALLOW, clear a block, trust a destination, or change payment state. If Elastic is unavailable, MandateGate degrades to PostgreSQL-backed analysis/search where practical or escalates when required evidence is unavailable.
+
+Only the minimum fields required for retrieval/analytics are indexed. Secrets, raw auth material, and unnecessary sensitive document bodies are excluded.
+
+Official docs:
+- https://www.elastic.co/docs/reference/elasticsearch/clients/javascript
+- https://www.elastic.co/docs/solutions/search
+
+#### APIMatic
+
+Use the APIMatic Context Plugin for PayPal during implementation and verification of the PayPal integration.
+
+APIMatic is a build-time/developer-context dependency, not a runtime payment authority. The committed implementation and tests remain the source of truth at runtime.
+
+The project should retain reproducible evidence that the Context Plugin was used for the PayPal integration for sponsor-submission purposes.
+
+Hackathon resource:
+- https://paypalaihackathon.devpost.com/details/apimatic
+
+#### Postman
+
+Publish a MandateGate API collection/workspace covering:
+- agent invoice submission
+- payment/evaluation status
+- admin-safe test flows
+- webhook test fixtures where suitable
+- integrity/checkpoint verification endpoints
+
+Never publish secrets, real credentials, or production-like sensitive invoice data. Use environment variables and synthetic fixtures.
+
+Postman is documentation/testing infrastructure, not a runtime dependency.
+
+Official docs:
+- https://learning.postman.com/docs/collections/collections-overview/
+- https://learning.postman.com/docs/collaborating-in-postman/using-workspaces/public-workspaces/
+
+#### Bryntum Scheduler
+
+- Bryntum Scheduler 7.3.7 trial line
+
+Use Scheduler for the time-oriented Payments surface:
+- upcoming payments
+- scheduled approved payments
+- overdue obligations
+- held/failed/retry-required outcomes
+- escalation deadlines
+
+The timeline visualizes authoritative MandateGate state. Drag/drop or editor interactions do not directly mutate payment authority; consequential schedule changes must go through the same prepared-action, authorization, confirmation, and trail path as other consequential actions.
+
+Official docs:
+- https://bryntum.com/products/scheduler/docs/
+- https://bryntum.com/products/scheduler/changelog/
+
+#### Zapier MCP
+
+Zapier MCP provides one real external operations-agent/integration ingress path.
+
+Permitted:
+- submit an invoice/payment request to MandateGate
+- query request/payment status
+- retrieve non-sensitive summaries permitted by the agent principal's scopes
+
+Forbidden:
+- direct PayPal execution
+- policy activation/change
+- vendor-destination trust
+- bypassing escalation
+- admin confirmation
+- direct access to MandateGate secrets
+
+Zapier identities map to ordinary scoped machine principals. Zapier is therefore an integration client of MandateGate, not an authority layer.
+
+Hackathon resource:
+- https://paypalaihackathon.devpost.com/details/zapier
+
+#### Intentionally excluded sponsors
+
+Channel3, Astropods, and KERNEL are not part of the initial POC because their current capabilities do not materially improve the approved vendor-invoice authorization journey. They may be reconsidered only if implementation exposes a concrete need; sponsor count alone is not a reason to add them.
+
 ## Dependency Version and Supply-Chain Policy
 
 The dependency baseline is re-checked against official package/release sources immediately before installation and again before the demo freeze.
 
-Current checked baseline on 2026-10-06:
+Current checked baseline on 2026-10-07:
 - Next.js 16.3.8
 - React 19.3
 - TypeScript 6.0
@@ -670,7 +795,7 @@ Operational tables are mutable according to application rules. Trail events are 
 
 ## File Structure
 
-Provisional structure, refined after the remaining external-witness and sponsor-integration choices are locked:
+Provisional structure, refined only if implementation proves a listed boundary insufficient:
 
 ```text
 mandategate/
@@ -697,6 +822,13 @@ mandategate/
 │   │   ├── decisions/           # Jev/Laya bounded judgments
 │   │   └── evals/               # adversarial model fixtures + scoring
 │   ├── assistant/               # chat + prepared actions
+│   ├── analytics/
+│   │   ├── ag-studio/           # dashboard/investigation adapter
+│   │   └── elastic/             # rebuildable search/analytics projection
+│   ├── integrations/
+│   │   └── zapier/              # scoped external-agent ingress
+│   ├── scheduling/
+│   │   └── bryntum/             # payment/deadline timeline adapter
 │   ├── trail/                   # event canonicalization + hashing
 │   ├── integrity/
 │   │   ├── checkpoint/          # Merkle + checkpoint signing
@@ -732,10 +864,20 @@ Locked:
 - Render Workflows
 - Render Cron where required
 
-Still to lock before implementation:
-- sponsor-tool integrations beyond Render
+Locked sponsor integrations:
+- AG Studio / AG Grid
+- Elastic
+- APIMatic Context Plugin for PayPal
+- Postman
+- Bryntum Scheduler
+- Zapier MCP
 
-Every dependency must be rechecked against current official documentation before installation or implementation.
+Intentionally excluded initially:
+- Channel3
+- Astropods
+- KERNEL
+
+Every dependency/service must be rechecked against current official documentation before installation or implementation.
 
 ## Important Failure Modes
 
@@ -784,9 +926,16 @@ Locked:
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
 - PostgreSQL-backed POC artifact storage with a provider-neutral `ArtifactStore` abstraction
 - Base Sepolia (chain ID 84532) as the POC external checkpoint witness; no smart contract, only versioned checkpoint commitments
+- AG Studio / AG Grid for dashboard and investigation
+- Elastic as a non-authoritative searchable/analytical projection
+- APIMatic Context Plugin for PayPal build-time integration context
+- Postman for public/testable API documentation
+- Bryntum Scheduler for payment timelines and deadlines
+- Zapier MCP as a scoped external operations-agent ingress
 
 Current useful uncertainty:
 - the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
 
 Open before approval:
-- remaining sponsor integrations
+- exact local/deployed run commands and environment-variable contract
+- final integrated consistency/security review
