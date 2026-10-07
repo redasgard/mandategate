@@ -10,6 +10,8 @@ if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
   throw new Error("PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are required for the live Slice 2 Sandbox proof");
 }
 
+const requireWebhookProof = process.env.REQUIRE_PAYPAL_WEBHOOK_PROOF === "1";
+
 const [
   { submitCanonicalPaymentRequest },
   { executeAuthorizedPayment },
@@ -75,6 +77,31 @@ if (submitCount.rows[0]?.n !== 1) {
   throw new Error(`expected exactly one PAYPAL_SUBMITTED event, got ${submitCount.rows[0]?.n}`);
 }
 
+const webhookVerifiedCount = await pool.query(
+  "select count(*)::int as n from payment_execution_events where logical_payment_id = $1 and event_type = 'PAYPAL_WEBHOOK_VERIFIED'",
+  [request.logicalPaymentId],
+);
+const webhookReconcileFailureCount = await pool.query(
+  "select count(*)::int as n from payment_execution_events where logical_payment_id = $1 and event_type = 'PAYPAL_WEBHOOK_RECONCILE_FAILED'",
+  [request.logicalPaymentId],
+);
+const reconciledCount = await pool.query(
+  "select count(*)::int as n from payment_execution_events where logical_payment_id = $1 and event_type = 'PAYPAL_RECONCILED'",
+  [request.logicalPaymentId],
+);
+
+if (requireWebhookProof) {
+  if ((webhookVerifiedCount.rows[0]?.n ?? 0) < 1) {
+    throw new Error("expected at least one PAYPAL_WEBHOOK_VERIFIED event");
+  }
+  if ((reconciledCount.rows[0]?.n ?? 0) < 1) {
+    throw new Error("expected at least one PAYPAL_RECONCILED event");
+  }
+  if ((webhookReconcileFailureCount.rows[0]?.n ?? 0) !== 0) {
+    throw new Error(`expected zero PAYPAL_WEBHOOK_RECONCILE_FAILED events, got ${webhookReconcileFailureCount.rows[0]?.n}`);
+  }
+}
+
 console.log(JSON.stringify({
   requestId: request.requestId,
   logicalPaymentId: request.logicalPaymentId,
@@ -84,6 +111,9 @@ console.log(JSON.stringify({
   rawPaypalStatus: execution.rawPaypalStatus,
   executionRows: executionCount.rows[0].n,
   submittedEvents: submitCount.rows[0].n,
+  webhookVerifiedEvents: webhookVerifiedCount.rows[0].n,
+  reconciledEvents: reconciledCount.rows[0].n,
+  webhookReconcileFailures: webhookReconcileFailureCount.rows[0].n,
 }, null, 2));
 
 await pool.end();
