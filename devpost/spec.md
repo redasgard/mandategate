@@ -95,6 +95,21 @@ Forbidden as sole source of truth:
 Official docs:
 - https://render.com/docs/key-value
 
+### Authentication
+
+- Better Auth 1.7.7
+- PostgreSQL-backed admin sessions
+- scoped organization API keys for operations agents
+- no Magic Link dependency in the POC
+- agent API keys never become human sessions
+- Valkey may assist with rate limiting or cache validation, but PostgreSQL remains authoritative
+
+Machine and human identity remain separate authority classes. Operations-agent API keys receive only explicit scopes such as `invoice:submit` and `payment:read`; they cannot acquire admin authority through session conversion.
+
+Official docs:
+- https://better-auth.com/
+- https://better-auth.com/docs/plugins/api-key/reference
+
 ### Background execution
 
 - Render Workflows
@@ -309,7 +324,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- authentication approach
 - AI/model provider and document-analysis path
 - exact PayPal API/SDK surface
 - invoice/object storage
@@ -342,6 +356,7 @@ Every dependency must be rechecked against current official documentation before
 Locked:
 - TypeScript/Next.js-centric architecture
 - Drizzle ORM 0.44.7 stable + node-postgres for data access
+- Better Auth 1.7.7 for admin sessions and scoped organization API keys
 - Node.js 24 LTS baseline
 - PostgreSQL 18 authoritative operational database
 - Render-centric deployment
@@ -355,7 +370,6 @@ Current useful uncertainty:
 - the exact trust-boundary implementation for isolated checkpoint signing, immutable retention, and external witnessing remains deliberately unresolved until the specific services are selected and validated.
 
 Open before approval:
-- authentication
 - AI/model/document path
 - PayPal surface
 - object storage
