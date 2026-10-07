@@ -328,6 +328,32 @@ Production recommendation:
 Official docs:
 - https://www.postgresql.org/docs/18/datatype-binary.html
 
+### External checkpoint witness
+
+The hackathon POC anchors signed checkpoint commitments to Base Sepolia.
+
+Implementation:
+- network: Base Sepolia
+- chain ID: `84532`
+- use a dedicated MandateGate testnet EOA
+- submit a zero-value transaction containing only a versioned checkpoint commitment in transaction calldata
+- publish no invoice, vendor, payment amount, explanation, or other sensitive business data on-chain
+- store the resulting transaction hash, block number/hash, chain ID, checkpoint ID, and anchored checkpoint digest in `integrity_anchors`
+- a checkpoint is `ANCHORED_VERIFIED` only after the verifier independently fetches the transaction/receipt and confirms that the committed digest matches the signed checkpoint
+- if the RPC/provider is unavailable, the checkpoint remains `LOCAL_VERIFIED_PENDING_ANCHOR`
+- no smart contract is required for the POC
+- test ETH is faucet-funded; no production funds are used
+
+The external anchor is evidence that a checkpoint commitment existed on the public testnet at or before the containing block. It is not an immutable archive and does not provide recoverability of deleted event/evidence bodies.
+
+Production recommendation:
+- replace the testnet anchor with a durable mainnet/public timestamp mechanism appropriate to the deployment's legal, cost, and retention requirements
+- keep the anchor interface provider/network-neutral so changing the public witness does not alter MandateGate trail semantics
+
+Official docs:
+- https://docs.base.org/base-chain/network-information
+- https://docs.base.org/base-chain/tools/network-faucets
+
 ### Scheduled integrity work
 
 - Render Cron for periodic checkpoint/anchor triggers if scheduling is required independently of user traffic.
@@ -371,7 +397,7 @@ Planned services:
 
 The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
 
-Exact start commands and environment variables will be finalized once the remaining external-witness and sponsor-integration choices are locked.
+Exact start commands and environment variables will be finalized once the remaining sponsor-integration choices are locked.
 
 ## Look and Feel
 
@@ -580,7 +606,7 @@ POC checkpoint protocol:
 - checkpoint payload is canonicalized before hashing/signing
 - the POC signs checkpoints with a dedicated MandateGate signing key
 - key rotation is supported through explicit key IDs; old public verification keys remain available for historical verification
-- the signed checkpoint commitment is periodically published to an external public timestamp/witness
+- the signed checkpoint commitment is periodically published to Base Sepolia through the External Checkpoint Witness
 - sensitive invoice/vendor/payment content is never placed in the external commitment
 
 External anchoring closes the history up to the anchored checkpoint. The verifier and UI must distinguish the anchored range from the newer unanchored tail.
@@ -672,7 +698,10 @@ mandategate/
 │   │   └── evals/               # adversarial model fixtures + scoring
 │   ├── assistant/               # chat + prepared actions
 │   ├── trail/                   # event canonicalization + hashing
-│   ├── integrity/               # Merkle/sign/checkpoint/verify
+│   ├── integrity/
+│   │   ├── checkpoint/          # Merkle + checkpoint signing
+│   │   ├── anchor/              # Base Sepolia testnet witness
+│   │   └── verify/              # independent verification
 │   ├── workflows/               # Render Workflow task definitions
 │   └── shared/
 ├── tests/
@@ -691,6 +720,7 @@ mandategate/
 ## External Services and Dependencies
 
 Locked:
+- Base Sepolia as the POC external checkpoint witness
 - PostgreSQL `bytea` for POC artifact storage behind an `ArtifactStore` abstraction
 - 10 MiB per-artifact POC limit with MIME allowlisting and SHA-256 integrity checks
 - PayPal Payouts REST API v1 for vendor disbursement
@@ -703,7 +733,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- public/external checkpoint witness
 - sponsor-tool integrations beyond Render
 
 Every dependency must be rechecked against current official documentation before installation or implementation.
@@ -754,10 +783,10 @@ Locked:
 - Laya 0.3.28 as the evaluated open-source alternative
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
 - PostgreSQL-backed POC artifact storage with a provider-neutral `ArtifactStore` abstraction
+- Base Sepolia (chain ID 84532) as the POC external checkpoint witness; no smart contract, only versioned checkpoint commitments
 
 Current useful uncertainty:
-- the remaining external checkpoint-witness mechanism must be selected and validated; the earlier question about who verifies Merkle history is resolved by separating local verification from an external checkpoint anchor. Production WORM recoverability is intentionally out of POC scope.
+- the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
 
 Open before approval:
-- external checkpoint witness
 - remaining sponsor integrations
