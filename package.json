@@ -14,7 +14,8 @@
     "test": "vitest run",
     "db:migrate": "tsx scripts/migrate.ts",
     "demo:seed": "tsx scripts/seed.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "verify:slice2:sandbox": "tsx scripts/verify-slice2-sandbox.ts"
   },
   "dependencies": {
     "better-auth": "1.7.7",
