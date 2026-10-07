@@ -1,6 +1,6 @@
 ---
 doc: spec
-status: draft
+status: approved
 ---
 
 # MandateGate — Technical Spec
@@ -1384,8 +1384,8 @@ Locked:
 Current useful uncertainty:
 - the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
 
-Open before approval:
-- final integrated consistency/security review
+Approval state:
+- approved by the learner after final integrated consistency/security review
 
 Submission-time obligation:
 - make the GitHub repository public before Devpost submission; MIT `LICENSE` is already committed
