@@ -262,6 +262,22 @@ Authority boundary:
 
 The operations agent, browser, assistant, model providers, and bounded-decision models never receive PayPal credentials or direct access to the payout adapter.
 
+#### Dashboard balance source
+
+The dashboard's current available balance is sourced from PayPal's Transaction Search balance endpoint:
+
+- `GET /v1/reporting/balances`
+- required OAuth scope: `https://uri.paypal.com/services/reporting/balances/read`
+- use the balance matching the configured POC operating currency
+- display PayPal's balance timestamp/`as_of_time` next to the value because PayPal documents that reporting balances can lag by up to three hours
+- cache only as a performance optimization; the displayed timestamp remains visible
+- if the reporting scope/endpoint is unavailable, show `Balance unavailable` with an integration warning rather than fabricating a number
+
+A successful Sandbox balance read with the actual hackathon app/account is a demo-readiness gate because the approved PRD requires available balance on the dashboard.
+
+Official docs:
+- https://developer.paypal.com/api/transaction-search/v1/balances-get/
+
 Asynchronous outcome:
 - creation of a payout is not treated as payment completion
 - PayPal payout IDs are persisted immediately
@@ -687,7 +703,8 @@ The invoice path is explicit because document interpretation sits directly upstr
 Dependencies at the current baseline:
 - `pdfjs-dist` 6.4.299 for local PDF parsing/text extraction and page rendering
 - `@napi-rs/canvas` 1.0.10 for bounded server-side PDF page rasterization where needed
-- Zod 4.6.5 for the canonical extraction contract
+- Zod 4.6.5
+- csv-parse 7.0.3 for the canonical extraction contract
 - GLM-5.3 Flash through Experiential for the primary text/image interpretation path
 
 File admission:
@@ -765,6 +782,48 @@ Implements:
 - `prd.md > Policy Review`
 
 Builds vendor/company baselines and anomaly evidence from imported AP history.
+
+#### AP history CSV import
+
+Dependency:
+- `csv-parse` 7.0.3. Versions below 7.0.2 are forbidden because of the 2026 prototype-replacement advisory affecting a columns path.
+
+The POC accepts an RFC-4180-style UTF-8 CSV/ERP export through an authenticated admin import flow. The raw CSV is stored as an artifact and hashed before parsing.
+
+Canonical columns:
+- required: `vendor_name`, `invoice_number`, `invoice_date`, `amount_decimal`, `currency`, `status`
+- optional: `due_date`, `paid_at`, `payment_destination`, `department`, `cost_center`
+
+Import rules:
+- header names are mapped through an explicit allowlist; unknown columns may be retained as ignored metadata but never become SQL identifiers
+- duplicate header names are rejected
+- formula-like cell content is treated as plain data and never evaluated
+- amounts remain decimal strings through validation/normalization; no binary floating-point arithmetic
+- currency is normalized to upper-case ISO-style three-letter codes and unsupported currencies are rejected from payment baselines
+- dates are parsed under one documented ISO-date contract; ambiguous locale dates are rejected rather than guessed
+- each row receives deterministic normalized content hash + source row number
+- exact duplicate normalized rows within an import are collapsed/reported
+- a row failing schema validation is quarantined with a reason; it does not silently contribute to behavioral baselines
+- import runs are immutable/versioned by `ap_import_id`; rebuilding a baseline records which import versions contributed
+- vendor resolution never trusts the CSV row to overwrite an authoritative vendor destination
+
+Minimum baseline inputs:
+- amount distribution by vendor
+- invoice/payment cadence
+- invoice-number and normalized-content duplicate/similarity context
+- optional department/cost-center context
+- historical destination observations as non-authoritative evidence
+
+Verification:
+- valid history import builds expected vendor/company baselines
+- duplicate headers and malformed rows are rejected/quarantined
+- CSV cells containing spreadsheet formulas are inert strings
+- repeated import of the same file does not duplicate historical observations
+- changing an import creates a new version and provenance, rather than rewriting the previous import
+
+Official/current references:
+- https://www.npmjs.com/package/csv-parse
+- https://github.com/adaltas/node-csv/security/advisories/GHSA-8cw4-87c7-c6xx
 
 ### Policy and Decision Engine
 
@@ -964,6 +1023,7 @@ The authoritative model will include at minimum:
 - vendors
 - vendor destinations
 - invoices
+- AP import runs / normalized AP history rows
 - payment requests
   - `scheduled_for TIMESTAMPTZ` when delayed execution is selected
   - explicit `SCHEDULED`, `SCHEDULE_REVIEW_REQUIRED`, and `CANCELLED` states in addition to ordinary evaluation states
@@ -1007,6 +1067,8 @@ mandategate/
 │   │   ├── extract.ts           # strict-tool GLM extraction + validation
 │   │   └── normalize.ts         # deterministic amount/date/currency normalization
 │   ├── risk/                    # behavioral analysis
+│   ├── imports/
+│   │   └── ap-csv.ts            # allowlisted/versioned AP history import
 │   ├── policy/                  # deterministic policy engine
 │   ├── vendors/                 # trust + re-verification
 │   ├── payments/
