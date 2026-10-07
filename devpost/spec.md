@@ -567,7 +567,7 @@ Official docs:
 
 #### Bryntum Scheduler
 
-- Bryntum Scheduler 7.3.7 trial line
+- Bryntum Scheduler 7.3.7 via public trial package alias for the hackathon
 
 Use Scheduler for the time-oriented Payments surface:
 - upcoming payments
@@ -723,9 +723,9 @@ Required PayPal Sandbox:
 - the connected PayPal app/account must expose both Payouts capability and the reporting-balances scope before the corresponding demo paths are considered ready
 
 Required generative/decision providers when AI analysis is enabled:
-- `EXPERIENTIAL_API_KEY`
-- any Experiential organization/policy identifier required by the live account for ZDR/no-training policy verification
-- Jev credentials required by the selected TypeSafe endpoint
+- `EXPLABS_API_KEY`
+- Experiential organization ID is discovered at runtime with `GET /api/whoami`; it is not a second secret/config value
+- `TYPESAFE_API_KEY` — Bearer credential for Jev/System One
 - provider configuration is validated at startup/preflight; sensitive document analysis remains disabled if the required ZDR/no-training policy cannot be proven
 
 POC checkpoint signing:
@@ -746,7 +746,8 @@ Optional/degradable sponsor services:
 - `ELASTICSEARCH_URL`
 - `ELASTICSEARCH_API_KEY`
 - missing Elastic configuration disables the rebuildable search projection and must not disable authoritative payment controls
-- sponsor UI license/build credentials, if required by the current AG Studio/AG Grid or Bryntum distribution, are configured as Render build/runtime secrets according to their current official installation terms; no package-registry or commercial license secret is committed or exposed through a public `NEXT_PUBLIC_*` variable unless the vendor explicitly documents that value as client-safe
+- `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` — optional hackathon trial/deployment licence value; AG Studio's official browser integration passes this licence value to `AgStudioProvider`, so it is client-visible licence material, not an authority credential
+- Bryntum Scheduler uses the public trial packages for the hackathon (`@bryntum/scheduler@npm:@bryntum/scheduler-trial@7.3.7` plus `@bryntum/scheduler-react@7.3.7`), so no Bryntum package-registry secret is required
 
 No secrets may enter:
 - `.env.example`
@@ -763,6 +764,11 @@ Official/current docs:
 - https://render.com/docs/configure-environment-variables
 - https://render.com/docs/key-value
 - https://nodejs.org/docs/latest-v24.x/api/crypto.html
+- https://platform.experientiallabs.ai/docs/authentication
+- https://platform.experientiallabs.ai/docs/data-controls
+- https://api.typesafe.ai/redoc
+- https://www.ag-grid.com/studio/react/licence-install/
+- https://www.bryntum.com/products/scheduler/docs/guide/Scheduler/quick-start/nextjs
 
 ## Look and Feel
 
