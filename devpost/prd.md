@@ -393,7 +393,7 @@ The POC explicitly distinguishes:
 
 The POC proves the first two. It does **not** claim production-grade independent recoverability before a separate immutable archive is deployed.
 
-A primary-database/application compromise after an external checkpoint is anchored must not permit silent rewriting of the anchored history. Events newer than the latest external anchor are an acknowledged POC limitation and are shown as pending external anchoring rather than falsely represented as fully externally verified.
+A primary-database/application compromise after an external checkpoint is anchored must not permit silent rewriting of the anchored history. The POC's Base Sepolia append-only checkpoint registry enforces monotonically increasing checkpoint sequence and previous-checkpoint continuity so a compromised application cannot replace an already anchored sequence merely by changing its local transaction pointer. Events newer than the latest external anchor are an acknowledged POC limitation and are shown as pending external anchoring rather than falsely represented as fully externally verified.
 
 #### Production hardening recommendation
 
