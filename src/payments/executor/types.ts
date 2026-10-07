@@ -88,6 +88,7 @@ export interface ExecutionStore {
   tryClaim(logicalPaymentId: string, allowed: ExecutionStatus[]): Promise<ExecutionRecord | null>;
   markSubmitted(logicalPaymentId: string, payoutBatchId: string, now: Date): Promise<ExecutionRecord>;
   markFailed(logicalPaymentId: string, rawStatus: string, now: Date): Promise<ExecutionRecord>;
+  markBlocked(logicalPaymentId: string, reason: string, now: Date): Promise<ExecutionRecord>;
   markUnknown(logicalPaymentId: string, now: Date): Promise<ExecutionRecord>;
   markManualReconciliation(logicalPaymentId: string, now: Date): Promise<ExecutionRecord>;
   applyRemoteStatus(logicalPaymentId: string, snapshot: PayoutItemSnapshot, mappedStatus: ExecutionStatus, now: Date): Promise<ExecutionRecord>;

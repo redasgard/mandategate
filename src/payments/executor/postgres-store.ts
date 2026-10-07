@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { PoolClient } from "pg";
 import { pool } from "@/src/db/pool";
 import { derivePayPalIds } from "./ids";
 import type {
@@ -113,6 +112,15 @@ export class PostgresExecutionStore implements ExecutionStore {
           set status = 'PAYMENT_FAILED', raw_paypal_status = $2, updated_at = $3
         where logical_payment_id = $1 returning *`,
       [logicalPaymentId, rawStatus.slice(0, 200), now],
+    );
+  }
+
+  async markBlocked(logicalPaymentId: string, reason: string, now: Date) {
+    return this.updateOne(
+      `update payment_executions
+          set status = 'PAYMENT_BLOCKED', raw_paypal_status = $2, updated_at = $3
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, reason.slice(0, 200), now],
     );
   }
 

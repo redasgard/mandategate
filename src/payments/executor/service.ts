@@ -57,6 +57,22 @@ async function submitClaimed(
   gateway: PaymentGateway,
   now: Date,
 ): Promise<ExecutionRecord> {
+  const fresh = await store.getAuthoritativePayment(payment.requestId);
+  try {
+    if (!fresh || fresh.logicalPaymentId !== payment.logicalPaymentId) {
+      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
+    }
+    assertAuthorized(fresh);
+    if (fresh.amountCents !== payment.amountCents || fresh.currency !== payment.currency || fresh.requestedDestination !== payment.requestedDestination) {
+      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
+    }
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "PAYMENT_AUTHORITY_CHANGED";
+    const blocked = await store.markBlocked(execution.logicalPaymentId, code, now);
+    await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMISSION_BLOCKED_BY_REVALIDATION", { reason: code });
+    return blocked;
+  }
+
   await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMITTING", {
     paypalRequestId: execution.paypalRequestId,
     senderBatchId: execution.senderBatchId,
@@ -68,10 +84,10 @@ async function submitClaimed(
       paypalRequestId: execution.paypalRequestId,
       senderBatchId: execution.senderBatchId,
       senderItemId: execution.senderItemId,
-      receiver: payment.requestedDestination,
-      amountCents: payment.amountCents,
-      currency: payment.currency,
-      note: `MandateGate invoice ${payment.invoiceNumber}`,
+      receiver: fresh.requestedDestination,
+      amountCents: fresh.amountCents,
+      currency: fresh.currency,
+      note: `MandateGate invoice ${fresh.invoiceNumber}`,
     });
     const submitted = await store.markSubmitted(execution.logicalPaymentId, result.payoutBatchId, now);
     await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMITTED", {
