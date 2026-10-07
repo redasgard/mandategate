@@ -298,6 +298,8 @@ MandateGate PayPal mapping:
 - PayPal `UNCLAIMED` -> `PAYMENT_UNCLAIMED`
 - PayPal `RETURNED` -> `PAYMENT_RETURNED`
 - PayPal `REFUNDED` -> `PAYMENT_REFUNDED`
+- PayPal `REVERSED` -> `PAYMENT_REVERSED` (defensive mapping; PayPal currently documents this status as specific to web-upload payouts)
+- any unrecognized item status -> `PAYMENT_STATUS_UNKNOWN`; persist the raw PayPal status, do not mark paid, and require reconciliation before any further action
 
 Webhook handling:
 - subscribe only to payout event types required by the product
@@ -309,6 +311,7 @@ Webhook handling:
 
 Required payout events include:
 - `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`
+- `PAYMENT.PAYOUTS-ITEM.CANCELED`
 - `PAYMENT.PAYOUTS-ITEM.FAILED`
 - `PAYMENT.PAYOUTS-ITEM.BLOCKED`
 - `PAYMENT.PAYOUTS-ITEM.HELD`
@@ -316,7 +319,9 @@ Required payout events include:
 - `PAYMENT.PAYOUTS-ITEM.RETURNED`
 - `PAYMENT.PAYOUTS-ITEM.REFUNDED`
 
-Batch-level success/denial events may be retained for reconciliation/operations but do not replace item-level state.
+Batch-level success/denial/processing events may be retained for reconciliation/operations but do not replace item-level state. A `PAYMENT.PAYOUTS-ITEM.CANCELED` webhook triggers item retrieval/reconciliation because the Payouts transaction-status reference represents a canceled unclaimed item as `RETURNED`.
+
+Webhook/event types or item statuses unknown to the current adapter are trailed and quarantined for reconciliation. They never default to success and never regress a terminal state.
 
 Uncertain execution:
 - timeout/5xx/connection loss after submission never causes an immediate second payout with new identifiers
@@ -333,6 +338,7 @@ Official docs:
 - https://developer.paypal.com/payouts/
 - https://developer.paypal.com/api/payments.payouts-batch/v1/
 - https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/sender_batch_header/
+- https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/transaction_enum/
 - https://developer.paypal.com/api/rest/authentication/
 - https://developer.paypal.com/api/rest/webhooks/
 - https://developer.paypal.com/payouts/webhooks/
