@@ -655,6 +655,7 @@ Current checked baseline on 2026-10-07:
 - Better Auth 1.7.7
 - Render TypeScript SDK `@renderinc/sdk` 1.1.0
 - Foundry 1.8.5
+- csv-parse 7.0.3
 
 Rules:
 - security-sensitive and infrastructure dependencies are pinned to exact versions in the package manifest
@@ -855,8 +856,7 @@ The invoice path is explicit because document interpretation sits directly upstr
 Dependencies at the current baseline:
 - `pdfjs-dist` 6.4.299 for local PDF parsing/text extraction and page rendering
 - `@napi-rs/canvas` 1.0.10 for bounded server-side PDF page rasterization where needed
-- Zod 4.6.5
-- csv-parse 7.0.3 for the canonical extraction contract
+- Zod 4.6.5 for the canonical extraction contract
 - GLM-5.3 Flash through Experiential for the primary text/image interpretation path
 
 File admission:
