@@ -655,7 +655,7 @@ Planned services:
 
 The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
 
-Exact start commands and environment variables will be finalized once the remaining sponsor-integration choices are locked.
+Exact local/deployed commands and the environment-variable contract are the final spec-completion item before approval.
 
 ## Look and Feel
 
@@ -679,7 +679,7 @@ Implements:
 - `prd.md > Escalation Review`
 - `prd.md > Policy Review`
 - `prd.md > MandateGate Assistant Behavior`
-- `prd.md > Activity and Accountability`
+- `prd.md > Activity`
 
 Provides the admin UI and trusted server-side routes.
 
@@ -835,7 +835,7 @@ Official/current references:
 
 Implements:
 - `prd.md > Policy Review`
-- `prd.md > States and Boundaries`
+- `prd.md > The Core Journey`
 
 Deterministically combines active policy, vendor trust, extraction confidence, and risk evidence into ALLOW, ESCALATE, or DENY.
 
