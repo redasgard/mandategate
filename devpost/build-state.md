@@ -137,3 +137,14 @@ PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are present on Render. 
 APIMatic Context Plugin evidence is still unavailable and must not be fabricated.
 
 Do not check or merge Slice 2 until the APIMatic usage/evidence requirement is either satisfied or explicitly removed from the approved spec/checklist.
+
+
+## Slice 2 Review Gate
+
+Formal review artifact: `devpost/reviews/slice-2-critical-review.md`.
+
+Decision: `BLOCK` despite strong live payment evidence, because the approved Slice 2 contract explicitly requires APIMatic Context Plugin usage/evidence and that evidence does not exist yet.
+
+The payment/runtime portion itself is verified: exactly one Sandbox payout, final PayPal `SUCCESS`, local `PAID`, one execution row, one `PAYPAL_SUBMITTED`, verified webhook evidence, successful reconciliation, and zero webhook reconciliation failures.
+
+Normal Render runtime is clean after verification: proof-only flags are disabled and deployment `dep-db3bipc9v7es73bjgp5g` is live at commit `60026accad1aa139a5fe49a8b0853a46d586e748`.
