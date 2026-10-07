@@ -63,6 +63,11 @@ export type PayoutItemSnapshot = {
   transactionStatus: string;
 };
 
+export type RemoteStatusApplyResult = {
+  execution: ExecutionRecord;
+  applied: boolean;
+};
+
 export class PaymentGatewayError extends Error {
   constructor(
     message: string,
@@ -91,6 +96,6 @@ export interface ExecutionStore {
   markBlocked(logicalPaymentId: string, reason: string, now: Date): Promise<ExecutionRecord>;
   markUnknown(logicalPaymentId: string, now: Date): Promise<ExecutionRecord>;
   markManualReconciliation(logicalPaymentId: string, now: Date): Promise<ExecutionRecord>;
-  applyRemoteStatus(logicalPaymentId: string, snapshot: PayoutItemSnapshot, mappedStatus: ExecutionStatus, now: Date): Promise<ExecutionRecord>;
-  appendEvent(logicalPaymentId: string, eventType: string, payload?: Record<string, unknown>): Promise<void>;
+  applyRemoteStatus(logicalPaymentId: string, snapshot: PayoutItemSnapshot, mappedStatus: ExecutionStatus, now: Date): Promise<RemoteStatusApplyResult>;
+  appendEvent(logicalPaymentId: string, eventType: string, payload?: Record<string, unknown>, eventId?: string): Promise<void>;
 }
