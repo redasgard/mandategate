@@ -163,6 +163,27 @@ All model results are advisory evidence. Exact arithmetic, permissions, policy e
 
 Every model call records task, requested model, actual route/provider, validation outcome, and resulting evidence reference. Generative-provider failover may not silently change the required privacy/security posture.
 
+Experiential data controls are part of the security boundary, not an optional dashboard preference:
+- platform prompt/response capture must be disabled: `capture_prompt_content=false`
+- provider policy must require zero data retention: `require_zdr=true`
+- provider policy must require no training: `require_no_training=true`
+- every request also sends the per-request constraint `provider: { "zdr": true }`
+- if the account/plan cannot enforce ZDR, MandateGate must not send real/sensitive invoice data through that route; only synthetic fixtures may be used until compliant routing is available
+- if no compliant route survives, the model call fails closed instead of silently weakening policy
+- provider allowlisting is used only if the selected Experiential plan supports it; lack of allowlisting must not weaken the ZDR/no-training requirements
+
+Before enabling a model route, MandateGate verifies its current Experiential data-policy metadata and disables the route if no compliant ZDR/no-training lane exists.
+
+For every served response, capture and trail the gateway metadata:
+- `x-request-id`
+- `x-gateway-provider`
+- `x-gateway-zdr`
+- `x-gateway-route-depth`
+- requested model slug
+- actual model/provider when exposed
+
+A response missing or contradicting the required ZDR verdict is treated as a failed AI call, not as valid evidence.
+
 For Jev, use the current `jev-latest` alias during exploration and pin the exact model identifier returned by `GET /v1/models` before the build is frozen.
 
 Official references:
@@ -423,7 +444,7 @@ Every dependency must be rechecked against current official documentation before
 
 ## Important Failure Modes
 
-- **AI/model unavailable or malformed output** -> deterministic controls remain authoritative; requests that require missing evidence fail closed into escalation/denial.
+- **AI/model unavailable, malformed output, or privacy-policy mismatch** -> deterministic controls remain authoritative; requests that require missing evidence fail closed into escalation/denial. A model response that does not prove the required Experiential ZDR route is rejected as evidence.
 - **Valkey unavailable** -> bypass cache and continue against authoritative state; never relax authorization.
 - **PostgreSQL unavailable** -> do not move money.
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
@@ -458,6 +479,7 @@ Locked:
 - Qwen3.8 27B as the secondary/challenger model
 - Jev as the bounded decision/security layer
 - Laya 0.3.28 as the evaluated open-source alternative
+- Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
 
 Current useful uncertainty:
 - the exact trust-boundary implementation for isolated checkpoint signing, immutable retention, and external witnessing remains deliberately unresolved until the specific services are selected and validated.
