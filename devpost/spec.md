@@ -624,6 +624,7 @@ Channel3, Astropods, and KERNEL are not part of the initial POC because their cu
 The dependency baseline is re-checked against official package/release sources immediately before installation and again before the demo freeze.
 
 Current checked baseline on 2026-10-07:
+- pnpm 12.10.1
 - Next.js 16.3.8
 - React 19.3
 - TypeScript 6.0
@@ -649,13 +650,119 @@ Primary deployment target: Render.
 Planned services:
 - one Next.js web service
 - one Render Postgres 18 database
-- one Render Key Value/Valkey 8 instance
-- Render Workflows for async execution
-- Render Cron only where periodic work is needed
+- one Render Key Value / Valkey 8 instance
+- Render Workflows for async analysis
+- one Render Cron job for due payments
+- one separate Render Cron job for integrity checkpoints/anchors
 
-The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
+Package manager:
+- pnpm 12.10.1, pinned through `packageManager: "pnpm@12.10.1"`
+- committed `pnpm-lock.yaml`
+- Node.js 24 LTS
+- do not use an unpinned globally installed package-manager version for CI/deploy
 
-Exact local/deployed commands and the environment-variable contract are the final spec-completion item before approval.
+### Local start
+
+Prerequisites:
+- Node.js 24 LTS
+- pnpm 12.10.1
+- PostgreSQL 18
+- optional local Valkey/Redis-compatible instance for cache-path testing
+
+Commands from repository root:
+
+```bash
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+pnpm db:migrate
+pnpm demo:seed
+pnpm dev
+```
+
+Open:
+- `http://localhost:3000`
+- `http://localhost:3000/dashboard` for the primary admin surface
+- API health/readiness endpoint: `http://localhost:3000/api/health`
+
+`pnpm demo:seed` creates only synthetic hackathon fixtures: the demo organization, trusted vendors, historical AP rows, active/proposed policies, the three canonical invoice scenarios, a local demo admin, and a scoped operations-agent API principal. It must be idempotent. Generated admin/API credentials are printed once or explicitly supplied through local-only seed variables; credentials are never committed.
+
+The core application can run locally with external anchoring disabled. In that mode integrity remains `LOCAL_VERIFIED_PENDING_ANCHOR`; the application must not claim external verification. Full anchor writes require a developer-supplied Base Sepolia test wallet and the committed registry deployment configuration.
+
+### Render deploy contract
+
+Web service:
+- build: `pnpm install --frozen-lockfile && pnpm build`
+- pre-deploy migration: `pnpm db:migrate`
+- start: `pnpm start`
+- health check: `/api/health`
+
+Cron:
+- due payments: `pnpm jobs:due-payments`, every minute UTC
+- checkpoints/anchors: `pnpm jobs:checkpoint`, cadence selected for the demo but independent of the due-payment runner
+
+Workflow:
+- deployed from the same repository/runtime version
+- task arguments/results remain limited to the opaque/non-sensitive contract already defined in this spec
+
+The hackathon demo should use the deployed Render path once stable. Local startup remains reproducible for reviewers, while the hosted demo is the path that demonstrates PayPal Sandbox execution, sponsor integrations, and Base Sepolia anchoring without publishing payment or wallet credentials.
+
+### Environment-variable contract
+
+Required application/database/auth:
+- `DATABASE_URL` — PostgreSQL connection URL
+- `BETTER_AUTH_SECRET` — high-entropy Better Auth secret, minimum 32 characters
+- `BETTER_AUTH_URL` — canonical app origin; `http://localhost:3000` locally, deployed Render origin in demo
+- `REDIS_URL` — authenticated Render Key Value internal URL in deployed environments; optional locally because Valkey is non-authoritative
+
+Required PayPal Sandbox:
+- `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com`
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_WEBHOOK_ID`
+- `PAYPAL_BALANCE_CURRENCY=USD` for the initial POC
+- the connected PayPal app/account must expose both Payouts capability and the reporting-balances scope before the corresponding demo paths are considered ready
+
+Required generative/decision providers when AI analysis is enabled:
+- `EXPERIENTIAL_API_KEY`
+- any Experiential organization/policy identifier required by the live account for ZDR/no-training policy verification
+- Jev credentials required by the selected TypeSafe endpoint
+- provider configuration is validated at startup/preflight; sensitive document analysis remains disabled if the required ZDR/no-training policy cannot be proven
+
+POC checkpoint signing:
+- algorithm: Ed25519 using Node.js `node:crypto`
+- `CHECKPOINT_SIGNING_KEY_ID`
+- `CHECKPOINT_SIGNING_PRIVATE_KEY_B64` — PKCS#8 DER key bytes, Base64-encoded, server-side secret only
+- corresponding SPKI public key is committed under `config/integrity/keys/<key-id>.pem`
+- the verifier selects the public key by the checkpoint's explicit key ID
+- `pnpm demo:keys` may generate a local-only pair; private material is never committed
+
+Base Sepolia anchor writer:
+- `BASE_SEPOLIA_RPC_URL`
+- `BASE_SEPOLIA_ANCHOR_PRIVATE_KEY` — dedicated faucet-funded testnet EOA only, never exposed client-side
+- registry chain ID, address, deployment block/transaction, and expected bytecode hash are **not** accepted from mutable database state; they are committed in `config/integrity/base-sepolia.json`
+- `ENABLE_EXTERNAL_ANCHOR=false` is allowed for local development only; the hosted demo uses `true`
+
+Optional/degradable sponsor services:
+- `ELASTICSEARCH_URL`
+- `ELASTICSEARCH_API_KEY`
+- missing Elastic configuration disables the rebuildable search projection and must not disable authoritative payment controls
+- sponsor UI license/build credentials, if required by the current AG Studio/AG Grid or Bryntum distribution, are configured as Render build/runtime secrets according to their current official installation terms; no package-registry or commercial license secret is committed or exposed through a public `NEXT_PUBLIC_*` variable unless the vendor explicitly documents that value as client-safe
+
+No secrets may enter:
+- `.env.example`
+- browser bundles
+- trail events
+- Render Workflow task inputs/outputs
+- Postman public environments
+- Git history
+
+Official/current docs:
+- https://pnpm.io/installation/
+- https://github.com/pnpm/pnpm/releases
+- https://better-auth.com/docs/reference/options
+- https://render.com/docs/configure-environment-variables
+- https://render.com/docs/key-value
+- https://nodejs.org/docs/latest-v24.x/api/crypto.html
 
 ## Look and Feel
 
@@ -980,7 +1087,8 @@ POC checkpoint protocol:
 - Merkle leaves are the ordered event hashes for an explicit inclusive sequence range
 - checkpoint metadata includes stream ID, start/end sequence, Merkle root, previous-checkpoint hash, creation time, signing-key ID, and protocol version
 - checkpoint payload is canonicalized before hashing/signing
-- the POC signs checkpoints with a dedicated MandateGate signing key
+- the POC signs the checkpoint digest with an Ed25519 key using Node.js `node:crypto`
+- the private signing key is a server-side Render secret; the corresponding SPKI public key is committed by explicit `signing-key ID`
 - key rotation is supported through explicit key IDs; old public verification keys remain available for historical verification
 - the signed checkpoint commitment is periodically appended to the Base Sepolia `CheckpointRegistry`; registry sequence and previous-checkpoint continuity are part of verification
 - sensitive invoice/vendor/payment content is never placed in the external commitment
@@ -1206,5 +1314,5 @@ Current useful uncertainty:
 - the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
 
 Open before approval:
-- exact local/deployed run commands and environment-variable contract
+- open-source license choice and repository-publication step required for final Devpost submission
 - final integrated consistency/security review
