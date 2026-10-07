@@ -350,7 +350,44 @@ For consequential operations, the confirmed-action trail event must obtain the r
 
 Implements `prd.md > AI Security, Authority, and Traceability`.
 
-Writes canonical append-only events for calls, routes, decisions, evidence, actions, and execution outcomes.
+Writes canonical append-only events for:
+- every inbound API request
+- every outbound external-service call
+- every model/decision-model invocation
+- every tool or integration call
+- every routing, fallback, and degraded-path choice
+- every policy/risk/vendor-trust decision
+- every prepared/confirmed/rejected action
+- every consequential state transition
+- every payment attempt/result
+- every integrity/witness/checkpoint operation
+
+Canonical event envelope:
+- `protocol_version`
+- `event_id` (UUIDv7)
+- `stream_id` / organization
+- `sequence`
+- `event_type`
+- `occurred_at` and `recorded_at`
+- actor/principal type + stable ID
+- component/service identity
+- route/operation name
+- request ID
+- correlation ID
+- causation event ID
+- trust class of material inputs
+- authority class of the actor/component
+- relevant domain-object references such as payment/action/vendor/policy IDs
+- input evidence references + cryptographic hashes
+- output/result references + cryptographic hashes
+- decision code and structured reason codes when applicable
+- before-state and after-state references/hashes for state transitions
+- requested model, actual provider/model/route metadata for AI calls
+- status/error class
+- `previous_event_hash`
+- `event_hash`
+
+The trail never stores credentials, API keys, cookies, raw Authorization headers, private signing material, or other secrets. Sensitive invoice/model/attachment bodies are not duplicated merely for logging; the event stores an evidence/artifact reference plus digest and only the minimum non-sensitive metadata required to reconstruct provenance.
 
 Canonicalization and chaining:
 - canonical serialization: RFC 8785 JSON Canonicalization Scheme
