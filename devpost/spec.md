@@ -342,29 +342,69 @@ Official docs:
 
 ### External checkpoint witness
 
-The hackathon POC anchors signed checkpoint commitments to Base Sepolia.
+The hackathon POC anchors checkpoint commitments through a tiny append-only registry contract on Base Sepolia instead of storing an arbitrary transaction hash as the canonical witness.
 
-Implementation:
-- network: Base Sepolia
-- chain ID: `84532`
-- use a dedicated MandateGate testnet EOA
-- submit a zero-value transaction containing only a versioned checkpoint commitment in transaction calldata
-- publish no invoice, vendor, payment amount, explanation, or other sensitive business data on-chain
-- store the resulting transaction hash, block number/hash, chain ID, checkpoint ID, and anchored checkpoint digest in `integrity_anchors`
-- a checkpoint is `ANCHORED_VERIFIED` only after the verifier independently fetches the transaction/receipt and confirms that the committed digest matches the signed checkpoint
-- if the RPC/provider is unavailable, the checkpoint remains `LOCAL_VERIFIED_PENDING_ANCHOR`
-- no smart contract is required for the POC
-- test ETH is faucet-funded; no production funds are used
+Network:
+- Base Sepolia
+- chain ID `84532`
+- Solidity `0.8.37`
+- `viem` `2.57.3` for TypeScript reads/writes at the current baseline
+- dedicated faucet-funded MandateGate testnet EOA as the only writer
 
-The external anchor is evidence that a checkpoint commitment existed on the public testnet at or before the containing block. It is not an immutable archive and does not provide recoverability of deleted event/evidence bodies.
+`CheckpointRegistry` is deliberately minimal and non-upgradeable:
+- immutable writer address
+- monotonically increasing checkpoint sequence
+- `latestCheckpointHash`
+- `checkpointBySequence[sequence] -> checkpoint_hash`
+- `anchor(sequence, checkpoint_hash, previous_checkpoint_hash)`
+- `CheckpointAnchored(sequence, checkpoint_hash, previous_checkpoint_hash)` event
+- reject zero checkpoint hashes
+- reject any sequence other than the exact next sequence
+- reject a `previous_checkpoint_hash` that does not equal the contract's current `latestCheckpointHash`
+- no overwrite, delete, reset, proxy, upgrade, ownership transfer, or arbitrary admin mutation path
+
+The first checkpoint uses a zero previous-checkpoint hash. Once a sequence is anchored, neither the writer nor the MandateGate application can replace that sequence with a different commitment.
+
+Root of trust:
+- the Base Sepolia chain ID, registry contract address, deployment transaction/block, and expected contract bytecode hash are committed to the repository verifier configuration after deployment
+- `integrity_anchors` in PostgreSQL is only an operational cache/index and is not trusted as the canonical source of anchored history
+- the verifier queries Base independently from the committed deployment point, reconstructs the registry sequence, and compares it with locally recomputed signed checkpoints
+- changing the registry address is an explicit code/configuration change, not a value accepted from the current application database
+
+Anchoring flow:
+1. build and sign the next checkpoint
+2. verify that its sequence and previous-checkpoint hash match the registry head
+3. submit `anchor(...)` from the dedicated testnet EOA
+4. require a successful receipt
+5. wait until the containing block is at least `safe` according to the Base RPC before representing it as `ANCHORED_VERIFIED`
+6. cache transaction/block metadata locally for UI/navigation
+
+If the RPC, wallet, contract call, or safe-head confirmation is unavailable, the checkpoint remains `LOCAL_VERIFIED_PENDING_ANCHOR`.
+
+The contract stores only checkpoint hashes and chain metadata. Invoice contents, vendor data, payment amounts, explanations, and other sensitive business records never go on-chain.
+
+Security property demonstrated by the POC:
+- compromise of MandateGate after sequence N is anchored cannot rewrite checkpoint N or an earlier checkpoint without disagreement with the append-only registry
+- compromise of the writer key can append malicious future checkpoints but cannot replace historical registry entries
+- the testnet registry is tamper-evidence, not an immutable archive and not production recoverability
+
+Verification test before demo freeze:
+- anchor checkpoints 0..N
+- mutate an already anchored local event/checkpoint and confirm `BROKEN`
+- attempt to anchor a competing checkpoint at an already-used sequence and confirm contract revert
+- rewrite the local `integrity_anchors` row to a different transaction/commitment and confirm the independent verifier still derives the canonical commitment from the registry
+- attempt a wrong previous-checkpoint hash and confirm contract revert
 
 Production recommendation:
-- replace the testnet anchor with a durable mainnet/public timestamp mechanism appropriate to the deployment's legal, cost, and retention requirements
-- keep the anchor interface provider/network-neutral so changing the public witness does not alter MandateGate trail semantics
+- replace the testnet registry with a durable mainnet/public timestamp mechanism appropriate to legal, cost, and retention requirements
+- retain the append-only external sequence/continuity property
+- keep production WORM recoverability separate from the public commitment layer
 
-Official docs:
-- https://docs.base.org/base-chain/network-information
-- https://docs.base.org/base-chain/tools/network-faucets
+Official/current references:
+- https://docs.base.org/base-chain/api-reference/ethereum-json-rpc-api/eth_chainId
+- https://docs.base.org/cookbook/use-case-guides/finance/access-real-time-asset-data-pyth-price-feeds/
+- https://github.com/ethereum/solidity/releases
+- https://www.npmjs.com/package/viem
 
 ### Scheduled integrity work
 
@@ -757,7 +797,7 @@ POC checkpoint protocol:
 - checkpoint payload is canonicalized before hashing/signing
 - the POC signs checkpoints with a dedicated MandateGate signing key
 - key rotation is supported through explicit key IDs; old public verification keys remain available for historical verification
-- the signed checkpoint commitment is periodically published to Base Sepolia through the External Checkpoint Witness
+- the signed checkpoint commitment is periodically appended to the Base Sepolia `CheckpointRegistry`; registry sequence and previous-checkpoint continuity are part of verification
 - sensitive invoice/vendor/payment content is never placed in the external commitment
 
 External anchoring closes the history up to the anchored checkpoint. The verifier and UI must distinguish the anchored range from the newer unanchored tail.
@@ -771,7 +811,7 @@ The POC demonstrates tamper evidence and independent external anchoring; it does
 
 ### Independent Trail Verifier
 
-Recomputes canonical event hashes, sequence/previous-hash continuity, Merkle roots, checkpoint-chain continuity, checkpoint signatures, and external anchors without trusting the current MandateGate UI/backend.
+Recomputes canonical event hashes, sequence/previous-hash continuity, Merkle roots, checkpoint-chain continuity, checkpoint signatures, and Base Sepolia registry history without trusting the current MandateGate UI/backend or its `integrity_anchors` rows. The committed chain ID, registry address, deployment block, and bytecode hash are the POC witness root configuration.
 
 Verifier outcomes are explicit:
 - `ANCHORED_VERIFIED`
@@ -861,8 +901,11 @@ mandategate/
 │   ├── trail/                   # event canonicalization + hashing
 │   ├── integrity/
 │   │   ├── checkpoint/          # Merkle + checkpoint signing
-│   │   ├── anchor/              # Base Sepolia testnet witness
-│   │   └── verify/              # independent verification
+│   │   ├── anchor/              # Base Sepolia registry client + committed deployment config
+│   │   └── verify/              # independent local + on-chain verification
+├── contracts/
+│   ├── CheckpointRegistry.sol   # minimal non-upgradeable append-only witness
+│   └── test/                    # sequence/fork/rewrite contract tests
 │   ├── workflows/               # Render Workflow task definitions
 │   └── shared/
 ├── tests/
@@ -881,7 +924,7 @@ mandategate/
 ## External Services and Dependencies
 
 Locked:
-- Base Sepolia as the POC external checkpoint witness
+- Base Sepolia `CheckpointRegistry` as the POC external checkpoint witness
 - PostgreSQL `bytea` for POC artifact storage behind an `ArtifactStore` abstraction
 - 10 MiB per-artifact POC limit with MIME allowlisting and SHA-256 integrity checks
 - PayPal Payouts REST API v1 for vendor disbursement
@@ -954,7 +997,7 @@ Locked:
 - Laya 0.3.28 as the evaluated open-source alternative
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
 - PostgreSQL-backed POC artifact storage with a provider-neutral `ArtifactStore` abstraction
-- Base Sepolia (chain ID 84532) as the POC external checkpoint witness; no smart contract, only versioned checkpoint commitments
+- Base Sepolia (chain ID 84532) append-only `CheckpointRegistry` as the POC external checkpoint witness; the committed registry deployment is the verifier root rather than a local transaction pointer
 - AG Studio / AG Grid for dashboard and investigation
 - Elastic as a non-authoritative searchable/analytical projection
 - APIMatic Context Plugin for PayPal build-time integration context
