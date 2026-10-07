@@ -77,10 +77,20 @@ Separately verified by the pure TypeScript execution harness:
 - duplicate-batch HATEOAS recovery resolves the original batch
 - production PayPal API host is rejected
 
-Not yet verified, therefore Slice 2 is not complete:
-1. One real PayPal Sandbox payout and item reconciliation using `DEMO_PAYPAL_RECEIVER_EMAIL`, `PAYPAL_CLIENT_ID`, and `PAYPAL_CLIENT_SECRET`: `pnpm verify:slice2:sandbox`.
-2. Live webhook signature/reconciliation against the configured `PAYPAL_WEBHOOK_ID` on a reachable app URL.
-3. APIMatic Context Plugin usage evidence required by the approved checklist. APIMatic is not available in the current connected plugin/tool inventory, so this evidence has not been fabricated.
+Externally verified on Render against PayPal Sandbox:
+- a distinct Sandbox Personal receiver was configured; no account address is committed to source control;
+- the one-time proof created logical payment `ff515077-bf90-4800-80d7-3ef8f33d6ee2`;
+- PayPal returned payout batch `BA7V96FCY8Z64` and item `A3R9LWD8XTX72`;
+- the first reconciliation observed `PENDING` / `EXECUTING`;
+- a later reconciliation observed PayPal `SUCCESS` and local `PAID`;
+- repeated proof execution reused the same request/logical payment and the same PayPal batch/item identifiers;
+- the database still reported exactly one execution row and exactly one `PAYPAL_SUBMITTED` event;
+- PayPal delivered a live POST to `/api/paypal/webhooks` with HTTP 200;
+- the persistent audit trail reported `webhookVerifiedEvents=1`, `reconciledEvents=2`, and `webhookReconcileFailures=0`.
+- proof-only Render flags were reset to disabled after verification and the clean service redeployed successfully.
+
+Still unverified, therefore Slice 2 remains intentionally unchecked:
+1. APIMatic Context Plugin usage evidence required by the approved checklist. APIMatic is not available in the current connected plugin/tool inventory, so this evidence has not been fabricated.
 
 ## Render Sandbox Deployment
 
@@ -107,10 +117,10 @@ Non-secret runtime configuration and generated demo/auth credentials have been s
 Verified on Render after runtime variables were added:
 - the Render deployment completed with the Sandbox receiver environment present;
 - migrations and seed completed;
-- the seed switched from the synthetic receiver fixture to the configured Sandbox receiver;
-- the configured receiver currently matches the Sandbox Business sender account used by the PayPal app, so the real payout proof must not run yet;
-- PayPal documents self-payment as invalid (`CANNOT_PAY_SELF`); the receiver must be a distinct Sandbox account;
-- commit `61043641766be9caa637f916479080826ad7f43a` removes demo credential material and configured receiver values from future seed logs and is live on Render.
+- the seed switched from the synthetic receiver fixture to a distinct Sandbox Personal receiver;
+- commit `61043641766be9caa637f916479080826ad7f43a` removes demo credential material and configured receiver values from seed logs and is live on Render;
+- commits `161a8006cbdf8aee649a3ebe40f2d1a0c46766d6` and `60026accad1aa139a5fe49a8b0853a46d586e748` add a guarded one-time Render proof runner and persistent webhook-proof assertions;
+- the proof runner is disabled in the normal live deployment after successful verification.
 
 ## PayPal MCP
 
@@ -122,8 +132,8 @@ A reporting response surfaced `api.paypal.com` links rather than Sandbox REST li
 
 The Render service is live with its internal database binding, migrations, seed, and Next.js runtime healthy. The database's external allowlist remains intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
 
-PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are now present on Render. Before the real payout proof, replace `DEMO_PAYPAL_RECEIVER_EMAIL` with a distinct Sandbox recipient account because the current receiver is the same Business account that sends the payout.
+PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are present on Render. The real payout, exact-once persistence, final PayPal SUCCESS state, verified webhook delivery, and webhook-triggered reconciliation are now proven.
 
 APIMatic Context Plugin evidence is still unavailable and must not be fabricated.
 
-Do not check or merge Slice 2 until the real Sandbox payout, live webhook reconciliation, and APIMatic evidence are satisfied.
+Do not check or merge Slice 2 until the APIMatic usage/evidence requirement is either satisfied or explicitly removed from the approved spec/checklist.
