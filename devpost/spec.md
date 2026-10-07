@@ -671,11 +671,13 @@ Official/current references:
 
 #### Sponsor implementation priority
 
-The sponsor set is locked, but it is not one giant critical path.
+The sponsor set is locked, but it follows the same release tiers instead of becoming one giant critical path.
 
-1. **Core/demo-critical:** Render, AG Studio/AG Grid, Bryntum, PayPal integration built with APIMatic context.
-2. **Important but degradable:** Elastic. PostgreSQL remains authoritative and the core payment path must still run if the search projection is unavailable.
-3. **Submission/integration surfaces:** Postman and Zapier MCP. They prove API usability and external-agent ingress but cannot block the core ALLOW/ESCALATE/DENY + PayPal demo.
+1. **P0 foundation:** Render runtime plus PayPal integration built with APIMatic context.
+2. **P1 product/UI:** AG Studio / AG Grid and Bryntum.
+3. **P2 integrations/differentiation:** Elastic, Postman, and Zapier MCP.
+
+PostgreSQL remains authoritative if Elastic is unavailable. Postman and Zapier prove API usability/external-agent ingress but cannot block the core ALLOW/ESCALATE/DENY + PayPal path. AG/Bryntum may improve the demo substantially, but P0 must remain runnable without them.
 
 This preserves meaningful sponsor usage without allowing seven integrations to become seven ways to miss the submission deadline.
 
