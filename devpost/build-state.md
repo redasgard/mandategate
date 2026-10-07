@@ -89,6 +89,7 @@ Render workspace: `Yevhen's workspace`.
 Created:
 - PostgreSQL 18: `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`), moved by the user into the existing `MandateGate` project.
 - Web service: `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), source branch `build/slice-2-gated`, public URL `https://mandategate-web.onrender.com`.
+- `mandategate-web`, `mandategate-sandbox`, and `mandategate-sandbox-db` now share Render environment `evm-db39hoks728c73bpnqd0` inside the existing `MandateGate` project.
 - Webhook path once live: `https://mandategate-web.onrender.com/api/paypal/webhooks`.
 
 Render-specific verification:
@@ -103,7 +104,7 @@ Non-secret runtime configuration and generated demo/auth credentials have been s
 
 ## Current blocker
 
-The code/toolchain gate is green. To make the Render service live, connect the database's **Internal Database URL** to `mandategate-web` as `DATABASE_URL`. The current Render connector does not expose that generated credential value or a fromDatabase reference operation, so this one binding must be made in the Render Dashboard.
+The code/toolchain gate is green. To make the Render service live, connect the database's **Internal Database URL** to `mandategate-web` as `DATABASE_URL`. The current Render connector does not expose that generated credential value or a fromDatabase reference operation, so this one binding must be made in the Render Dashboard. The database's external allowlist is intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
 
 After the service is live, add the PayPal Sandbox runtime secrets (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DEMO_PAYPAL_RECEIVER_EMAIL`), create the PayPal webhook at the URL above, and add `PAYPAL_WEBHOOK_ID`.
 
