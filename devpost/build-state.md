@@ -97,7 +97,7 @@ Render-specific verification:
 - Render Node 24.21.0 is selected from package.json.
 - `pnpm install --frozen-lockfile` succeeds.
 - Next.js compilation and TypeScript succeed on Render.
-- current Render build stops at page-data collection because `DATABASE_URL` is not yet connected to the Render Postgres instance.
+- Render database binding is active; migrations, seed, and application startup complete successfully on the live service.
 - an earlier disposable service `mandategate-sandbox` was created with an incompatible `corepack enable` build command; do not use it.
 
 Non-secret runtime configuration and generated demo/auth credentials have been set on `mandategate-web`. PayPal credentials and the Render database connection string are intentionally not stored in source control.
@@ -110,11 +110,17 @@ Verified on Render after runtime variables were added:
 - the seed switched from the synthetic receiver fixture to the configured Sandbox receiver;
 - the configured receiver currently matches the Sandbox Business sender account used by the PayPal app, so the real payout proof must not run yet;
 - PayPal documents self-payment as invalid (`CANNOT_PAY_SELF`); the receiver must be a distinct Sandbox account;
-- commit `61043641766be9caa637f916479080826ad7f43a` removes demo credential material and configured receiver values from future seed logs and is being deployed to Render.
+- commit `61043641766be9caa637f916479080826ad7f43a` removes demo credential material and configured receiver values from future seed logs and is live on Render.
+
+## PayPal MCP
+
+The PayPal MCP connector is now attached and responds to authenticated reporting calls. Its exposed tool inventory currently includes transactions, invoices, disputes, and payment links, but no Payouts operation. The MandateGate payout path therefore remains the direct PayPal Sandbox Payouts REST adapter.
+
+A reporting response surfaced `api.paypal.com` links rather than Sandbox REST links. Treat the MCP environment as unproven for Sandbox mutation and do not use it for the payout proof. It is suitable for read-side inspection only until its environment is independently established.
 
 ## Current blocker
 
-The code/toolchain gate is green. To make the Render service live, connect the database's **Internal Database URL** to `mandategate-web` as `DATABASE_URL`. The current Render connector does not expose that generated credential value or a fromDatabase reference operation, so this one binding must be made in the Render Dashboard. The database's external allowlist is intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
+The Render service is live with its internal database binding, migrations, seed, and Next.js runtime healthy. The database's external allowlist remains intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
 
 PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are now present on Render. Before the real payout proof, replace `DEMO_PAYPAL_RECEIVER_EMAIL` with a distinct Sandbox recipient account because the current receiver is the same Business account that sends the payout.
 
