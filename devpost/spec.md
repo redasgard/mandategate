@@ -17,7 +17,7 @@ The operations agent never receives PayPal credentials and never directly moves 
 
 AI is advisory. It may interpret, infer, explain, summarize, and prepare actions, but it does not become an authority boundary.
 
-Every consequential trail is independently verifiable. Operational records live in PostgreSQL, while the trail subsystem creates hash-linked events, Merkle checkpoints, isolated signatures, immutable archive copies, and externally witnessed commitments.
+Consequential trails are tamper-evident and independently checkable against externally anchored checkpoints. Operational records live in PostgreSQL; the POC uses hash-linked events, Merkle checkpoints, checkpoint signatures, and external timestamp/witness commitments. Independent WORM recoverability is a production hardening recommendation rather than hackathon infrastructure.
 
 PRD refs:
 - `prd.md > The Core Journey`
@@ -36,7 +36,7 @@ PRD refs:
 8. DENY stops before money movement.
 9. Admin actions and assistant-prepared actions use the same explicit authority boundary.
 10. Payment execution result is recorded in operational state and appended to the protected trail.
-11. Periodic integrity jobs checkpoint trail events, sign the checkpoint, retain an immutable copy, and publish an external commitment.
+11. Periodic integrity jobs checkpoint trail events, sign the checkpoint, and publish an external commitment.
 
 PRD ref: `prd.md > The Core Journey`.
 
@@ -251,7 +251,7 @@ Authority boundary:
 2. exact amount/currency/vendor destination are re-read from authoritative state
 3. prepared-action/state digest checks pass where applicable
 4. current admin/policy/vendor-trust authorization checks pass
-5. required trail event obtains an independent witness receipt
+5. required trail event is committed to the canonical append-only trail
 6. only then may `PayPalPayoutsClient` issue the payout request
 
 The operations agent, browser, assistant, model providers, and bounded-decision models never receive PayPal credentials or direct access to the payout adapter.
@@ -479,7 +479,7 @@ Immediately before commit/execution MandateGate re-evaluates:
 
 Any mismatch marks the proposal `STALE` and requires a newly prepared action and fresh confirmation. No target/value retargeting is permitted after confirmation.
 
-For consequential operations, the confirmed-action trail event must obtain the required independent witness receipt before the authority boundary is crossed.
+For consequential operations, the confirmed-action trail event must be committed to the canonical append-only trail before the authority boundary is crossed. External anchoring follows on the checkpoint schedule.
 
 ### Trail Writer
 
@@ -532,44 +532,43 @@ Canonicalization and chaining:
 - corrections are new events and never mutations
 - sequence gaps, duplicate sequence numbers, broken previous hashes, forks, and reordered events are integrity failures
 
-Every trail event is submitted to an isolated witness as a compact commitment containing at minimum `stream_id`, `sequence`, `event_hash`, and `previous_event_hash`. The witness returns a durable signed receipt that MandateGate stores by reference.
+The POC does not require a synchronous external witness receipt for every event. Consequential events are committed to the canonical local trail before the corresponding state transition or external payment call.
 
-A consequential operation is not allowed to cross its authority boundary until the trail event that authorizes or records that transition has an independently durable witness receipt. This applies to payment authorization/execution, policy activation/change, vendor-trust changes, blocks/unblocks, and admin approval/decline.
-
-If the witness is unavailable:
-- consequential state changes and money movement fail closed
-- read-only/non-consequential activity may continue only with an explicit `UNWITNESSED` integrity state and must be witnessed later before being represented as fully verified
+Events newer than the latest externally anchored checkpoint are explicitly marked as pending external anchoring. They must never be presented as externally verified.
 
 ### Trail Integrity / Checkpoint Service
 
 Implements `prd.md > AI Security, Authority, and Traceability`.
 
-Checkpoint protocol:
-- only witnessed event hashes are eligible
+POC checkpoint protocol:
 - Merkle leaves are the ordered event hashes for an explicit inclusive sequence range
 - checkpoint metadata includes stream ID, start/end sequence, Merkle root, previous-checkpoint hash, creation time, signing-key ID, and protocol version
 - checkpoint payload is canonicalized before hashing/signing
-- an isolated signer signs the checkpoint digest outside normal application authority
-- key rotation is supported through explicit key IDs; old verification keys remain available for historical verification
-- the signed checkpoint and the covered event material/receipts are copied to immutable/WORM storage outside the primary application datastore
-- the signed checkpoint commitment is periodically published to a public blockchain or equivalent external witness
+- the POC signs checkpoints with a dedicated MandateGate signing key
+- key rotation is supported through explicit key IDs; old public verification keys remain available for historical verification
+- the signed checkpoint commitment is periodically published to an external public timestamp/witness
 - sensitive invoice/vendor/payment content is never placed in the external commitment
 
-The synchronous witness receipt closes the newest-event/tail gap. Merkle checkpoints and public anchoring provide efficient batch verification and an additional external timestamped commitment; they are not the first moment at which a consequential event becomes tamper-evident.
+External anchoring closes the history up to the anchored checkpoint. The verifier and UI must distinguish the anchored range from the newer unanchored tail.
 
-MandateGate can verify locally but is never the sole trust anchor.
+Production hardening recommendation:
+- copy canonical events, evidence manifests, and checkpoint material to a separately administered WORM archive using S3-compatible Object Lock `COMPLIANCE` mode or equivalent
+- move the signing key outside normal application authority
+- optionally require synchronous external receipts for consequential events when near-zero unanchored-tail exposure is required
+
+The POC demonstrates tamper evidence and independent external anchoring; it does not claim production-grade independent recoverability.
 
 ### Independent Trail Verifier
 
-Recomputes canonical event hashes, sequence/previous-hash continuity, witness receipts, Merkle roots, checkpoint-chain continuity, checkpoint signatures, immutable-archive consistency, and external anchors without trusting the current MandateGate application/database state.
+Recomputes canonical event hashes, sequence/previous-hash continuity, Merkle roots, checkpoint-chain continuity, checkpoint signatures, and external anchors without trusting the current MandateGate UI/backend.
 
 Verifier outcomes are explicit:
-- `VERIFIED`
-- `UNWITNESSED`
+- `ANCHORED_VERIFIED`
+- `LOCAL_VERIFIED_PENDING_ANCHOR`
 - `INCOMPLETE`
 - `BROKEN`
 
-Any mutation, deletion, insertion, reordering, truncation, fork, invalid receipt, invalid signature, checkpoint mismatch, or external-anchor mismatch must prevent a `VERIFIED` result.
+Any mutation, deletion, insertion, reordering, truncation, fork, invalid signature, checkpoint mismatch, or external-anchor mismatch must prevent an `ANCHORED_VERIFIED` result.
 
 ## Data Model
 
@@ -603,7 +602,6 @@ The authoritative model will include at minimum:
 - admin decisions
 - evidence references
 - trail events
-- trail witness receipts
 - integrity checkpoints
 - integrity anchors
 
@@ -668,8 +666,6 @@ Locked:
 
 Still to lock before implementation:
 - invoice/object storage
-- signer/KMS boundary
-- immutable archive target
 - public/external checkpoint witness
 - sponsor-tool integrations beyond Render
 
@@ -681,8 +677,8 @@ Every dependency must be rechecked against current official documentation before
 - **Valkey unavailable** -> bypass cache and continue against authoritative state; never relax authorization.
 - **PostgreSQL unavailable** -> do not move money.
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
-- **Trail witness unavailable** -> fail closed for payment execution, policy changes, vendor-trust changes, blocks/unblocks, and admin consequential decisions; read-only work may continue only as UNWITNESSED.
-- **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid receipt/signature, or anchor mismatch all fail verification.
+- **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid signature, or anchor mismatch all fail verification.
+- **External anchor unavailable** -> continue local append-only operation but mark new history `LOCAL_VERIFIED_PENDING_ANCHOR`; do not represent it as externally verified.
 - **PayPal execution uncertainty** -> persist the uncertain state and reconcile using existing MandateGate/PayPal identifiers before any retry. Never mint a new logical payout identity merely because the network response was lost.
 - **PayPal webhook invalid/duplicate/out-of-order** -> reject invalid signatures; process valid events idempotently; do not allow stale events to regress authoritative payment state.
 
@@ -693,7 +689,8 @@ Every dependency must be rechecked against current official documentation before
 - Valkey remains cache-only instead of becoming a second operational datastore.
 - Real external vendor re-verification provider remains simulated, as approved in the PRD.
 - Live Payouts enablement/production approval is outside the hackathon POC; the demo uses PayPal Sandbox only.
-- The security kernel, PayPal execution boundary, AI authority boundary, and trail-integrity model are not simulated.
+- The security kernel, PayPal execution boundary, AI authority boundary, hash-chained trail, Merkle verification, and external checkpoint anchoring are real in the POC.
+- Independent WORM recoverability and isolated external signing are deferred to production hardening because they add compliance infrastructure without improving the hackathon demonstration enough to justify the cost/complexity.
 
 ## Decisions and Open Issues
 
@@ -709,8 +706,9 @@ Locked:
 - Render Key Value/Valkey 8 as non-authoritative cache
 - Render Workflows for async/retryable work
 - no BullMQ initially
-- trail integrity separated from operational state
-- MandateGate is not the sole verifier/trust anchor
+- trail integrity is hash-chained and externally checkpointed in the POC
+- externally anchored checkpoints are the independent POC trust reference
+- independent WORM archive + isolated signer are production hardening recommendations
 - Experiential Labs as the initial generative-model gateway
 - GLM-5.3 Flash as the provisional primary generative model
 - Qwen3.8 27B as the secondary/challenger model
@@ -719,7 +717,7 @@ Locked:
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
 
 Current useful uncertainty:
-- the exact trust-boundary implementation for isolated checkpoint signing, immutable retention, and external witnessing remains deliberately unresolved until the specific services are selected and validated.
+- the remaining external checkpoint-witness mechanism must be selected and validated; the earlier question about who verifies Merkle history is resolved by separating local verification from an external checkpoint anchor. Production WORM recoverability is intentionally out of POC scope.
 
 Open before approval:
 - PayPal surface
