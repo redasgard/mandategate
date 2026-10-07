@@ -35,7 +35,7 @@ Success is visible when the same platform:
 
 ## Screens and Layout
 
-Source: `scope.md > The POC Boundary`, `scope.md > Platform Boundary`.
+Source: `scope.md > Hackathon Release Boundary`, `scope.md > Platform Boundary`.
 
 ### Dashboard
 
@@ -247,7 +247,7 @@ Acceptance criteria:
 
 ## Policy Review
 
-Source: `scope.md > The Core Loop`, `scope.md > The POC Boundary`.
+Source: `scope.md > The Core Loop`, `scope.md > Hackathon Release Boundary`.
 
 Historical behavior can produce proposed standing rules.
 
@@ -432,27 +432,48 @@ Acceptance criteria:
 
 ## What We're Building
 
-The POC must provide:
-- dashboard with financial summary and urgent notifications
-- payments view
-- payment/escalation detail
-- vendor trust view
-- policy review and activation
-- activity/audit view
-- persistent MandateGate Assistant
-- escalation accept/decline flow with mandatory explanation
-- optional evidence attachment
-- immediate or scheduled execution choice after acceptance
-- destination-mismatch/re-verification experience
-- visible normal-payment success path
-- visible anomaly escalation path
-- visible blocked destination-change path
+The PayPal AI Hackathon release targets P0, P1, and P2. These are delivery priorities, not separate product scopes. P1/P2 remain planned for submission, but no P1/P2 integration may destabilize a working P0 authority/payment path.
 
-## Deferred From the POC
+### P0 — release blockers
+
+- dashboard with financial summary, urgent escalations/blocks, and the three demo scenarios
+- operations-agent PDF/image invoice submission
+- invoice extraction and structured facts
+- AP-history import and vendor/company behavioral context
+- payments view and payment/escalation detail
+- vendor trust and destination-mismatch/re-verification behavior
+- deterministic ALLOW / ESCALATE / DENY
+- near-duplicate and unusual-amount detection
+- escalation accept/decline flow with mandatory explanation and optional evidence attachment
+- permanent payment idempotency
+- real PayPal Sandbox execution for the allowed path
+- activity/reason/evidence trail
+
+### P1 — planned hackathon features
+
+- persistent MandateGate Assistant
+- policy proposal/review/edit/activation
+- immediate or scheduled execution choice after acceptance
+- Base Sepolia checkpoint witness and independent integrity verification
+- AG Studio / AG Grid investigation experience
+- Bryntum payment timeline
+
+### P2 — planned integrations and differentiation
+
+- Elastic similarity/search/trail investigation
+- Zapier MCP operations-agent ingress
+- Postman public API collection/workspace
+- Qwen challenger routing
+- Jev bounded-decision/security evaluation
+- Laya comparison
+- sponsor-integration evidence and polish
+
+## Production and Post-Hackathon Work
+
+These are intentionally outside the November hackathon release while remaining part of the broader MandateGate product direction:
 
 - production-grade independent WORM archive / immutable recoverability
-- isolated external checkpoint signer and synchronous per-event witness receipts
-
+- isolated external checkpoint signer and optional synchronous per-event witness receipts
 - full accounting or ERP product features
 - live QuickBooks/NetSuite integrations
 - full user/role administration suite
@@ -460,7 +481,7 @@ The POC must provide:
 - real third-party vendor identity verification
 - email ingestion
 - multiple payment rails
-- autonomous assistant execution without explicit confirmation
+- autonomous assistant execution with any delegated authority beyond the explicit-confirmation model
 
 ## Possible Later Enhancements
 
@@ -479,7 +500,7 @@ Source: `scope.md > Explicitly Cut`.
 - Consumer shopping workflows.
 - Direct payment authority for external operations agents.
 - Unrestricted LLM authority over payments or policy.
-- Live accounting-system integration in the POC.
+- Live accounting-system integration in the November hackathon release.
 - Real external vendor-verification provider integration.
 - Email-based invoice ingestion.
 - Rebuilding commodity infrastructure that a suitable sponsor tool can provide, as long as MandateGate retains its own authorization semantics and control model.
