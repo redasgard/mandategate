@@ -9,7 +9,7 @@ Build mode: fast
 
 ## Slices
 
-- [ ] **1. A seeded invoice request reaches the MandateGate decision kernel**
+- [x] **1. A seeded invoice request reaches the MandateGate decision kernel**
   Becomes usable: A local MandateGate app starts, a seeded demo admin can sign in, a scoped operations-agent principal can submit a synthetic canonical invoice request, and the UI/API shows an ALLOW, ESCALATE, or DENY decision without moving money.
   Why now: This proves the unique kernel first: the agent can request, but deterministic MandateGate policy and vendor state own financial authority. Project bootstrapping, database/auth setup, seed data, the first dashboard, and baseline tests live inside this usable slice rather than becoming separate plumbing tasks.
   PRD ref: `prd.md > The Core Journey`, `prd.md > AI Security, Authority, and Traceability`, `prd.md > What We're Building > P0 — release blockers`
