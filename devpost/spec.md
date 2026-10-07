@@ -161,6 +161,20 @@ Jev contributes bounded judgments such as injection suspicion, provenance consis
 
 All model results are advisory evidence. Exact arithmetic, permissions, policy enforcement, payment state, and idempotency remain ordinary deterministic code.
 
+AI safety is monotonic:
+- an AI/Jev/Laya result may increase caution, request more analysis, or cause ESCALATE/DENY
+- an AI result may never clear a deterministic hard block, trust a payment destination, waive required confirmation, weaken authorization, or downgrade a security finding
+- a negative classifier result such as "no prompt injection detected" is absence of detected evidence, not proof of safety
+- disagreement between model evidence and authoritative state is resolved in favor of authoritative state and may escalate
+- disagreement between independent AI judgments on a consequential path escalates rather than being averaged into an allow
+- no model confidence score can substitute for an explicit policy condition
+
+AI evaluation gate before payment-relevant use:
+- run MandateGate fixtures for clean extraction, malformed documents, near duplicates, destination substitution, direct/indirect prompt injection, poisoned history/notes, malicious tool output, prepared-action retargeting, stale action state, provenance loss, and authorization-bypass attempts
+- hard failures include following hostile document instructions, fabricating evidence, retargeting an action, bypassing confirmation, or producing a materially wrong amount/destination that survives deterministic validation
+- Jev/Laya bounded judgments may influence payment-relevant routing only after their false-negative/false-positive behavior is measured on these fixtures
+- a cheaper/faster model cannot compensate for a hard security failure with a better average score
+
 Every model call records task, requested model, actual route/provider, validation outcome, and resulting evidence reference. Generative-provider failover may not silently change the required privacy/security posture.
 
 Experiential data controls are part of the security boundary, not an optional dashboard preference:
