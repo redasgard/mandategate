@@ -1222,6 +1222,7 @@ Provisional structure, refined only if implementation proves a listed boundary i
 ```text
 mandategate/
 ├── app/                         # Next.js routes and UI
+│   ├── sign-in/
 │   ├── dashboard/
 │   ├── payments/
 │   ├── vendors/
@@ -1229,7 +1230,7 @@ mandategate/
 │   ├── activity/
 │   └── api/
 ├── src/
-│   ├── auth/                    # principal/session checks
+│   ├── auth/                    # human sessions + scoped machine principals
 │   ├── db/                      # schema, migrations, repositories
 │   ├── artifacts/               # PostgreSQL bytea POC artifact store + interface
 │   ├── invoices/
@@ -1237,14 +1238,14 @@ mandategate/
 │   │   ├── pdf.ts               # bounded PDF.js text/raster preparation
 │   │   ├── extract.ts           # strict JSON-schema GLM extraction + validation
 │   │   └── normalize.ts         # deterministic amount/date/currency normalization
-│   ├── risk/                    # behavioral analysis
 │   ├── imports/
 │   │   └── ap-csv.ts            # allowlisted/versioned AP history import
+│   ├── risk/                    # behavioral analysis
 │   ├── policy/                  # deterministic policy engine
 │   ├── vendors/                 # trust + re-verification
 │   ├── payments/
-│   │   ├── executor/            # payment state machine + authority checks
-│   │   └── paypal/              # Payouts REST adapter + webhook reconciliation
+│   │   ├── executor/            # payment state machine + authority/idempotency checks
+│   │   └── paypal/              # Payouts REST adapter + webhook/reconciliation
 │   ├── ai/
 │   │   ├── gateway/             # Experiential/provider-neutral generative interface
 │   │   ├── decisions/           # Jev/Laya bounded judgments
@@ -1256,28 +1257,27 @@ mandategate/
 │   ├── integrations/
 │   │   └── zapier/              # scoped external-agent ingress
 │   ├── scheduling/
-│   │   ├── due-payments.ts      # due-payment claim + revalidation runner
+│   │   ├── due-payments.ts      # due-payment claim + execution-time revalidation
 │   │   └── bryntum/             # payment/deadline timeline adapter
-│   ├── trail/                   # event canonicalization + hashing
+│   ├── trail/                   # serialized append-only events + hashing
 │   ├── integrity/
-│   │   ├── checkpoint/          # Merkle + checkpoint signing
-│   │   ├── anchor/              # Base Sepolia registry client + committed deployment config
+│   │   ├── checkpoint/          # Merkle + Ed25519 checkpoint signing
+│   │   ├── anchor/              # Base Sepolia registry client
 │   │   └── verify/              # independent local + on-chain verification
+│   ├── workflows/               # Render Workflow task definitions
+│   └── shared/
 ├── contracts/
-│   ├── foundry.toml             # Solidity 0.8.37 / Foundry project config
+│   ├── foundry.toml             # Solidity 0.8.37 / Foundry 1.8.5 config
 │   ├── src/
 │   │   └── CheckpointRegistry.sol
 │   └── test/
 │       └── CheckpointRegistry.t.sol
 ├── scripts/
-│   └── deploy-checkpoint-registry.ts  # viem deployment + committed root config output
+│   └── deploy-checkpoint-registry.ts  # viem deployment + root-config output
 ├── config/
 │   └── integrity/
 │       ├── base-sepolia.json    # committed chain/address/deployment/bytecode root
 │       └── keys/                # committed checkpoint-signing public keys only
-├── src/
-│   ├── workflows/               # Render Workflow task definitions
-│   └── shared/
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -1288,7 +1288,10 @@ mandategate/
 │   ├── prd.md
 │   └── spec.md
 ├── docs/
-└── package.json
+├── .env.example
+├── LICENSE
+├── package.json
+└── pnpm-lock.yaml
 ```
 
 ## External Services and Dependencies
