@@ -102,11 +102,21 @@ Render-specific verification:
 
 Non-secret runtime configuration and generated demo/auth credentials have been set on `mandategate-web`. PayPal credentials and the Render database connection string are intentionally not stored in source control.
 
+## PayPal Sandbox Runtime Check
+
+Verified on Render after runtime variables were added:
+- the Render deployment completed with the Sandbox receiver environment present;
+- migrations and seed completed;
+- the seed switched from the synthetic receiver fixture to the configured Sandbox receiver;
+- the configured receiver currently matches the Sandbox Business sender account used by the PayPal app, so the real payout proof must not run yet;
+- PayPal documents self-payment as invalid (`CANNOT_PAY_SELF`); the receiver must be a distinct Sandbox account;
+- commit `61043641766be9caa637f916479080826ad7f43a` removes demo credential material and configured receiver values from future seed logs and is being deployed to Render.
+
 ## Current blocker
 
 The code/toolchain gate is green. To make the Render service live, connect the database's **Internal Database URL** to `mandategate-web` as `DATABASE_URL`. The current Render connector does not expose that generated credential value or a fromDatabase reference operation, so this one binding must be made in the Render Dashboard. The database's external allowlist is intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
 
-After the service is live, add the PayPal Sandbox runtime secrets (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DEMO_PAYPAL_RECEIVER_EMAIL`), create the PayPal webhook at the URL above, and add `PAYPAL_WEBHOOK_ID`.
+PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are now present on Render. Before the real payout proof, replace `DEMO_PAYPAL_RECEIVER_EMAIL` with a distinct Sandbox recipient account because the current receiver is the same Business account that sends the payout.
 
 APIMatic Context Plugin evidence is still unavailable and must not be fabricated.
 
