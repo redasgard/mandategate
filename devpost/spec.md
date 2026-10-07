@@ -256,7 +256,7 @@ Planned services:
 
 The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
 
-Exact start commands and environment variables will be finalized once ORM, authentication, AI provider, PayPal surface, and file storage are locked.
+Exact start commands and environment variables will be finalized once the remaining PayPal, object-storage, and integrity-witness choices are locked.
 
 ## Look and Feel
 
@@ -329,6 +329,20 @@ Implements:
 - `prd.md > Escalation Review`
 
 The only component allowed to hold/use PayPal payment credentials. It executes only from an authoritative ALLOW/approved state and enforces stable idempotency independent of policy reevaluation.
+
+### AI Gateway
+
+Implements:
+- `prd.md > MandateGate Assistant Behavior`
+- `prd.md > AI Security, Authority, and Traceability`
+
+Owns the provider-neutral generative-model interface, Experiential routing constraints, route metadata capture, output validation, and fail-closed privacy checks. Provider-native agent/MCP execution never owns consequential tool execution.
+
+### System One Decision Layer
+
+Implements `prd.md > AI Security, Authority, and Traceability`.
+
+Wraps Jev bounded judgments and the Laya evaluation adapter. Outputs are typed advisory evidence only, always with `authority: NONE`, and are subject to the monotonic-safety rules above.
 
 ### MandateGate Assistant
 
@@ -499,7 +513,7 @@ Operational tables are mutable according to application rules. Trail events are 
 
 ## File Structure
 
-Provisional structure, refined after ORM/auth/AI/PayPal choices are locked:
+Provisional structure, refined after the remaining PayPal/storage/integrity choices are locked:
 
 ```text
 mandategate/
@@ -518,6 +532,10 @@ mandategate/
 │   ├── policy/                  # deterministic policy engine
 │   ├── vendors/                 # trust + re-verification
 │   ├── payments/                # state machine + executor
+│   ├── ai/
+│   │   ├── gateway/             # Experiential/provider-neutral generative interface
+│   │   ├── decisions/           # Jev/Laya bounded judgments
+│   │   └── evals/               # adversarial model fixtures + scoring
 │   ├── assistant/               # chat + prepared actions
 │   ├── trail/                   # event canonicalization + hashing
 │   ├── integrity/               # Merkle/sign/checkpoint/verify
@@ -577,7 +595,7 @@ Every dependency must be rechecked against current official documentation before
 
 Locked:
 - TypeScript/Next.js-centric architecture
-- Drizzle ORM 0.45.3 stable + node-postgres for data access
+- Drizzle ORM 0.45.3 stable + node-postgres 8.23.1 for data access
 - Better Auth 1.7.7 for admin sessions and scoped organization API keys
 - Node.js 24 LTS baseline
 - PostgreSQL 18 authoritative operational database
