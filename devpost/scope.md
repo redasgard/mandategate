@@ -47,7 +47,7 @@ The project sits at the intersection of AI security, authorization, and real fin
 
 A real operations agent submits a real invoice document through the MandateGate API.
 
-The proof-of-concept demonstrates:
+The current PayPal AI Hackathon release demonstrates:
 
 1. a normal known-vendor invoice is analyzed, allowed, and paid through PayPal Sandbox;
 2. a subtle near-duplicate or unusual-amount invoice is detected from historical context, escalated, and rejected without payment;
@@ -55,23 +55,47 @@ The proof-of-concept demonstrates:
 
 The compelling moment is seeing an invoice that looks legitimate get stopped because MandateGate recognizes that it does not fit the company's established payment behavior.
 
-## The POC Boundary
+## Hackathon Release Boundary
 
-In scope:
+MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not the definition of the product and not a disposable 2–4 hour prototype constraint.
+
+P0, P1, and P2 are all in scope for the November hackathon release. The tiers control build order and emergency cut priority only. Nothing in P1 or P2 may destabilize P0.
+
+### P0 — release blockers
 
 - operations-agent API submission of PDF/image invoices
 - invoice extraction and structured facts
 - AP history import from CSV/ERP export
-- vendor-specific and company-wide behavioral baselines
-- inferred policy rules with admin review/edit/activation
-- ALLOW / ESCALATE / DENY decisions
+- vendor-specific and company-wide behavioral context
+- deterministic ALLOW / ESCALATE / DENY decisions
 - near-duplicate and unusual-amount detection
-- trusted vendor payment destinations
+- trusted vendor payment-destination enforcement
 - simulated out-of-band vendor re-verification workflow
-- admin review of escalated payments
-- PayPal Sandbox payment execution
-- idempotent payment handling
-- append-only audit events and structured explanations
+- one complete admin escalation accept/decline path
+- permanent payment idempotency
+- real PayPal Sandbox payment execution
+- structured reason/evidence trail
+- basic polished dashboard/demo flow
+- all three canonical demo scenarios working end to end
+
+### P1 — planned hackathon features
+
+- persistent MandateGate Assistant
+- inferred policy review/edit/activation
+- scheduled payments
+- Base Sepolia checkpoint witness and independent verification
+- AG Studio / AG Grid investigation surface
+- Bryntum payment timeline
+
+### P2 — planned integrations and differentiation
+
+- Elastic search, similarity, and trail investigation
+- Zapier MCP external operations-agent path
+- Postman public collection/workspace
+- Qwen challenger routing
+- Jev bounded-decision/security evaluation
+- Laya comparison
+- sponsor evidence and integration polish
 
 
 ## Platform Boundary
@@ -110,7 +134,9 @@ Likely fits:
 
 Sponsor integrations remain subordinate to the core MandateGate authorization and payment-control model.
 
-## Later
+## Post-Hackathon Product Roadmap
+
+These remain part of the broader MandateGate product direction but are not targeted for the November release:
 
 - live QuickBooks, NetSuite, or ERP integrations
 - email ingestion
@@ -119,6 +145,7 @@ Sponsor integrations remain subordinate to the core MandateGate authorization an
 - multiple payment rails
 - broader procurement and agent-to-agent commerce
 - organization-wide finance/security observability
+- production-grade WORM recoverability and isolated signing infrastructure
 
 ## Explicitly Cut
 
@@ -126,5 +153,5 @@ Sponsor integrations remain subordinate to the core MandateGate authorization an
 - direct payment authority for the operations agent, because it defeats the trust boundary
 - unrestricted LLM payment decisions, because AI output is advisory rather than authoritative
 - live accounting-system connectors, because CSV/ERP export proves the historical-policy concept with far less integration cost
-- real external vendor verification providers, because the workflow and state transition are enough for the POC
+- real external vendor verification providers, because the simulated workflow proves the trust-state transition for the hackathon release
 - email ingestion, because API-submitted invoice documents keep the primary path focused
