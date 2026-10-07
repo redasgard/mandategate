@@ -21,6 +21,7 @@ function assertAuthorized(payment: AuthoritativePayment) {
   }
   if (payment.amountCents <= 0) throw new ExecutionRejectedError("INVALID_AMOUNT");
   if (!/^[A-Z]{3}$/.test(payment.currency)) throw new ExecutionRejectedError("INVALID_CURRENCY");
+  if (payment.currency !== "USD") throw new ExecutionRejectedError("UNSUPPORTED_PAYOUT_CURRENCY");
 }
 
 async function reconcile(

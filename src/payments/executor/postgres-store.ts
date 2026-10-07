@@ -1,0 +1,186 @@
+import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
+import { pool } from "@/src/db/pool";
+import { derivePayPalIds } from "./ids";
+import type {
+  AuthoritativePayment,
+  ExecutionRecord,
+  ExecutionStatus,
+  ExecutionStore,
+  PayoutItemSnapshot,
+} from "./types";
+
+function rowToExecution(row: any): ExecutionRecord {
+  return {
+    id: row.id,
+    paymentRequestId: row.payment_request_id,
+    logicalPaymentId: row.logical_payment_id,
+    status: row.status,
+    paypalRequestId: row.paypal_request_id,
+    senderBatchId: row.sender_batch_id,
+    senderItemId: row.sender_item_id,
+    paypalPayoutBatchId: row.paypal_payout_batch_id ?? null,
+    paypalPayoutItemId: row.paypal_payout_item_id ?? null,
+    rawPaypalStatus: row.raw_paypal_status ?? null,
+    claimedAt: row.claimed_at ?? null,
+    createdAt: row.created_at,
+    submittedAt: row.submitted_at ?? null,
+    lastReconciledAt: row.last_reconciled_at ?? null,
+    outcomeUnknownSince: row.outcome_unknown_since ?? null,
+  };
+}
+
+export class PostgresExecutionStore implements ExecutionStore {
+  async getAuthoritativePayment(requestId: string): Promise<AuthoritativePayment | null> {
+    const result = await pool.query(
+      `select pr.id as request_id,
+              pr.logical_payment_id,
+              pr.amount_cents,
+              pr.currency,
+              pr.requested_destination,
+              pr.invoice_number,
+              pd.outcome,
+              vd.destination as current_trusted_destination
+         from payment_requests pr
+         join payment_decisions pd on pd.payment_request_id = pr.id
+         join lateral (
+           select destination
+             from vendor_destinations
+            where vendor_id = pr.vendor_id and trusted = true
+            order by created_at desc, id desc
+            limit 1
+         ) vd on true
+        where pr.id = $1
+        limit 1`,
+      [requestId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      requestId: row.request_id,
+      logicalPaymentId: row.logical_payment_id,
+      amountCents: row.amount_cents,
+      currency: row.currency,
+      requestedDestination: row.requested_destination,
+      currentTrustedDestination: row.current_trusted_destination,
+      decisionOutcome: row.outcome,
+      invoiceNumber: row.invoice_number,
+    };
+  }
+
+  async getOrCreateExecution(payment: AuthoritativePayment): Promise<ExecutionRecord> {
+    const ids = derivePayPalIds(payment.logicalPaymentId);
+    await pool.query(
+      `insert into payment_executions
+       (id, payment_request_id, logical_payment_id, status, paypal_request_id, sender_batch_id, sender_item_id)
+       values ($1, $2, $3, 'READY', $4, $5, $6)
+       on conflict (logical_payment_id) do nothing`,
+      [randomUUID(), payment.requestId, payment.logicalPaymentId, ids.paypalRequestId, ids.senderBatchId, ids.senderItemId],
+    );
+    return this.getExecution(payment.logicalPaymentId);
+  }
+
+  async getExecution(logicalPaymentId: string): Promise<ExecutionRecord> {
+    const result = await pool.query(`select * from payment_executions where logical_payment_id = $1 limit 1`, [logicalPaymentId]);
+    if (!result.rows[0]) throw new Error("PAYMENT_EXECUTION_NOT_FOUND");
+    return rowToExecution(result.rows[0]);
+  }
+
+  async tryClaim(logicalPaymentId: string, allowed: ExecutionStatus[]): Promise<ExecutionRecord | null> {
+    const result = await pool.query(
+      `update payment_executions
+          set status = 'SUBMITTING', claimed_at = now(), updated_at = now()
+        where logical_payment_id = $1 and status = any($2::text[])
+        returning *`,
+      [logicalPaymentId, allowed],
+    );
+    return result.rows[0] ? rowToExecution(result.rows[0]) : null;
+  }
+
+  async markSubmitted(logicalPaymentId: string, payoutBatchId: string, now: Date) {
+    return this.updateOne(
+      `update payment_executions
+          set status = 'EXECUTING', paypal_payout_batch_id = $2,
+              submitted_at = coalesce(submitted_at, $3), outcome_unknown_since = null, updated_at = $3
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, payoutBatchId, now],
+    );
+  }
+
+  async markFailed(logicalPaymentId: string, rawStatus: string, now: Date) {
+    return this.updateOne(
+      `update payment_executions
+          set status = 'PAYMENT_FAILED', raw_paypal_status = $2, updated_at = $3
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, rawStatus.slice(0, 200), now],
+    );
+  }
+
+  async markUnknown(logicalPaymentId: string, now: Date) {
+    return this.updateOne(
+      `update payment_executions
+          set status = 'PAYMENT_UNKNOWN', outcome_unknown_since = coalesce(outcome_unknown_since, $2), updated_at = $2
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, now],
+    );
+  }
+
+  async markManualReconciliation(logicalPaymentId: string, now: Date) {
+    return this.updateOne(
+      `update payment_executions
+          set status = 'PAYMENT_UNKNOWN_MANUAL_RECONCILIATION', updated_at = $2
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, now],
+    );
+  }
+
+  async applyRemoteStatus(
+    logicalPaymentId: string,
+    snapshot: PayoutItemSnapshot,
+    mappedStatus: ExecutionStatus,
+    now: Date,
+  ) {
+    return this.updateOne(
+      `update payment_executions
+          set status = $2,
+              paypal_payout_batch_id = $3,
+              paypal_payout_item_id = $4,
+              raw_paypal_status = $5,
+              last_reconciled_at = $6,
+              outcome_unknown_since = null,
+              updated_at = $6
+        where logical_payment_id = $1 returning *`,
+      [logicalPaymentId, mappedStatus, snapshot.payoutBatchId, snapshot.payoutItemId, snapshot.transactionStatus, now],
+    );
+  }
+
+  async appendEvent(logicalPaymentId: string, eventType: string, payload: Record<string, unknown> = {}) {
+    await pool.query(
+      `insert into payment_execution_events (id, logical_payment_id, event_type, payload)
+       values ($1, $2, $3, $4::jsonb)`,
+      [randomUUID(), logicalPaymentId, eventType, JSON.stringify(payload)],
+    );
+  }
+
+  async findLogicalPaymentIdByPayPalRef(refs: { payoutItemId?: string; payoutBatchId?: string }) {
+    if (!refs.payoutItemId && !refs.payoutBatchId) return null;
+    const result = await pool.query(
+      `select logical_payment_id
+         from payment_executions
+        where ($1::text is not null and paypal_payout_item_id = $1)
+           or ($2::text is not null and paypal_payout_batch_id = $2)
+        order by created_at desc
+        limit 1`,
+      [refs.payoutItemId ?? null, refs.payoutBatchId ?? null],
+    );
+    return result.rows[0]?.logical_payment_id ?? null;
+  }
+
+  private async updateOne(sql: string, params: unknown[]) {
+    const result = await pool.query(sql, params);
+    if (!result.rows[0]) throw new Error("PAYMENT_EXECUTION_NOT_FOUND");
+    return rowToExecution(result.rows[0]);
+  }
+}
+
+export const postgresExecutionStore = new PostgresExecutionStore();
