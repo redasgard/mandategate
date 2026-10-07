@@ -12,7 +12,7 @@
 - Revised technical contract in `devpost/spec.md`, commit `2d1b9cbefc6c158f42bfa37991fef072951e0152`: APIMatic is optional/deferred and explicitly not a Slice 2 or core PayPal release gate.
 - Revised Slice 2 checklist in `devpost/checklist.md`, commit `5e49491a13d05cfd0ffea63a260655a8fc30274d`: APIMatic usage/evidence removed from the mandatory build and acceptance contract.
 - Build-state scope revision in commit `630ddc8f05e1c0d13c4a6edae4c415e0abe52fe9`.
-- GitHub Actions CI run `37658798924`: migrations/seed idempotence, typecheck, 22 tests, production build, health, and ALLOW/ESCALATE/DENY smoke.
+- GitHub Actions CI run `37688851872` at code/runtime commit `60026accad1aa139a5fe49a8b0853a46d586e748`: completed successfully after the guarded proof/webhook changes; the suite covers migrations/seed idempotence, typecheck, tests, production build, health, and ALLOW/ESCALATE/DENY smoke.
 - Real Sandbox logical payment `ff515077-bf90-4800-80d7-3ef8f33d6ee2`.
 - PayPal Sandbox payout batch `BA7V96FCY8Z64` and payout item `A3R9LWD8XTX72`.
 - Repeated proof/reconciliation reused the same request, logical payment, batch, and item; exactly one execution row and one `PAYPAL_SUBMITTED` event remained.
@@ -59,4 +59,4 @@
 
 ### Next gate
 
-The revised Slice 2 acceptance contract is satisfied. Slice 2 may be checked complete and prepared for the `wire paypal` milestone/merge. APIMatic remains optional and cannot block continuation.
+The revised Slice 2 acceptance contract is satisfied. Slice 2 may be checked complete. Before merging PR #1, require the latest branch-head CI triggered by the documentation/status commits to finish green. APIMatic remains optional and cannot block continuation.
