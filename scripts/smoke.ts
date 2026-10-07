@@ -34,16 +34,17 @@ const cases = [
   },
 ] as const;
 
-for (const testCase of cases) {
+for (const [index, testCase] of cases.entries()) {
   const response = await fetch(`${baseUrl}/api/agent/payment-requests`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
+      "idempotency-key": `smoke-${index}-${testCase.expected.toLowerCase()}`,
     },
     body: JSON.stringify(testCase.body),
   });
-  if (response.status !== 201) {
+  if (![200, 201].includes(response.status)) {
     throw new Error(`submission failed: ${response.status} ${await response.text()}`);
   }
   const result = (await response.json()) as {
@@ -54,7 +55,7 @@ for (const testCase of cases) {
     throw new Error(`expected ${testCase.expected}, got ${result.decision.outcome}`);
   }
   if (result.paymentExecuted !== false) {
-    throw new Error("slice 1 must not execute a payment");
+    throw new Error("decision smoke must not execute a payment");
   }
 }
 
