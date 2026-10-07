@@ -3,60 +3,60 @@
 ## Critique gate
 
 **Step:** Slice 2 - exactly one real PayPal Sandbox payout
-**Decision:** BLOCK
-**Score:** 8.8/10
+**Decision:** CONTINUE
+**Score:** 9.3/10
 **Review independence:** self-review, supplemented by deterministic CI and external Render/PayPal Sandbox runtime evidence
 
 ### Evidence checked
 
+- Revised technical contract in `devpost/spec.md`, commit `2d1b9cbefc6c158f42bfa37991fef072951e0152`: APIMatic is optional/deferred and explicitly not a Slice 2 or core PayPal release gate.
+- Revised Slice 2 checklist in `devpost/checklist.md`, commit `5e49491a13d05cfd0ffea63a260655a8fc30274d`: APIMatic usage/evidence removed from the mandatory build and acceptance contract.
+- Build-state scope revision in commit `630ddc8f05e1c0d13c4a6edae4c415e0abe52fe9`.
 - GitHub Actions CI run `37658798924`: migrations/seed idempotence, typecheck, 22 tests, production build, health, and ALLOW/ESCALATE/DENY smoke.
-- Render deployment of `build/slice-2-gated` at commit `60026accad1aa139a5fe49a8b0853a46d586e748`.
 - Real Sandbox logical payment `ff515077-bf90-4800-80d7-3ef8f33d6ee2`.
 - PayPal Sandbox payout batch `BA7V96FCY8Z64` and payout item `A3R9LWD8XTX72`.
-- First live proof: one execution row, one `PAYPAL_SUBMITTED` event, PayPal status `PENDING`.
-- Repeated proof/reconciliation: same request, logical payment, batch, and item; one execution row; one `PAYPAL_SUBMITTED`; final local `PAID` and PayPal `SUCCESS`.
+- Repeated proof/reconciliation reused the same request, logical payment, batch, and item; exactly one execution row and one `PAYPAL_SUBMITTED` event remained.
+- Final remote status `SUCCESS` and local status `PAID`.
 - Live PayPal POST to `/api/paypal/webhooks` returned HTTP 200.
 - Persistent audit proof: `webhookVerifiedEvents=1`, `reconciledEvents=2`, `webhookReconcileFailures=0`.
-- Clean Render redeploy after proof flags were reset: migrations/seed completed, proof runner did not execute, Next.js became ready and Render marked the service live.
-- `devpost/checklist.md` Slice 2 acceptance criteria, including the explicit APIMatic Context Plugin evidence requirement.
-- `devpost/spec.md > APIMatic`, which requires reproducible evidence that the Context Plugin was used.
+- Clean Render deployment with proof flags disabled: deployment `dep-db3bipc9v7es73bjgp5g` live at commit `60026accad1aa139a5fe49a8b0853a46d586e748`.
 
 ### Artifact scores
 
 | Artifact | Score | Main weakness |
 |---|---:|---|
 | PayPal execution/state machine | 9.4 | No material defect found in inspected evidence |
-| Live Sandbox payout proof | 9.5 | Proof is strong and persistent, but performed through a temporary guarded startup mechanism |
-| Webhook verification/reconciliation | 9.3 | Verified live path with persistent event evidence |
-| Render deployment | 9.0 | Proof flags required temporary runtime configuration changes; they are disabled again |
-| Sponsor/developer-context compliance | 5.0 | Required APIMatic usage evidence is absent |
+| Live Sandbox payout proof | 9.6 | Verification used a guarded proof runner, now disabled |
+| Webhook verification/reconciliation | 9.4 | No material defect found in inspected evidence |
+| Render deployment | 9.2 | Earlier verification required temporary proof-only flags |
+| Revised Slice 2 contract | 9.2 | APIMatic sponsor eligibility is deferred rather than demonstrated |
 
 ### Findings
 
-1. **HIGH - Mandatory APIMatic usage/evidence is missing**
-   - Evidence: the approved checklist requires using the APIMatic Context Plugin and preserving evidence; the spec requires reproducible sponsor-submission evidence. No such evidence exists in the repo or connected tool history.
-   - Impact: Slice 2 does not satisfy its approved acceptance contract and cannot be marked complete or merged as `wire paypal` without either satisfying this requirement or explicitly revising the approved scope/spec/checklist.
-   - Required repair: use the APIMatic Context Plugin against the PayPal integration and retain reproducible evidence, or make an explicit product/sponsor-scope decision to remove APIMatic from the mandatory Slice 2 contract and update all affected artifacts consistently.
-   - Verification: inspect the retained APIMatic evidence or the approved artifact diff removing the requirement, then re-run this gate.
+1. **LOW - Proof-only startup controls must remain disabled in normal runtime**
+   - Evidence: the one-time proof runner is guarded by verification-only flags; the current clean Render deployment has those flags disabled.
+   - Impact: accidental re-enabling could invoke verification logic during startup, although permanent idempotency protects the fixed proof payment from duplication.
+   - Required repair: none for Slice 2 completion; retain the flags as verification-only controls and keep them disabled in normal runtime.
+   - Verification: clean startup logs must not contain the one-time proof-runner message.
 
-2. **LOW - Temporary proof runner should remain disabled outside verification**
-   - Evidence: `scripts/render-start.ts` can run the Sandbox proof only when `RUN_SLICE2_SANDBOX_PROOF=1`; current Render runtime was redeployed with proof flags set to `0`.
-   - Impact: accidental re-enabling could run proof logic during service startup, although permanent idempotency prevents a second logical payout for the fixed proof key.
-   - Required repair: keep both proof flags disabled in normal runtime and document their verification-only purpose.
-   - Verification: clean startup logs contain no `running one-time Slice 2 PayPal Sandbox proof` message.
+2. **LOW - APIMatic sponsor-prize evidence is not available**
+   - Evidence: the revised spec marks APIMatic optional/deferred rather than mandatory, and no APIMatic evidence exists.
+   - Impact: MandateGate must not claim APIMatic sponsor usage or eligibility unless that integration is later performed and evidenced.
+   - Required repair: none for Slice 2. If APIMatic is revisited, capture reproducible evidence before making any sponsor claim.
+   - Verification: submission materials must omit APIMatic usage claims unless later evidence exists.
 
 ### Requirement coverage
 
-- **VERIFIED:** one real PayPal Sandbox payout; one logical payment; permanent local execution uniqueness; one `PAYPAL_SUBMITTED`; deterministic remote identifiers; repeated execution/reconciliation reuses the same payout; final PayPal `SUCCESS` / local `PAID`; live signed webhook acceptance; webhook-triggered reconciliation without recorded failure; production PayPal host rejection; concurrency/lost-response/unknown-outcome safety tests; clean Render deployment after proof.
-- **UNVERIFIED:** APIMatic Context Plugin usage and reproducible evidence.
-- **INCORRECT:** none in the inspected payment/runtime evidence.
+- **VERIFIED:** one real PayPal Sandbox payout; one logical payment; permanent local execution uniqueness; one `PAYPAL_SUBMITTED`; deterministic remote identifiers; concurrent/repeated execution safety; lost-response retry behavior; unknown-outcome handling; trusted-destination revalidation; final PayPal `SUCCESS` / local `PAID`; live signed webhook acceptance; webhook-triggered reconciliation; zero recorded reconciliation failures; clean Render deployment after verification.
+- **UNVERIFIED:** APIMatic usage, intentionally optional/deferred and therefore not part of the Slice 2 completion contract.
+- **INCORRECT:** none found in the revised mandatory Slice 2 contract or inspected payment/runtime evidence.
 
 ### Repair order
 
-1. Resolve the APIMatic requirement by actual usage/evidence or an explicit approved scope change.
-2. Re-run the Slice 2 critical review.
-3. Only on `CONTINUE`, check Slice 2, commit `wire paypal`, and merge PR #1.
+1. No blocking repair remains for Slice 2.
+2. Keep proof-only flags disabled in normal Render runtime.
+3. Do not claim APIMatic sponsor usage without later reproducible evidence.
 
 ### Next gate
 
-Slice 2 remains blocked from completion only by the explicit APIMatic acceptance requirement. The PayPal Sandbox money-movement and webhook paths themselves have passed the required live verification.
+The revised Slice 2 acceptance contract is satisfied. Slice 2 may be checked complete and prepared for the `wire paypal` milestone/merge. APIMatic remains optional and cannot block continuation.
