@@ -75,6 +75,12 @@ Official docs:
 
 Valkey is non-authoritative. Losing or flushing it may reduce performance but must not change authorization outcomes.
 
+Security configuration is mandatory:
+- enable Render internal authentication before application use
+- keep external access disabled unless a specific temporary maintenance need is approved
+- never store credentials, payment authority, secrets, raw auth headers, or the sole copy of sensitive evidence in Valkey
+- use authenticated internal connection URLs only
+
 Allowed uses:
 - rate limiting
 - hot dashboard data
