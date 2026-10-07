@@ -272,11 +272,13 @@ Recomputes event hashes and Merkle roots and checks checkpoint signatures and ex
 
 ### Data access layer
 
-- Drizzle ORM 0.44.7 stable
-- node-postgres
+- Drizzle ORM 0.45.3 stable
+- node-postgres 8.23.1
 - explicit SQL migrations committed to the repository
 
 Drizzle is used as a thin typed data-access layer rather than as a substitute for PostgreSQL semantics. Security-sensitive invariants, transactional payment-state transitions, uniqueness/idempotency constraints, append-only trail constraints, and integrity-related database rules remain explicit and inspectable.
+
+Dynamic SQL identifiers or aliases must never be constructed directly from request-derived input. Any dynamic sort/column/alias selection must map through a static allowlist before reaching Drizzle APIs such as `sql.identifier()` or `.as()`.
 
 Official docs:
 - https://orm.drizzle.team/
@@ -381,7 +383,7 @@ Every dependency must be rechecked against current official documentation before
 
 Locked:
 - TypeScript/Next.js-centric architecture
-- Drizzle ORM 0.44.7 stable + node-postgres for data access
+- Drizzle ORM 0.45.3 stable + node-postgres for data access
 - Better Auth 1.7.7 for admin sessions and scoped organization API keys
 - Node.js 24 LTS baseline
 - PostgreSQL 18 authoritative operational database
