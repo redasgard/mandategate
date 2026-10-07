@@ -89,8 +89,10 @@ Externally verified on Render against PayPal Sandbox:
 - the persistent audit trail reported `webhookVerifiedEvents=1`, `reconciledEvents=2`, and `webhookReconcileFailures=0`.
 - proof-only Render flags were reset to disabled after verification and the clean service redeployed successfully.
 
-Still unverified, therefore Slice 2 remains intentionally unchecked:
-1. APIMatic Context Plugin usage evidence required by the approved checklist. APIMatic is not available in the current connected plugin/tool inventory, so this evidence has not been fabricated.
+Scope revision:
+- APIMatic Context Plugin is now optional/deferred and is no longer a Slice 2 completion requirement.
+- The change is recorded in `devpost/spec.md` and `devpost/checklist.md`.
+- Slice 2 remains unchecked only until the revised contract passes the formal critical-review gate.
 
 ## Render Sandbox Deployment
 
@@ -134,17 +136,18 @@ The Render service is live with its internal database binding, migrations, seed,
 
 PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are present on Render. The real payout, exact-once persistence, final PayPal SUCCESS state, verified webhook delivery, and webhook-triggered reconciliation are now proven.
 
-APIMatic Context Plugin evidence is still unavailable and must not be fabricated.
+APIMatic remains unavailable, but it is now explicitly optional/deferred and carries no Slice 2 completion authority.
 
-Do not check or merge Slice 2 until the APIMatic usage/evidence requirement is either satisfied or explicitly removed from the approved spec/checklist.
-
+Do not merge Slice 2 until the revised acceptance contract passes the formal critical-review gate.
 
 ## Slice 2 Review Gate
 
 Formal review artifact: `devpost/reviews/slice-2-critical-review.md`.
 
-Decision: `BLOCK` despite strong live payment evidence, because the approved Slice 2 contract explicitly requires APIMatic Context Plugin usage/evidence and that evidence does not exist yet.
+Previous decision: `BLOCK` solely because APIMatic was mandatory.
 
-The payment/runtime portion itself is verified: exactly one Sandbox payout, final PayPal `SUCCESS`, local `PAID`, one execution row, one `PAYPAL_SUBMITTED`, verified webhook evidence, successful reconciliation, and zero webhook reconciliation failures.
+The approved contract has now been revised to make APIMatic optional/deferred. The PayPal/runtime evidence remains unchanged and verified: exactly one Sandbox payout, final PayPal `SUCCESS`, local `PAID`, one execution row, one `PAYPAL_SUBMITTED`, verified webhook evidence, successful reconciliation, and zero webhook reconciliation failures.
 
 Normal Render runtime is clean after verification: proof-only flags are disabled and deployment `dep-db3bipc9v7es73bjgp5g` is live at commit `60026accad1aa139a5fe49a8b0853a46d586e748`.
+
+Re-review is required before checking Slice 2 complete.
