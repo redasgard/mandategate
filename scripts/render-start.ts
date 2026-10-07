@@ -1,5 +1,10 @@
 import { spawn } from "node:child_process";
 
+if (process.env.RUN_DEMO_CREDENTIAL_ROTATION === "1") {
+  console.log("running guarded demo credential rotation before web startup");
+  await import("./rotate-demo-credentials");
+}
+
 if (process.env.RUN_SLICE2_SANDBOX_PROOF === "1") {
   console.log("running one-time Slice 2 PayPal Sandbox proof before web startup");
   await import("./verify-slice2-sandbox");
