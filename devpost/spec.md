@@ -305,7 +305,40 @@ The only component allowed to hold/use PayPal payment credentials. It executes o
 
 Implements `prd.md > MandateGate Assistant Behavior`.
 
-Read-oriented by default. It may prepare explicit action objects, but consequential actions require normal authorization and confirmation. Prepared actions become stale when relevant authoritative state changes.
+Read-oriented by default. It may prepare explicit action objects, but consequential actions require normal authorization and confirmation.
+
+Every consequential prepared action is an immutable proposal containing at minimum:
+- `action_id`
+- initiating actor/principal
+- proposed action type
+- exact target type/id
+- exact parameters/value set
+- organization/tenant
+- relevant authoritative-state version/hash
+- policy version
+- evidence references
+- originating model invocation/reference when AI-prepared
+- creation time
+- expiry
+- canonical `action_digest`
+
+The `action_digest` is SHA-256 over an RFC 8785 canonical representation with a MandateGate action-domain separator.
+
+Admin confirmation binds to the exact `action_id` + `action_digest` and records the authenticated admin, required explanation when applicable, and confirmation time. Conversational text such as "yes" is never sufficient by itself to authorize a mutated or newly resolved action.
+
+Immediately before commit/execution MandateGate re-evaluates:
+- admin authorization
+- target identity
+- exact parameters
+- current authoritative-state/version hash
+- policy version where relevant
+- action expiry
+- vendor-trust/payment state
+- integrity/witness preconditions
+
+Any mismatch marks the proposal `STALE` and requires a newly prepared action and fresh confirmation. No target/value retargeting is permitted after confirmation.
+
+For consequential operations, the confirmed-action trail event must obtain the required independent witness receipt before the authority boundary is crossed.
 
 ### Trail Writer
 
