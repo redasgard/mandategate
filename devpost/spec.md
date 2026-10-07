@@ -17,7 +17,7 @@ The operations agent never receives PayPal credentials and never directly moves 
 
 AI is advisory. It may interpret, infer, explain, summarize, and prepare actions, but it does not become an authority boundary.
 
-Consequential trails are tamper-evident and independently checkable against externally anchored checkpoints. Operational records live in PostgreSQL; the POC uses hash-linked events, Merkle checkpoints, checkpoint signatures, and external timestamp/witness commitments. Independent WORM recoverability is a production hardening recommendation rather than hackathon infrastructure.
+Consequential trails are tamper-evident and independently checkable against externally anchored checkpoints. Operational records live in PostgreSQL; the hackathon release uses hash-linked events, Merkle checkpoints, checkpoint signatures, and external timestamp/witness commitments. Independent WORM recoverability is a production hardening recommendation rather than hackathon infrastructure.
 
 PRD refs:
 - `prd.md > The Core Journey`
@@ -40,6 +40,50 @@ PRD refs:
 
 PRD ref: `prd.md > The Core Journey`.
 
+## Hackathon Release Priorities
+
+MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not a disposable prototype boundary. P0, P1, and P2 are all targeted for the November submission; the tiers control implementation order and emergency cut priority.
+
+The non-negotiable rule is: **P1/P2 may extend or improve P0, but may never weaken or destabilize the P0 authority/payment path.**
+
+### P0 — release blockers
+
+- operations-agent PDF/image invoice submission
+- bounded invoice extraction and canonical facts
+- AP-history import plus vendor/company behavioral context
+- deterministic ALLOW / ESCALATE / DENY
+- near-duplicate and unusual-amount detection
+- trusted payment-destination enforcement and re-verification state
+- one complete admin escalation flow
+- permanent PostgreSQL payment idempotency
+- real PayPal Sandbox payout for the allowed path
+- structured reason/evidence trail
+- basic polished dashboard/demo flow
+- all three canonical demo scenarios end to end
+
+### P1 — planned hackathon features
+
+- persistent MandateGate Assistant
+- inferred policy proposal/review/edit/activation
+- scheduled payments and execution-time revalidation
+- Base Sepolia checkpoint registry + independent verification
+- AG Studio / AG Grid investigation surface
+- Bryntum payment timeline
+
+### P2 — planned integrations and differentiation
+
+- Elastic search/similarity/trail investigation
+- Zapier MCP operations-agent ingress
+- Postman public API collection/workspace
+- Qwen challenger routing
+- Jev bounded-decision/security evaluation
+- Laya comparison
+- sponsor evidence and integration polish
+
+Build sequencing must make every P0 slice independently testable before P1/P2 code is allowed to become a dependency of the P0 path.
+
+PRD ref: `prd.md > What We're Building`.
+
 ## Stack
 
 ### Application runtime
@@ -49,7 +93,7 @@ PRD ref: `prd.md > The Core Journey`.
 - TypeScript 6.0.3
 - Node.js 24 LTS
 
-Reason: one language and one primary application stack for fast hackathon implementation. TypeScript 7.0.2 is the current latest stable release, but this POC intentionally pins the mature 6.0.3 line to avoid an unnecessary compiler-major migration during the hackathon; Next.js/React and the selected sponsor libraries do not require TypeScript 7. The pin is re-evaluated after the demo freeze.
+Reason: one language and one primary application stack for fast hackathon implementation. TypeScript 7.0.2 is the current latest stable release, but this hackathon release intentionally pins the mature 6.0.3 line to avoid an unnecessary compiler-major migration during the hackathon; Next.js/React and the selected sponsor libraries do not require TypeScript 7. The pin is re-evaluated after the demo freeze.
 
 Official docs:
 - https://nextjs.org/blog
@@ -62,7 +106,7 @@ Official docs:
 - PostgreSQL 18, current minor 18.6 at spec time
 - Render Postgres
 
-PostgreSQL is authoritative for mutable operational state: payments, invoices, vendors, policies, confirmations, prepared actions, execution state, POC artifact bodies, and references to evidence/trail entries.
+PostgreSQL is authoritative for mutable operational state: payments, invoices, vendors, policies, confirmations, prepared actions, execution state, hackathon-release artifact bodies, and references to evidence/trail entries.
 
 Official docs:
 - https://www.postgresql.org/docs/18/
@@ -107,7 +151,7 @@ Official docs:
 - PostgreSQL-backed admin sessions
 - email/password enabled for the seeded hackathon admin
 - public email/password sign-up disabled with `emailAndPassword.disableSignUp=true`
-- no Magic Link, social-login, transactional-email, password-reset, or public-account-registration dependency in the POC
+- no Magic Link, social-login, transactional-email, password-reset, or public-account-registration dependency in the hackathon release
 - scoped organization API keys for operations agents
 - agent API keys never become human sessions
 - Valkey may assist with rate limiting or cache validation, but PostgreSQL remains authoritative
@@ -118,7 +162,7 @@ Hackathon admin flow:
 - hosted demo credentials come from `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` Render secrets and may be shared with judges through the submission instructions, never committed
 - local seeding may generate a one-time password when those variables are omitted and prints it only to the local terminal
 - no self-service sign-up endpoint is exposed by the application UI
-- the seeded account is scoped to the synthetic demo organization; production user/role provisioning remains out of POC scope
+- the seeded account is scoped to the synthetic demo organization; production user/role provisioning remains out of the hackathon release scope
 
 Machine and human identity remain separate authority classes. Operations-agent API keys receive only explicit scopes such as `invoice:submit` and `payment:read`; they cannot acquire admin authority through session conversion.
 
@@ -232,11 +276,11 @@ MandateGate uses the PayPal Payouts REST API v1 for vendor AP disbursement.
 Why this surface:
 - MandateGate sends money to a vendor after internal authorization; this is a payout/disbursement flow, not buyer checkout
 - the TypeScript implementation uses direct server-side REST via native `fetch` behind a narrow `PayPalPayoutsClient` adapter
-- no PayPal SDK is required for the POC payment path
+- no PayPal SDK is required for the hackathon payment path
 
 Environment:
 - Sandbox base URL: `https://api-m.sandbox.paypal.com`
-- production base URL is out of scope for the hackathon POC
+- production base URL is out of scope for the hackathon release
 - Payouts capability must be verified with the actual sandbox app/account before the payment slice is considered unblocked; a successful one-item sandbox payout is the integration gate
 
 Authentication:
@@ -246,7 +290,7 @@ Authentication:
 - `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are deployment secrets and never enter the trail
 
 Execution:
-- one logical invoice payment maps to one Payouts batch containing one item in the POC
+- one logical invoice payment maps to one Payouts batch containing one item in the hackathon release
 - create payout: `POST /v1/payments/payouts`
 - reconcile batch: `GET /v1/payments/payouts/{payout_batch_id}`
 - reconcile item: `GET /v1/payments/payouts-item/{payout_item_id}`
@@ -280,7 +324,7 @@ The dashboard's current available balance is sourced from PayPal's Transaction S
 
 - `GET /v1/reporting/balances`
 - required OAuth scope: `https://uri.paypal.com/services/reporting/balances/read`
-- use the balance matching the configured POC operating currency
+- use the balance matching the configured hackathon operating currency
 - display PayPal's balance timestamp/`as_of_time` next to the value because PayPal documents that reporting balances can lag by up to three hours
 - cache only as a performance optimization; the displayed timestamp remains visible
 - if the reporting scope/endpoint is unavailable, show `Balance unavailable` with an integration warning rather than fabricating a number
@@ -355,14 +399,14 @@ Official docs:
 - https://developer.paypal.com/api/rest/webhooks/
 - https://developer.paypal.com/payouts/webhooks/
 
-### POC artifact storage
+### Hackathon artifact storage
 
 Hackathon artifact storage stays inside PostgreSQL to avoid adding another managed service solely for a small number of invoice and evidence files.
 
 Implementation:
 - store uploaded PDF/image/evidence bodies in a dedicated `artifacts` table using PostgreSQL `bytea`
 - store SHA-256 digest, MIME type, original filename, byte length, organization, uploader/source, creation time, and lifecycle state alongside the binary
-- enforce an application-level maximum of 10 MiB per artifact for the POC
+- enforce an application-level maximum of 10 MiB per artifact for the hackathon release
 - accept only explicitly supported invoice/evidence MIME types
 - stream uploads through bounded memory rather than trusting request-declared size
 - compute the digest during ingestion and verify it whenever the artifact is re-read for security-sensitive analysis
@@ -382,7 +426,7 @@ Official docs:
 
 ### External checkpoint witness
 
-The hackathon POC anchors checkpoint commitments through a tiny append-only registry contract on Base Sepolia instead of storing an arbitrary transaction hash as the canonical witness.
+The hackathon release anchors checkpoint commitments through a tiny append-only registry contract on Base Sepolia instead of storing an arbitrary transaction hash as the canonical witness.
 
 Network:
 - Base Sepolia
@@ -430,7 +474,7 @@ If the RPC, wallet, contract call, or safe-head confirmation is unavailable, the
 
 The contract stores only checkpoint hashes and chain metadata. Invoice contents, vendor data, payment amounts, explanations, and other sensitive business records never go on-chain.
 
-Security property demonstrated by the POC:
+Security property demonstrated by the hackathon release:
 - compromise of MandateGate after sequence N is anchored cannot rewrite checkpoint N or an earlier checkpoint without disagreement with the append-only registry
 - compromise of the writer key can append malicious future checkpoints but cannot replace historical registry entries
 - the testnet registry is tamper-evidence, not an immutable archive and not production recoverability
@@ -456,7 +500,7 @@ Official/current references:
 
 ### Scheduled jobs
 
-Render Cron provides the POC's periodic triggers. Render guarantees at most one active run of a given cron job at a time, but MandateGate still treats PostgreSQL/idempotency as the authority because manual runs, retries, and other callers can overlap.
+Render Cron provides the hackathon release's periodic triggers. Render guarantees at most one active run of a given cron job at a time, but MandateGate still treats PostgreSQL/idempotency as the authority because manual runs, retries, and other callers can overlap.
 
 #### Due-payment runner
 
@@ -637,7 +681,7 @@ This preserves meaningful sponsor usage without allowing seven integrations to b
 
 #### Intentionally excluded sponsors
 
-Channel3, Astropods, and KERNEL are not part of the initial POC because their current capabilities do not materially improve the approved vendor-invoice authorization journey. They may be reconsidered only if implementation exposes a concrete need; sponsor count alone is not a reason to add them.
+Channel3, Astropods, and KERNEL are not part of the initial hackathon release because their current capabilities do not materially improve the approved vendor-invoice authorization journey. They may be reconsidered only if implementation exposes a concrete need; sponsor count alone is not a reason to add them.
 
 ## Dependency Version and Supply-Chain Policy
 
@@ -753,7 +797,7 @@ Required PayPal Sandbox:
 - `PAYPAL_CLIENT_ID`
 - `PAYPAL_CLIENT_SECRET`
 - `PAYPAL_WEBHOOK_ID`
-- `PAYPAL_BALANCE_CURRENCY=USD` for the initial POC
+- `PAYPAL_BALANCE_CURRENCY=USD` for the initial hackathon release
 - the connected PayPal app/account must expose both Payouts capability and the reporting-balances scope before the corresponding demo paths are considered ready
 
 Required generative/decision providers when AI analysis is enabled:
@@ -762,7 +806,7 @@ Required generative/decision providers when AI analysis is enabled:
 - `TYPESAFE_API_KEY` — Bearer credential for Jev/System One
 - provider configuration is validated at startup/preflight; sensitive document analysis remains disabled if the required ZDR/no-training policy cannot be proven
 
-POC checkpoint signing:
+Hackathon checkpoint signing:
 - algorithm: Ed25519 using Node.js `node:crypto`
 - `CHECKPOINT_SIGNING_KEY_ID`
 - `CHECKPOINT_SIGNING_PRIVATE_KEY_B64` — PKCS#8 DER key bytes, Base64-encoded, server-side secret only
@@ -843,7 +887,7 @@ Implements:
 - `prd.md > Payment Detail and Decision Evidence`
 - `prd.md > AI Security, Authority, and Traceability`
 
-Stores POC invoice/evidence artifacts in PostgreSQL `bytea` behind a small provider-neutral interface. It enforces file-size/type limits, computes/validates SHA-256 digests, and returns opaque artifact references to the rest of the system.
+Stores hackathon invoice/evidence artifacts in PostgreSQL `bytea` behind a small provider-neutral interface. It enforces file-size/type limits, computes/validates SHA-256 digests, and returns opaque artifact references to the rest of the system.
 
 ### Invoice Analysis Pipeline
 
@@ -862,7 +906,7 @@ Dependencies at the current baseline:
 File admission:
 - accept only allowlisted PDF/JPEG/PNG invoice/evidence MIME types and verify magic bytes instead of trusting filename/Content-Type alone
 - existing 10 MiB artifact cap applies
-- POC maximum 20 PDF pages per invoice
+- Hackathon maximum 20 PDF pages per invoice
 - reject encrypted/password-protected PDFs, malformed parse results, decompression/pathological rendering failures, and unsupported formats
 - parsing/rendering runs in the async analysis task with explicit timeout/memory/page limits; failure produces structured extraction failure evidence rather than partial authority
 
@@ -941,7 +985,7 @@ Builds vendor/company baselines and anomaly evidence from imported AP history.
 Dependency:
 - `csv-parse` 7.0.3. Versions below 7.0.2 are forbidden because of the 2026 prototype-replacement advisory affecting a columns path.
 
-The POC accepts an RFC-4180-style UTF-8 CSV/ERP export through an authenticated admin import flow. The raw CSV is stored as an artifact and hashed before parsing.
+The hackathon release accepts an RFC-4180-style UTF-8 CSV/ERP export through an authenticated admin import flow. The raw CSV is stored as an artifact and hashed before parsing.
 
 Canonical columns:
 - required: `vendor_name`, `invoice_number`, `invoice_date`, `amount_decimal`, `currency`, `status`
@@ -1129,7 +1173,7 @@ Concurrency verification:
 - forced transaction rollback must leave neither the business-state mutation nor its paired trail event committed
 - process failure after a payment pre-call commit must preserve enough evidence/idempotency state to reconcile without minting a new payment identity
 
-The POC does not require a synchronous external witness receipt for every event. Consequential events are committed to the canonical local trail before the corresponding state transition or external payment call.
+The hackathon release does not require a synchronous external witness receipt for every event. Consequential events are committed to the canonical local trail before the corresponding state transition or external payment call.
 
 Events newer than the latest externally anchored checkpoint are explicitly marked as pending external anchoring. They must never be presented as externally verified.
 
@@ -1137,11 +1181,11 @@ Events newer than the latest externally anchored checkpoint are explicitly marke
 
 Implements `prd.md > AI Security, Authority, and Traceability`.
 
-POC checkpoint protocol:
+Hackathon checkpoint protocol:
 - Merkle leaves are the ordered event hashes for an explicit inclusive sequence range
 - checkpoint metadata includes stream ID, start/end sequence, Merkle root, previous-checkpoint hash, creation time, signing-key ID, and protocol version
 - checkpoint payload is canonicalized before hashing/signing
-- the POC signs the checkpoint digest with an Ed25519 key using Node.js `node:crypto`
+- the hackathon release signs the checkpoint digest with an Ed25519 key using Node.js `node:crypto`
 - the private signing key is a server-side Render secret; the corresponding SPKI public key is committed by explicit `signing-key ID`
 - key rotation is supported through explicit key IDs; old public verification keys remain available for historical verification
 - the signed checkpoint commitment is periodically appended to the Base Sepolia `CheckpointRegistry`; registry sequence and previous-checkpoint continuity are part of verification
@@ -1154,11 +1198,11 @@ Production hardening recommendation:
 - move the signing key outside normal application authority
 - optionally require synchronous external receipts for consequential events when near-zero unanchored-tail exposure is required
 
-The POC demonstrates tamper evidence and independent external anchoring; it does not claim production-grade independent recoverability.
+The hackathon release demonstrates tamper evidence and independent external anchoring; it does not claim production-grade independent recoverability.
 
 ### Independent Trail Verifier
 
-Recomputes canonical event hashes, sequence/previous-hash continuity, Merkle roots, checkpoint-chain continuity, checkpoint signatures, and Base Sepolia registry history without trusting the current MandateGate UI/backend or its `integrity_anchors` rows. The committed chain ID, registry address, deployment block, and bytecode hash are the POC witness root configuration.
+Recomputes canonical event hashes, sequence/previous-hash continuity, Merkle roots, checkpoint-chain continuity, checkpoint signatures, and Base Sepolia registry history without trusting the current MandateGate UI/backend or its `integrity_anchors` rows. The committed chain ID, registry address, deployment block, and bytecode hash are the hackathon witness root configuration.
 
 Verifier outcomes are explicit:
 - `ANCHORED_VERIFIED`
@@ -1232,7 +1276,7 @@ mandategate/
 ├── src/
 │   ├── auth/                    # human sessions + scoped machine principals
 │   ├── db/                      # schema, migrations, repositories
-│   ├── artifacts/               # PostgreSQL bytea POC artifact store + interface
+│   ├── artifacts/               # PostgreSQL bytea hackathon artifact store + interface
 │   ├── invoices/
 │   │   ├── schema.ts            # Zod canonical invoice extraction contract
 │   │   ├── pdf.ts               # bounded PDF.js text/raster preparation
@@ -1297,9 +1341,9 @@ mandategate/
 ## External Services and Dependencies
 
 Locked:
-- Base Sepolia `CheckpointRegistry` as the POC external checkpoint witness
-- PostgreSQL `bytea` for POC artifact storage behind an `ArtifactStore` abstraction
-- 10 MiB per-artifact POC limit with MIME allowlisting and SHA-256 integrity checks
+- Base Sepolia `CheckpointRegistry` as the hackathon external checkpoint witness
+- PostgreSQL `bytea` for hackathon artifact storage behind an `ArtifactStore` abstraction
+- 10 MiB per-artifact hackathon limit with MIME allowlisting and SHA-256 integrity checks
 - PayPal Payouts REST API v1 for vendor disbursement
 - direct server-side TypeScript REST integration via native fetch
 - OAuth client credentials, stable payout idempotency identifiers, verified payout webhooks, and reconciliation
@@ -1339,14 +1383,16 @@ Every dependency/service must be rechecked against current official documentatio
 
 ## What Was Simplified and Why
 
-- One TypeScript/Next.js codebase instead of early microservices: fastest route to a coherent hackathon POC.
+These are release-engineering simplifications, not statements that MandateGate itself is only a hackathon prototype.
+
+- One TypeScript/Next.js codebase instead of early microservices: fastest route to a coherent hackathon release.
 - Render Workflows instead of BullMQ + custom worker/queue plumbing.
 - Valkey remains cache-only instead of becoming a second operational datastore.
 - Real external vendor re-verification provider remains simulated, as approved in the PRD.
-- Live Payouts enablement/production approval is outside the hackathon POC; the demo uses PayPal Sandbox only.
-- The security kernel, PayPal execution boundary, AI authority boundary, hash-chained trail, Merkle verification, and external checkpoint anchoring are real in the POC.
+- Live Payouts enablement/production approval is outside the hackathon release; the demo uses PayPal Sandbox only.
+- The security kernel, PayPal execution boundary, AI authority boundary, hash-chained trail, Merkle verification, and external checkpoint anchoring are real in the hackathon release.
 - Independent WORM recoverability and isolated external signing are deferred to production hardening because they add compliance infrastructure without improving the hackathon demonstration enough to justify the cost/complexity.
-- POC invoice/evidence artifacts stay in PostgreSQL `bytea` behind an `ArtifactStore` interface; production should move binaries to dedicated object storage.
+- Hackathon invoice/evidence artifacts stay in PostgreSQL `bytea` behind an `ArtifactStore` interface; production should move binaries to dedicated object storage.
 
 ## Decisions and Open Issues
 
@@ -1363,8 +1409,8 @@ Locked:
 - Render Key Value/Valkey 8 as non-authoritative cache
 - Render Workflows for async/retryable work
 - no BullMQ initially
-- trail integrity is hash-chained and externally checkpointed in the POC
-- externally anchored checkpoints are the independent POC trust reference
+- trail integrity is hash-chained and externally checkpointed in the hackathon release
+- externally anchored checkpoints are the independent hackathon trust reference
 - independent WORM archive + isolated signer are production hardening recommendations
 - Experiential Labs as the initial generative-model gateway
 - GLM-5.3 Flash as the provisional primary generative model
@@ -1372,8 +1418,8 @@ Locked:
 - Jev as the bounded decision/security layer
 - Laya 0.3.28 as the evaluated open-source alternative
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
-- PostgreSQL-backed POC artifact storage with a provider-neutral `ArtifactStore` abstraction
-- Base Sepolia (chain ID 84532) append-only `CheckpointRegistry` as the POC external checkpoint witness; the committed registry deployment is the verifier root rather than a local transaction pointer
+- PostgreSQL-backed hackathon artifact storage with a provider-neutral `ArtifactStore` abstraction
+- Base Sepolia (chain ID 84532) append-only `CheckpointRegistry` as the hackathon external checkpoint witness; the committed registry deployment is the verifier root rather than a local transaction pointer
 - AG Studio / AG Grid for dashboard and investigation
 - Elastic as a non-authoritative searchable/analytical projection
 - APIMatic Context Plugin for PayPal build-time integration context
@@ -1382,10 +1428,11 @@ Locked:
 - Zapier MCP as a scoped external operations-agent ingress
 
 Current useful uncertainty:
-- the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
+- the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of the hackathon release scope.
 
 Approval state:
 - approved by the learner after final integrated consistency/security review
+- release framing subsequently clarified: P0/P1/P2 are all in the November hackathon scope; the tiers govern delivery order and emergency cuts rather than product scope
 
 Submission-time obligation:
 - make the GitHub repository public before Devpost submission; MIT `LICENSE` is already committed
