@@ -4,17 +4,27 @@ Zero-trust authorization and policy layer for AI agents that can spend money.
 
 MandateGate sits between an autonomous operations agent and PayPal. Agents can submit vendor invoices and request payment, but they never receive payment credentials or payment authority. MandateGate independently evaluates invoice facts, historical behavior, vendor trust, and active policy, then returns `ALLOW`, `ESCALATE`, or `DENY`.
 
-Built for the PayPal AI Hackathon 2026.
+Current release milestone: PayPal AI Hackathon 2026. MandateGate itself is the product; the hackathon is a release target, not the product boundary.
 
 ## Demo
 
-The POC demonstrates three paths:
+The current release centers the demo on three paths:
 
 1. Known vendor + normal invoice -> `ALLOW` -> PayPal Sandbox payout.
 2. Near-duplicate / unusual invoice -> `ESCALATE` -> admin declines -> no payout.
 3. Changed payment destination -> `DENY` + vendor re-verification required.
 
 The security boundary is the product: AI may interpret, explain, and prepare actions, but deterministic MandateGate controls decide what is authorized and the payment executor alone can call PayPal.
+
+## Release priorities
+
+P0, P1, and P2 are all targeted for the November hackathon submission. The tiers define build order and emergency cut priority, not product scope.
+
+- **P0:** end-to-end invoice authorization, trusted-destination enforcement, escalation, permanent idempotency, PayPal Sandbox execution, evidence trail, three canonical demo scenarios.
+- **P1:** Assistant, policy lifecycle, scheduled payments, Base Sepolia integrity witness, AG Studio / AG Grid, Bryntum timeline.
+- **P2:** Elastic, Zapier MCP, Postman, challenger/evaluation model work, sponsor-integration polish.
+
+Nothing in P1/P2 is allowed to destabilize the P0 money-movement boundary.
 
 ## Stack
 
