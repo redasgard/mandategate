@@ -1287,6 +1287,7 @@ Every dependency/service must be rechecked against current official documentatio
 ## Decisions and Open Issues
 
 Locked:
+- MIT License
 - PayPal Payouts REST API v1 as the payment execution surface
 - direct TypeScript REST adapter, OAuth client credentials, stable dual idempotency/correlation IDs, verified payout webhooks, and reconciliation-first retry behavior
 - TypeScript/Next.js-centric architecture
@@ -1320,5 +1321,5 @@ Current useful uncertainty:
 - the earlier question about who verifies Merkle history is resolved: the verifier recomputes local history and validates signed checkpoints against Base Sepolia commitments. Production WORM recoverability remains intentionally out of POC scope.
 
 Open before approval:
-- open-source license choice and repository-publication step required for final Devpost submission
+- repository-publication step required for final Devpost submission
 - final integrated consistency/security review
