@@ -624,7 +624,7 @@ Channel3, Astropods, and KERNEL are not part of the initial POC because their cu
 The dependency baseline is re-checked against official package/release sources immediately before installation and again before the demo freeze.
 
 Current checked baseline on 2026-10-07:
-- pnpm 12.10.1
+- pnpm 12.9.1
 - Next.js 16.3.8
 - React 19.3
 - TypeScript 6.0
@@ -656,7 +656,7 @@ Planned services:
 - one separate Render Cron job for integrity checkpoints/anchors
 
 Package manager:
-- pnpm 12.10.1, pinned through `packageManager: "pnpm@12.10.1"`
+- pnpm 12.9.1, pinned through `packageManager: "pnpm@12.9.1"`
 - committed `pnpm-lock.yaml`
 - Node.js 24 LTS
 - do not use an unpinned globally installed package-manager version for CI/deploy
@@ -665,7 +665,7 @@ Package manager:
 
 Prerequisites:
 - Node.js 24 LTS
-- pnpm 12.10.1
+- pnpm 12.9.1
 - PostgreSQL 18
 - optional local Valkey/Redis-compatible instance for cache-path testing
 
@@ -852,10 +852,10 @@ Canonical extraction contract:
 - field-level `confidence`
 - field-level evidence references containing artifact ID, page number, and source fragment/reference
 
-The model does not receive authority-bearing tools. The extraction request exposes only one side-effect-free strict tool/schema, `emit_invoice_facts`, whose arguments match the canonical invoice schema. Experiential/model capability is preflighted from the live model metadata; if the selected route cannot honor the required strict tool/image capability or ZDR policy, that route is disabled rather than silently downgraded.
+The model does not receive authority-bearing tools. Extraction uses Experiential Chat Completions structured output with `response_format.type=json_schema`, `strict: true`, and `additionalProperties: false`; the returned JSON must match the canonical invoice schema and is still validated again with Zod. Experiential documents that unsupported structured-output capabilities are refused rather than silently downgraded. Model/route capability is preflighted from live metadata; if the selected route cannot honor required structured-output, image-input, or ZDR requirements, that route is disabled.
 
 Validation after every model response:
-1. parse the returned tool arguments with Zod; reject unknown fields
+1. parse the returned structured JSON with Zod; reject unknown fields
 2. normalize dates/currency/decimal strings deterministically
 3. never use binary floating point for the amount
 4. resolve vendor identity only against authoritative MandateGate vendor records
@@ -893,6 +893,7 @@ Official/current references:
 - https://github.com/colinhacks/zod/releases
 - https://platform.experientiallabs.ai/models/glm-5.3-flash
 - https://platform.experientiallabs.ai/docs/openai-compatibility
+- https://platform.experientiallabs.ai/docs/models
 
 ### Historical / Behavioral Analysis
 
