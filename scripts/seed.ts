@@ -19,6 +19,7 @@ const principalId = "principal_demo_ops";
 const adminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@mandategate.local";
 const configuredPassword = process.env.DEMO_ADMIN_PASSWORD;
 const configuredAgentKey = process.env.DEMO_AGENT_API_KEY;
+const trustedDestination = process.env.DEMO_PAYPAL_RECEIVER_EMAIL ?? "ap@northstar.example";
 
 await db
   .insert(schema.organizations)
@@ -43,12 +44,12 @@ await db
   .values({
     id: "dest_northstar_primary",
     vendorId,
-    destination: "ap@northstar.example",
+    destination: trustedDestination,
     trusted: true,
   })
   .onConflictDoUpdate({
     target: schema.vendorDestinations.id,
-    set: { destination: "ap@northstar.example", trusted: true },
+    set: { destination: trustedDestination, trusted: true },
   });
 
 await db
@@ -115,10 +116,10 @@ if (!existingPrincipal) {
   console.log("demo agent exists; API key unchanged");
 }
 
-console.log("synthetic fixtures:");
+console.log(process.env.DEMO_PAYPAL_RECEIVER_EMAIL ? "sandbox receiver fixture enabled" : "synthetic receiver fixture enabled");
 console.log(JSON.stringify({
-  allow: { vendorId, invoiceNumber: "NS-1001", amountCents: 120000, currency: "USD", paymentDestination: "ap@northstar.example" },
-  escalate: { vendorId, invoiceNumber: "NS-1002", amountCents: 280000, currency: "USD", paymentDestination: "ap@northstar.example" },
+  allow: { vendorId, invoiceNumber: "NS-1001", amountCents: 120000, currency: "USD", paymentDestination: trustedDestination },
+  escalate: { vendorId, invoiceNumber: "NS-1002", amountCents: 280000, currency: "USD", paymentDestination: trustedDestination },
   deny: { vendorId, invoiceNumber: "NS-1003", amountCents: 120000, currency: "USD", paymentDestination: "changed-destination@example.net" }
 }, null, 2));
 
