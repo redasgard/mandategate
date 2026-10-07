@@ -117,6 +117,28 @@ Official docs:
 
 Use for retryable/long-running work such as document analysis, model calls, risk-analysis orchestration, and other async jobs where moving the work out of the request path improves reliability.
 
+Render retains task input arguments and return values for 30 days. Therefore workflow state must contain opaque references and non-sensitive metadata only.
+
+Allowed task inputs/outputs include:
+- payment_request_id
+- invoice_artifact_id
+- analysis_job_id
+- organization_id
+- correlation_id
+- status/result code
+- hashes and non-sensitive metrics
+
+Forbidden in task arguments or return values:
+- raw invoice/document content
+- OCR text
+- prompts or model responses
+- vendor/payment destination details
+- credentials, tokens, auth headers, or secrets
+- raw evidence bodies
+- admin explanations or attachments
+
+Workflow tasks fetch sensitive content from controlled storage at execution time and persist results directly to authoritative storage; the workflow return value carries only an opaque result reference/status.
+
 Do not introduce BullMQ or another queue stack unless Render Workflows proves insufficient.
 
 Official docs:
@@ -367,7 +389,7 @@ Every dependency must be rechecked against current official documentation before
 - **AI/model unavailable or malformed output** -> deterministic controls remain authoritative; requests that require missing evidence fail closed into escalation/denial.
 - **Valkey unavailable** -> bypass cache and continue against authoritative state; never relax authorization.
 - **PostgreSQL unavailable** -> do not move money.
-- **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion.
+- **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
 - **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified.
 - **PayPal execution uncertainty** -> reconcile using authoritative payment/idempotency identifiers before any retry.
 
