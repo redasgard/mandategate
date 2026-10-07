@@ -105,15 +105,27 @@ Official docs:
 
 - Better Auth 1.7.7
 - PostgreSQL-backed admin sessions
+- email/password enabled for the seeded hackathon admin
+- public email/password sign-up disabled with `emailAndPassword.disableSignUp=true`
+- no Magic Link, social-login, transactional-email, password-reset, or public-account-registration dependency in the POC
 - scoped organization API keys for operations agents
-- no Magic Link dependency in the POC
 - agent API keys never become human sessions
 - Valkey may assist with rate limiting or cache validation, but PostgreSQL remains authoritative
+
+Hackathon admin flow:
+- `/sign-in` is the only public human-auth entry point
+- `pnpm demo:seed` creates exactly the configured synthetic demo admin if it does not already exist
+- hosted demo credentials come from `DEMO_ADMIN_EMAIL` / `DEMO_ADMIN_PASSWORD` Render secrets and may be shared with judges through the submission instructions, never committed
+- local seeding may generate a one-time password when those variables are omitted and prints it only to the local terminal
+- no self-service sign-up endpoint is exposed by the application UI
+- the seeded account is scoped to the synthetic demo organization; production user/role provisioning remains out of POC scope
 
 Machine and human identity remain separate authority classes. Operations-agent API keys receive only explicit scopes such as `invoice:submit` and `payment:read`; they cannot acquire admin authority through session conversion.
 
 Official docs:
 - https://better-auth.com/
+- https://better-auth.com/docs/authentication/email-password
+- https://better-auth.com/docs/reference/options
 - https://better-auth.com/docs/plugins/api-key/reference
 
 ### Background execution
@@ -681,7 +693,8 @@ pnpm dev
 
 Open:
 - `http://localhost:3000`
-- `http://localhost:3000/dashboard` for the primary admin surface
+- `http://localhost:3000/sign-in` for admin login
+- `http://localhost:3000/dashboard` for the primary admin surface after authentication
 - API health/readiness endpoint: `http://localhost:3000/api/health`
 
 `pnpm demo:seed` creates only synthetic hackathon fixtures: the demo organization, trusted vendors, historical AP rows, active/proposed policies, the three canonical invoice scenarios, a local demo admin, and a scoped operations-agent API principal. It must be idempotent. Generated admin/API credentials are printed once or explicitly supplied through local-only seed variables; credentials are never committed.
@@ -712,6 +725,8 @@ Required application/database/auth:
 - `DATABASE_URL` — PostgreSQL connection URL
 - `BETTER_AUTH_SECRET` — high-entropy Better Auth secret, minimum 32 characters
 - `BETTER_AUTH_URL` — canonical app origin; `http://localhost:3000` locally, deployed Render origin in demo
+- `DEMO_ADMIN_EMAIL` — hosted synthetic demo-admin login
+- `DEMO_ADMIN_PASSWORD` — hosted synthetic demo-admin password; secret, minimum 16 characters
 - `REDIS_URL` — authenticated Render Key Value internal URL in deployed environments; optional locally because Valkey is non-authoritative
 
 Required PayPal Sandbox:
