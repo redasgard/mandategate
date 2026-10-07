@@ -240,11 +240,17 @@ Execution:
 - reconcile item: `GET /v1/payments/payouts-item/{payout_item_id}`
 
 Idempotency and correlation:
-- every PayPal POST includes `PayPal-Request-Id`
-- `sender_batch_id` is deterministically derived from the immutable MandateGate logical payment identity
-- `sender_item_id` is deterministically derived from the same logical payment identity at item scope
-- retries reuse the same identifiers
-- policy version, model result, retry count, and reevaluation state never alter the logical payment identity
+- every accepted agent submission has an immutable `logical_payment_id`
+- the agent-facing submit endpoint requires an organization-scoped `Idempotency-Key`; PostgreSQL enforces `UNIQUE (organization_id, idempotency_key)` and replays return the original payment request rather than creating another
+- `payment_executions.logical_payment_id` is permanently unique in PostgreSQL; PayPal's own duplicate window is defense in depth, not MandateGate's source of truth
+- before any PayPal POST, the executor transactionally creates or claims the single execution row for that `logical_payment_id` and persists `paypal_request_id`, `sender_batch_id`, and `sender_item_id`
+- concurrent executors use the same row/identifiers; only the transaction that creates or atomically claims the execution may submit
+- `PayPal-Request-Id`, `sender_batch_id`, and `sender_item_id` are deterministic for the immutable logical payment identity and are reused on retry
+- PayPal documents duplicate protection for a reused `sender_batch_id` within the preceding 30 days; MandateGate therefore never relies on PayPal to provide lifetime idempotency
+- if a submission response is lost, retry with the same identifiers only while the PayPal duplicate-protection window still makes that retry safe; first reconcile any known PayPal identifiers
+- if an execution is still outcome-unknown when that safe retry window has expired, mark it `PAYMENT_UNKNOWN_MANUAL_RECONCILIATION` and never POST it again automatically
+- an existing execution row is never discarded merely because policy, model results, retry count, or reevaluation state changed
+- deleting/recreating a payment request to obtain a fresh payout identity is forbidden; corrections create a new business payment only through an explicit admin-authorized replacement flow with a distinct reason and trail linkage
 
 Authority boundary:
 1. payment request is in authoritative `ALLOW` or admin-`APPROVED` state
@@ -296,9 +302,15 @@ Uncertain execution:
 - retry only with the same idempotency/correlation identifiers
 - if outcome remains uncertain, expose `PAYMENT_UNKNOWN` / reconciliation-required state and do not issue a logically new payment
 
+Permanent payout-idempotency verification before demo freeze:
+- two concurrent executor attempts for one `logical_payment_id` produce one execution row and at most one logical PayPal payout
+- a lost HTTP response followed by retry reuses the exact same local execution row and PayPal identifiers
+- a simulated retry after the documented 30-day PayPal sender-batch duplicate window does not issue a new POST; unresolved state requires manual reconciliation
+
 Official docs:
 - https://developer.paypal.com/payouts/
 - https://developer.paypal.com/api/payments.payouts-batch/v1/
+- https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/sender_batch_header/
 - https://developer.paypal.com/api/rest/authentication/
 - https://developer.paypal.com/api/rest/webhooks/
 - https://developer.paypal.com/payouts/webhooks/
@@ -625,6 +637,7 @@ Implementation:
 - persists PayPal batch/item IDs and never equates payout creation with completion
 - reconciles asynchronous outcomes from verified webhooks and direct retrieval
 - never retries an uncertain payment under a new logical identity
+- uses PostgreSQL uniqueness/transactional claiming as the permanent idempotency boundary; PayPal's sender-batch duplicate window is only an additional remote safeguard
 
 ### AI Gateway
 
@@ -794,6 +807,9 @@ The authoritative model will include at minimum:
 - payment requests
 - payment decisions
 - payment executions
+  - permanent unique `logical_payment_id`
+  - deterministic PayPal correlation IDs
+  - submission/reconciliation timestamps and outcome state
 - policies
 - policy versions
 - prepared actions
@@ -900,7 +916,7 @@ Every dependency/service must be rechecked against current official documentatio
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
 - **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid signature, or anchor mismatch all fail verification.
 - **External anchor unavailable** -> continue local append-only operation but mark new history `LOCAL_VERIFIED_PENDING_ANCHOR`; do not represent it as externally verified.
-- **PayPal execution uncertainty** -> persist the uncertain state and reconcile using existing MandateGate/PayPal identifiers before any retry. Never mint a new logical payout identity merely because the network response was lost.
+- **PayPal execution uncertainty** -> persist the uncertain state and reconcile using existing MandateGate/PayPal identifiers before any retry. Never mint a new logical payout identity merely because the network response was lost. If the remote duplicate-protection window expires while outcome remains unknown, transition to `PAYMENT_UNKNOWN_MANUAL_RECONCILIATION` and prohibit automatic resubmission.
 - **PayPal webhook invalid/duplicate/out-of-order** -> reject invalid signatures; process valid events idempotently; do not allow stale events to regress authoritative payment state.
 
 ## What Was Simplified and Why
