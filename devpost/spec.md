@@ -123,6 +123,33 @@ Official docs:
 - https://render.com/docs/workflows
 - https://render.com/docs/workflows-sdk-typescript
 
+### AI model layer
+
+- Experiential Labs OpenAI-compatible gateway: https://api.experientiallabs.ai/v1
+- GLM-5.3 Flash: provisional primary generative model
+- Qwen3.8 27B: secondary/challenger model for harder or low-confidence cases
+- TypeSafe Jev: bounded typed decision layer
+- Laya 0.3.28: open-source evaluation alternative, not initially on the critical path
+
+Current catalog check: 2026-10-06. Re-check the live catalog before build/install.
+
+GLM handles the normal assistant, document interpretation, explanation, proposal, and action-drafting path. Qwen is invoked only by explicit routing policy or evaluation when a second opinion is warranted.
+
+Jev contributes bounded judgments such as injection suspicion, provenance consistency, near-duplicate classification, intent/action alignment, confidence, and routing recommendations. Laya is evaluated against the same bounded-decision fixtures.
+
+All model results are advisory evidence. Exact arithmetic, permissions, policy enforcement, payment state, and idempotency remain ordinary deterministic code.
+
+Every model call records task, requested model, actual route/provider, validation outcome, and resulting evidence reference. Generative-provider failover may not silently change the required privacy/security posture.
+
+For Jev, use the current `jev-latest` alias during exploration and pin the exact model identifier returned by `GET /v1/models` before the build is frozen.
+
+Official references:
+- https://platform.experientiallabs.ai/docs
+- https://platform.experientiallabs.ai/models/compare?models=glm-5.3
+- https://typesafe.ai/
+- https://api.typesafe.ai/redoc
+- https://github.com/NandhaKishorM/laya/releases
+
 ### Scheduled integrity work
 
 - Render Cron for periodic checkpoint/anchor triggers if scheduling is required independently of user traffic.
@@ -324,7 +351,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- AI/model provider and document-analysis path
 - exact PayPal API/SDK surface
 - invoice/object storage
 - signer/KMS boundary
@@ -365,12 +391,16 @@ Locked:
 - no BullMQ initially
 - trail integrity separated from operational state
 - MandateGate is not the sole verifier/trust anchor
+- Experiential Labs as the initial generative-model gateway
+- GLM-5.3 Flash as the provisional primary generative model
+- Qwen3.8 27B as the secondary/challenger model
+- Jev as the bounded decision/security layer
+- Laya 0.3.28 as the evaluated open-source alternative
 
 Current useful uncertainty:
 - the exact trust-boundary implementation for isolated checkpoint signing, immutable retention, and external witnessing remains deliberately unresolved until the specific services are selected and validated.
 
 Open before approval:
-- AI/model/document path
 - PayPal surface
 - object storage
 - integrity signer/archive/witness
