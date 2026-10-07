@@ -38,7 +38,7 @@ See `devpost/spec.md` for the authoritative technical design.
 Prerequisites:
 
 - Node.js 24 LTS
-- pnpm 12.10.1
+- pnpm 12.9.1
 - PostgreSQL 18
 
 ```bash
