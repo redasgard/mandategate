@@ -57,7 +57,7 @@ The compelling moment is seeing an invoice that looks legitimate get stopped bec
 
 ## Hackathon Release Boundary
 
-MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not the definition of the product and not a disposable 2–4 hour prototype constraint.
+MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not the definition of the product. The Devpost Learn 2–4 hour proof slice maps to P0 for planning/build discipline; it does not cap the broader hackathon release.
 
 P0, P1, and P2 are all in scope for the November hackathon release. The tiers control build order and emergency cut priority only. Nothing in P1 or P2 may destabilize P0.
 
