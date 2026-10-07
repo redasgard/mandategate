@@ -1,5 +1,7 @@
 # MandateGate Design
 
+> **Status:** Superseded as the implementation authority by `devpost/spec.md`. This document preserves the original architecture rationale; resolved implementation choices live in the technical spec.
+
 ## Purpose
 
 MandateGate is a zero-trust payment authority layer for companies running autonomous operations agents.
@@ -305,14 +307,8 @@ agent request -> MandateGate decision -> PayPal sandbox execution
 - broad procurement or consumer shopping workflows
 - generalized financial SOC platform
 
-## Next design decisions
+## Implementation authority
 
-The implementation plan still needs to choose:
+The previously open implementation choices have been resolved in `devpost/spec.md`, including the application/runtime stack, AI/model route, PayPal Payouts surface, persistence, AP import contract, machine/human authentication, deployment target, artifact storage, integrity anchoring, and sponsor integrations.
 
-- application stack
-- model/provider for document understanding
-- exact PayPal API surface
-- persistence layer
-- AP import schema
-- operations-agent authentication
-- deployment target
+Do not update this design note as a second source of truth. Future implementation changes belong in the approved technical spec and its successor build artifacts.
