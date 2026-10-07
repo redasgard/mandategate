@@ -225,6 +225,7 @@ Why this surface:
 Environment:
 - Sandbox base URL: `https://api-m.sandbox.paypal.com`
 - production base URL is out of scope for the hackathon POC
+- Payouts capability must be verified with the actual sandbox app/account before the payment slice is considered unblocked; a successful one-item sandbox payout is the integration gate
 
 Authentication:
 - OAuth 2.0 client-credentials flow via `POST /v1/oauth2/token`
@@ -691,6 +692,7 @@ Every dependency must be rechecked against current official documentation before
 - Render Workflows instead of BullMQ + custom worker/queue plumbing.
 - Valkey remains cache-only instead of becoming a second operational datastore.
 - Real external vendor re-verification provider remains simulated, as approved in the PRD.
+- Live Payouts enablement/production approval is outside the hackathon POC; the demo uses PayPal Sandbox only.
 - The security kernel, PayPal execution boundary, AI authority boundary, and trail-integrity model are not simulated.
 
 ## Decisions and Open Issues
