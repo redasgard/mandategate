@@ -370,132 +370,49 @@ The product distinguishes:
 
 A human-readable explanation may be regenerated, but original reason codes, evidence references, policy context, and decision inputs remain attached to the event that produced the decision.
 
-### Locked trail-integrity model
+### POC trail-integrity model
 
-MandateGate will use a layered integrity model for consequential trails:
+MandateGate will demonstrate tamper-evident consequential trails without turning the hackathon into a storage-compliance procurement exercise.
+
+The POC implements:
 
 1. canonical append-only events
 2. per-event hash chaining
-3. periodic Merkle checkpoints over event batches
-4. checkpoint signing by a signer outside the normal application authority boundary
-5. independently retained immutable/WORM archive copies
-6. periodic anchoring of signed checkpoint commitments to a public blockchain or equivalent external witness
+3. periodic Merkle checkpoints over explicit event ranges
+4. checkpoint signatures using a dedicated MandateGate signing key
+5. periodic anchoring of checkpoint commitments to an external public timestamp/witness
+6. an independent verifier that can recompute event hashes, chain continuity, Merkle roots, checkpoint signatures, and external anchors
 
-The blockchain/external witness stores only cryptographic commitments and minimal checkpoint metadata, never invoice contents, vendor data, amounts, explanations, or other sensitive business records.
+The external witness stores only cryptographic commitments and minimal checkpoint metadata, never invoice contents, vendor data, amounts, explanations, or other sensitive business records.
 
-MandateGate may verify its own local chain continuously, but MandateGate is not the sole trust anchor. A verifier must be able to recompute event hashes and Merkle roots and compare them against signed checkpoints and externally witnessed commitments without trusting the current MandateGate application state.
+The POC explicitly distinguishes:
 
-The product must distinguish:
+- **local integrity**: does the current trail match its internal hash chain and checkpoint?
+- **anchored integrity**: does the checkpoint match a commitment outside MandateGate?
+- **recoverability**: can deleted underlying evidence be restored independently?
 
-- **integrity**: does the current trail match the committed history?
-- **authenticity**: was the checkpoint signed by the expected signer?
-- **availability/recoverability**: can the underlying evidence still be recovered from an independent immutable copy?
-- **external witness**: does an independently held commitment prove that the checkpoint existed before any later compromise?
+The POC proves the first two. It does **not** claim production-grade independent recoverability before a separate immutable archive is deployed.
 
-A primary-database or application compromise may cause disruption or deletion, but must not permit silent historical rewriting without detectable integrity failure.
+A primary-database/application compromise after an external checkpoint is anchored must not permit silent rewriting of the anchored history. Events newer than the latest external anchor are an acknowledged POC limitation and are shown as pending external anchoring rather than falsely represented as fully externally verified.
+
+#### Production hardening recommendation
+
+A real deployment should add an independent WORM archive using S3-compatible Object Lock `COMPLIANCE` mode or equivalent immutable retention, with credentials and administrative ownership separated from the MandateGate application.
+
+For stronger malicious-admin resistance, production should also move checkpoint signing outside the normal application authority boundary and optionally obtain synchronous external receipts for consequential events so the unanchored-tail window approaches zero.
+
+Those controls are recommended production architecture, not mandatory hackathon infrastructure.
 
 Acceptance criteria:
 - [ ] Event modification breaks verification.
-- [ ] Event deletion or truncation breaks verification.
+- [ ] Event deletion or truncation breaks local verification.
 - [ ] Event reordering or replacement breaks verification.
 - [ ] Recomputed Merkle roots can be checked against signed checkpoints.
-- [ ] Checkpoint signatures are verifiable independently of the application.
-- [ ] At least one immutable copy exists outside the primary application datastore.
-- [ ] At least one externally witnessed checkpoint commitment exists outside MandateGate's administrative trust boundary.
+- [ ] At least one checkpoint commitment is independently anchored outside MandateGate's application datastore.
 - [ ] Trail verification can be performed independently of the current MandateGate UI/backend.
+- [ ] The UI/verifier distinguishes locally verified, externally anchored, pending-anchor, incomplete, and broken history.
 - [ ] Sensitive business data is not published to the external witness.
-
-### Comprehensive logging and tamper-protected trails
-
-Every meaningful control-flow event must be logged, and every consequential trail must be protected against silent modification, not only through the admin UI but against compromise of the application or primary datastore.
-
-The product requirement is stronger than ordinary append-only logging:
-
-- existing trail records cannot be silently edited
-- corrections are represented as new events
-- deletion, truncation, reordering, or replacement of historical events must be detectable
-- compromise of the primary application/database must not be enough to rewrite history without detection
-- the product must preserve independent integrity evidence outside the mutable primary trail
-- payment, policy, vendor-trust, AI-decision, admin-action, routing, and execution histories are all covered by the same integrity requirement
-- a verifier must be able to detect a broken or incomplete chain of custody
-- trail integrity status itself must be visible and auditable
-
-The exact cryptographic/storage mechanism belongs in `4-spec`. Acceptable implementation directions may include cryptographic event chaining, signed checkpoints, write-once retention, independently stored integrity proofs, Merkle commitments, or external anchoring. A blockchain may be used as an external integrity anchor, but MandateGate does not require all audit data to live on-chain.
-
-Every meaningful control-flow event must be logged, including:
-- every inbound API call
-- every assistant request
-- every internal service/tool call that affects analysis or control flow
-- every decision
-- every route taken
-- every policy evaluation
-- every vendor-trust check
-- every anomaly/risk evaluation
-- every prepared action
-- every admin confirmation or rejection
-- every payment execution attempt and result
-- every re-verification transition
-- every degraded/fallback path
-- every authorization failure
-- every AI/model invocation relevant to a decision
-
-The product must make it possible to reconstruct the complete path of a payment request from intake through final state.
-
-For each logged event, the product should preserve enough context to answer:
-- what happened
-- when it happened
-- who or what initiated it
-- which route/component handled it
-- what evidence or inputs were used
-- what decision/result was produced
-- what state existed before and after
-- what downstream action followed
-
-The assistant may summarize these logs, but cannot alter them.
-
-Acceptance criteria:
-- [ ] A payment request can be traced end-to-end across all major processing steps.
-- [ ] Admin-confirmed and AI-prepared actions are distinguishable.
-- [ ] A consequential decision shows its evidence and route history.
-- [ ] Internal routing/fallback choices are visible in the activity/audit history.
-- [ ] AI/model calls relevant to a decision are traceable to that decision.
-- [ ] Failed and denied paths are logged with the same rigor as successful ones.
-- [ ] Historical trail edits, deletions, truncation, reordering, or replacement are detectable.
-- [ ] Compromise of the primary application/database alone is insufficient to silently rewrite the authoritative trail.
-- [ ] Corrections are represented as new events rather than mutations of prior evidence.
-- [ ] Trail integrity can be independently verified and its status is visible.
-
-## Activity and Accountability
-
-Source: `scope.md > Platform Boundary`.
-
-Activity is the human-readable record of important state changes.
-
-For consequential actions it records:
-- what happened
-- who or what initiated it
-- who confirmed it where applicable
-- why it happened
-- when it happened
-- evidence or attachment references
-- resulting payment/vendor/policy state
-
-Acceptance criteria:
-- [ ] An admin can trace an escalation from detection through final disposition.
-- [ ] Admin explanations are visible in the resulting history.
-- [ ] Assistant-prepared actions remain distinguishable from admin-confirmed actions.
-- [ ] Payment execution success or failure is visible.
-
-## States and Boundaries
-
-- **Normal** — no unresolved intervention is required.
-- **Escalated** — admin review is required before payment can proceed.
-- **Blocked/Denied** — payment is stopped.
-- **Scheduled** — an approved payment is queued for later execution.
-- **Overdue** — an expected obligation has passed its due point without completion.
-- **Re-verification required** — vendor trust must be re-established before the affected destination can be used.
-- **Payment failed** — an authorized execution attempt did not complete; failure is visible and not represented as paid.
-- **No urgent items** — dashboard still shows balance, spend, upcoming payments, overdue status, and recent activity rather than an empty screen.
+- [ ] The documentation clearly states that independent WORM recoverability is a production hardening recommendation, not a POC claim.
 
 ## Product Decisions
 
@@ -510,8 +427,8 @@ Acceptance criteria:
 - AI assistance is persistent across the product rather than replacing the product with a chatbot.
 - The assistant can prepare actions, but an authenticated admin must explicitly confirm consequential actions.
 - Explanations are required only for consequential actions.
-- Tamper protection is layered: hash-chained events, Merkle checkpoints, isolated checkpoint signatures, immutable independent retention, and periodic external anchoring.
-- MandateGate may verify trails locally but is never the sole verifier or trust anchor.
+- POC tamper evidence is layered: hash-chained events, Merkle checkpoints, checkpoint signatures, and periodic external anchoring. Independent WORM retention and isolated signing are production hardening recommendations.
+- MandateGate can verify trails locally, while externally anchored checkpoints provide the POC's independent trust reference.
 
 ## What We're Building
 
@@ -532,6 +449,9 @@ The POC must provide:
 - visible blocked destination-change path
 
 ## Deferred From the POC
+
+- production-grade independent WORM archive / immutable recoverability
+- isolated external checkpoint signer and synchronous per-event witness receipts
 
 - full accounting or ERP product features
 - live QuickBooks/NetSuite integrations
