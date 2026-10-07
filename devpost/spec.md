@@ -119,7 +119,7 @@ Official docs:
 ### Background execution
 
 - Render Workflows
-- TypeScript SDK `@renderinc/sdk` ^1.0 or later supported line at spec time
+- TypeScript SDK `@renderinc/sdk` 1.1.0, pinned exactly at spec time
 
 Use for retryable/long-running work such as document analysis, model calls, risk-analysis orchestration, and other async jobs where moving the work out of the request path improves reliability.
 
@@ -145,7 +145,7 @@ Forbidden in task arguments or return values:
 
 Workflow tasks fetch sensitive content from controlled storage at execution time and persist results directly to authoritative storage; the workflow return value carries only an opaque result reference/status.
 
-Do not introduce BullMQ or another queue stack unless Render Workflows proves insufficient.
+Do not introduce BullMQ or another queue stack unless Render Workflows proves insufficient. The Render SDK is Early Access, so MandateGate wraps it behind a small workflow adapter and pins the exact SDK version; upgrades are explicit and regression-tested.
 
 Official docs:
 - https://render.com/docs/workflows
@@ -219,6 +219,29 @@ Official references:
 
 Official docs:
 - https://render.com/docs/cronjobs
+
+## Dependency Version and Supply-Chain Policy
+
+The dependency baseline is re-checked against official package/release sources immediately before installation and again before the demo freeze.
+
+Current checked baseline on 2026-10-06:
+- Next.js 16.3.8
+- React 19.3
+- TypeScript 6.0
+- Node.js 24 LTS
+- PostgreSQL 18.6
+- Drizzle ORM 0.45.3
+- node-postgres / `pg` 8.23.1
+- Better Auth 1.7.7
+- Render TypeScript SDK `@renderinc/sdk` 1.1.0
+
+Rules:
+- security-sensitive and infrastructure dependencies are pinned to exact versions in the package manifest
+- the package-manager lockfile is committed
+- no caret/range upgrade is accepted implicitly for critical dependencies
+- known security advisories are checked before first install, before deployment, and before final demo/submission
+- an upgrade that changes auth, DB, workflow, AI-routing, payment, or integrity behavior requires targeted regression tests
+- preview/RC/beta releases are not used on the critical path unless a specific capability requires them and the exception is explicitly reviewed
 
 ## Where It Runs and How Someone Tries It
 
