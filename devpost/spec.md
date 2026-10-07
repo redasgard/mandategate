@@ -46,10 +46,10 @@ PRD ref: `prd.md > The Core Journey`.
 
 - Next.js 16.3.8 Active LTS
 - React 19.3
-- TypeScript 6.0
+- TypeScript 6.0.3
 - Node.js 24 LTS
 
-Reason: one language and one primary application stack for fast hackathon implementation, while remaining on supported stable/LTS releases rather than release-candidate or Current-only branches.
+Reason: one language and one primary application stack for fast hackathon implementation. TypeScript 7.0.2 is the current latest stable release, but this POC intentionally pins the mature 6.0.3 line to avoid an unnecessary compiler-major migration during the hackathon; Next.js/React and the selected sponsor libraries do not require TypeScript 7. The pin is re-evaluated after the demo freeze.
 
 Official docs:
 - https://nextjs.org/blog
@@ -627,7 +627,7 @@ Current checked baseline on 2026-10-07:
 - pnpm 12.9.1
 - Next.js 16.3.8
 - React 19.3
-- TypeScript 6.0
+- TypeScript 6.0.3
 - Node.js 24 LTS
 - PostgreSQL 18.6
 - Drizzle ORM 0.45.3
