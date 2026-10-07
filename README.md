@@ -51,7 +51,7 @@ pnpm demo:seed
 pnpm dev
 ```
 
-Open `http://localhost:3000/dashboard`.
+Open `http://localhost:3000/sign-in`, then continue to `http://localhost:3000/dashboard`. `pnpm demo:seed` creates the synthetic demo admin; local credentials are supplied through local-only seed variables or generated once and printed to the terminal.
 
 `pnpm demo:seed` uses synthetic hackathon fixtures. Do not place production credentials or real sensitive invoice data in a public clone.
 
