@@ -62,7 +62,7 @@ Official docs:
 - PostgreSQL 18, current minor 18.6 at spec time
 - Render Postgres
 
-PostgreSQL is authoritative for mutable operational state: payments, invoices, vendors, policies, confirmations, prepared actions, execution state, and references to evidence/trail entries.
+PostgreSQL is authoritative for mutable operational state: payments, invoices, vendors, policies, confirmations, prepared actions, execution state, POC artifact bodies, and references to evidence/trail entries.
 
 Official docs:
 - https://www.postgresql.org/docs/18/
@@ -303,6 +303,31 @@ Official docs:
 - https://developer.paypal.com/api/rest/webhooks/
 - https://developer.paypal.com/payouts/webhooks/
 
+### POC artifact storage
+
+Hackathon artifact storage stays inside PostgreSQL to avoid adding another managed service solely for a small number of invoice and evidence files.
+
+Implementation:
+- store uploaded PDF/image/evidence bodies in a dedicated `artifacts` table using PostgreSQL `bytea`
+- store SHA-256 digest, MIME type, original filename, byte length, organization, uploader/source, creation time, and lifecycle state alongside the binary
+- enforce an application-level maximum of 10 MiB per artifact for the POC
+- accept only explicitly supported invoice/evidence MIME types
+- stream uploads through bounded memory rather than trusting request-declared size
+- compute the digest during ingestion and verify it whenever the artifact is re-read for security-sensitive analysis
+- workflow jobs receive only `artifact_id` and fetch the body from PostgreSQL at execution time
+- artifact bytes never enter Render Workflow arguments/results, Valkey, or trail events
+- trail/evidence records reference the immutable artifact ID + digest rather than duplicating the body
+
+A small `ArtifactStore` interface isolates callers from PostgreSQL-specific storage so production can move binaries to S3/R2 or another object store without changing invoice-analysis, evidence, or trail semantics.
+
+Production recommendation:
+- move ordinary artifacts to dedicated encrypted object storage
+- apply organization retention/lifecycle policy
+- keep the independent WORM trail/archive recommendation separate from ordinary artifact storage
+
+Official docs:
+- https://www.postgresql.org/docs/18/datatype-binary.html
+
 ### Scheduled integrity work
 
 - Render Cron for periodic checkpoint/anchor triggers if scheduling is required independently of user traffic.
@@ -346,7 +371,7 @@ Planned services:
 
 The final demo must not depend on a fragile local-only environment. Local development remains supported, but the hackathon demo should use the deployed Render path if stable.
 
-Exact start commands and environment variables will be finalized once the remaining object-storage and integrity-witness choices are locked.
+Exact start commands and environment variables will be finalized once the remaining external-witness and sponsor-integration choices are locked.
 
 ## Look and Feel
 
@@ -380,13 +405,22 @@ Implements `prd.md > The Core Journey`.
 
 Receives authenticated invoice/payment requests from operations agents. The caller can request evaluation but cannot directly invoke payment execution.
 
+### Artifact Store
+
+Implements:
+- `prd.md > The Core Journey`
+- `prd.md > Payment Detail and Decision Evidence`
+- `prd.md > AI Security, Authority, and Traceability`
+
+Stores POC invoice/evidence artifacts in PostgreSQL `bytea` behind a small provider-neutral interface. It enforces file-size/type limits, computes/validates SHA-256 digests, and returns opaque artifact references to the rest of the system.
+
 ### Invoice Analysis Pipeline
 
 Implements:
 - `prd.md > Payment Detail and Decision Evidence`
 - `prd.md > AI Security, Authority, and Traceability`
 
-Extracts canonical invoice facts and marks untrusted document content as data, never instructions.
+Loads invoice bodies through `ArtifactStore`, validates the stored digest, extracts canonical invoice facts, and treats document content as data rather than instructions.
 
 ### Historical / Behavioral Analysis
 
@@ -600,6 +634,7 @@ The authoritative model will include at minimum:
 - policy versions
 - prepared actions
 - admin decisions
+- artifacts
 - evidence references
 - trail events
 - integrity checkpoints
@@ -609,7 +644,7 @@ Operational tables are mutable according to application rules. Trail events are 
 
 ## File Structure
 
-Provisional structure, refined after the remaining PayPal/storage/integrity choices are locked:
+Provisional structure, refined after the remaining external-witness and sponsor-integration choices are locked:
 
 ```text
 mandategate/
@@ -623,6 +658,7 @@ mandategate/
 ├── src/
 │   ├── auth/                    # principal/session checks
 │   ├── db/                      # schema, migrations, repositories
+│   ├── artifacts/               # PostgreSQL bytea POC artifact store + interface
 │   ├── invoices/                # normalization/extraction
 │   ├── risk/                    # behavioral analysis
 │   ├── policy/                  # deterministic policy engine
@@ -655,6 +691,8 @@ mandategate/
 ## External Services and Dependencies
 
 Locked:
+- PostgreSQL `bytea` for POC artifact storage behind an `ArtifactStore` abstraction
+- 10 MiB per-artifact POC limit with MIME allowlisting and SHA-256 integrity checks
 - PayPal Payouts REST API v1 for vendor disbursement
 - direct server-side TypeScript REST integration via native fetch
 - OAuth client credentials, stable payout idempotency identifiers, verified payout webhooks, and reconciliation
@@ -665,7 +703,6 @@ Locked:
 - Render Cron where required
 
 Still to lock before implementation:
-- invoice/object storage
 - public/external checkpoint witness
 - sponsor-tool integrations beyond Render
 
@@ -691,6 +728,7 @@ Every dependency must be rechecked against current official documentation before
 - Live Payouts enablement/production approval is outside the hackathon POC; the demo uses PayPal Sandbox only.
 - The security kernel, PayPal execution boundary, AI authority boundary, hash-chained trail, Merkle verification, and external checkpoint anchoring are real in the POC.
 - Independent WORM recoverability and isolated external signing are deferred to production hardening because they add compliance infrastructure without improving the hackathon demonstration enough to justify the cost/complexity.
+- POC invoice/evidence artifacts stay in PostgreSQL `bytea` behind an `ArtifactStore` interface; production should move binaries to dedicated object storage.
 
 ## Decisions and Open Issues
 
@@ -715,12 +753,11 @@ Locked:
 - Jev as the bounded decision/security layer
 - Laya 0.3.28 as the evaluated open-source alternative
 - Experiential ZDR/no-training controls enforced fail-closed for any sensitive model call
+- PostgreSQL-backed POC artifact storage with a provider-neutral `ArtifactStore` abstraction
 
 Current useful uncertainty:
 - the remaining external checkpoint-witness mechanism must be selected and validated; the earlier question about who verifies Merkle history is resolved by separating local verification from an external checkpoint anchor. Production WORM recoverability is intentionally out of POC scope.
 
 Open before approval:
-- PayPal surface
-- object storage
-- integrity signer/archive/witness
+- external checkpoint witness
 - remaining sponsor integrations
