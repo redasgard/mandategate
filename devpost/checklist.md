@@ -23,8 +23,8 @@ Build mode: fast
   Becomes usable: The normal seeded request crosses the real payment boundary, creates a one-item PayPal Sandbox payout, persists its remote identifiers/state, and cannot create a duplicate payment under concurrent or repeated execution.
   Why now: PayPal entitlement, payout semantics, webhooks/reconciliation, and duplicate-money protection are the highest external risk in the core journey. Proving them before document AI avoids building a polished analyzer around an unproven money-movement path.
   PRD ref: `prd.md > The Core Journey`, `prd.md > Payment Detail and Decision Evidence`, `prd.md > AI Security, Authority, and Traceability`
-  Spec ref: `spec.md > PayPal payment execution`, `spec.md > Payment Executor`, `spec.md > APIMatic`, `spec.md > Important Failure Modes`
-  Build: Use APIMatic Context Plugin while implementing the direct server-side PayPal Payouts REST adapter; add OAuth token caching, permanent PostgreSQL logical-payment uniqueness, deterministic PayPal correlation IDs, transactional execution claiming, payout state mapping, verified webhook handling/reconciliation, reporting-balance adapter, and audit events around the authority boundary. Preserve evidence that APIMatic was used.
+  Spec ref: `spec.md > PayPal payment execution`, `spec.md > Payment Executor`, `spec.md > Important Failure Modes`
+  Build: Implement the direct server-side PayPal Payouts REST adapter; add OAuth token caching, permanent PostgreSQL logical-payment uniqueness, deterministic PayPal correlation IDs, transactional execution claiming, payout state mapping, verified webhook handling/reconciliation, reporting-balance adapter, and audit events around the authority boundary. APIMatic may be used optionally if available, but is not a Slice 2 completion requirement.
   Verify (mechanical): Run payment/idempotency tests including two concurrent executor attempts, lost-response retry with identical IDs, unknown-outcome handling, and a simulated retry beyond PayPal's duplicate window; with sandbox env configured, execute one one-item payout and reconcile its item state from PayPal without a second logical payout.
   Learner check: Trigger the normal seeded invoice, open its payment detail, and confirm you can follow one MandateGate logical payment to one PayPal Sandbox payout ID and state.
   Commit: `wire paypal`
@@ -161,4 +161,6 @@ Reflection: [offered/answered/declined/already covered — personal answer belon
 Activity mode: [live app and editor, explicit static fallback, focused alternative, prior practice, or recap]
 
 ## Revisions
+
+- 2026-10-07 — APIMatic Context Plugin changed from mandatory Slice 2 evidence to optional/deferred sponsor tooling. Reason: the core PayPal path is implemented and live-verified while APIMatic is unavailable in the connected tool inventory; unavailable sponsor tooling must not block the core PayPal + AI product path.
 
