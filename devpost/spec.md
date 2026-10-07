@@ -276,19 +276,54 @@ Read-oriented by default. It may prepare explicit action objects, but consequent
 
 Implements `prd.md > AI Security, Authority, and Traceability`.
 
-Writes canonical append-only events for meaningful calls, routes, decisions, evidence, actions, and execution outcomes.
+Writes canonical append-only events for calls, routes, decisions, evidence, actions, and execution outcomes.
+
+Canonicalization and chaining:
+- canonical serialization: RFC 8785 JSON Canonicalization Scheme
+- event hash: SHA-256 with a MandateGate event-domain separator
+- each organization has an independent ordered trail stream
+- each event carries a monotonically increasing sequence number and previous-event hash
+- corrections are new events and never mutations
+- sequence gaps, duplicate sequence numbers, broken previous hashes, forks, and reordered events are integrity failures
+
+Every trail event is submitted to an isolated witness as a compact commitment containing at minimum `stream_id`, `sequence`, `event_hash`, and `previous_event_hash`. The witness returns a durable signed receipt that MandateGate stores by reference.
+
+A consequential operation is not allowed to cross its authority boundary until the trail event that authorizes or records that transition has an independently durable witness receipt. This applies to payment authorization/execution, policy activation/change, vendor-trust changes, blocks/unblocks, and admin approval/decline.
+
+If the witness is unavailable:
+- consequential state changes and money movement fail closed
+- read-only/non-consequential activity may continue only with an explicit `UNWITNESSED` integrity state and must be witnessed later before being represented as fully verified
 
 ### Trail Integrity / Checkpoint Service
 
 Implements `prd.md > AI Security, Authority, and Traceability`.
 
-Builds per-event hash links and periodic Merkle checkpoints, then sends checkpoint commitments across an isolated signing/storage boundary.
+Checkpoint protocol:
+- only witnessed event hashes are eligible
+- Merkle leaves are the ordered event hashes for an explicit inclusive sequence range
+- checkpoint metadata includes stream ID, start/end sequence, Merkle root, previous-checkpoint hash, creation time, signing-key ID, and protocol version
+- checkpoint payload is canonicalized before hashing/signing
+- an isolated signer signs the checkpoint digest outside normal application authority
+- key rotation is supported through explicit key IDs; old verification keys remain available for historical verification
+- the signed checkpoint and the covered event material/receipts are copied to immutable/WORM storage outside the primary application datastore
+- the signed checkpoint commitment is periodically published to a public blockchain or equivalent external witness
+- sensitive invoice/vendor/payment content is never placed in the external commitment
 
-MandateGate can verify locally but is not the sole trust anchor.
+The synchronous witness receipt closes the newest-event/tail gap. Merkle checkpoints and public anchoring provide efficient batch verification and an additional external timestamped commitment; they are not the first moment at which a consequential event becomes tamper-evident.
+
+MandateGate can verify locally but is never the sole trust anchor.
 
 ### Independent Trail Verifier
 
-Recomputes event hashes and Merkle roots and checks checkpoint signatures and externally witnessed commitments without trusting current application state.
+Recomputes canonical event hashes, sequence/previous-hash continuity, witness receipts, Merkle roots, checkpoint-chain continuity, checkpoint signatures, immutable-archive consistency, and external anchors without trusting the current MandateGate application/database state.
+
+Verifier outcomes are explicit:
+- `VERIFIED`
+- `UNWITNESSED`
+- `INCOMPLETE`
+- `BROKEN`
+
+Any mutation, deletion, insertion, reordering, truncation, fork, invalid receipt, invalid signature, checkpoint mismatch, or external-anchor mismatch must prevent a `VERIFIED` result.
 
 ## Data Model
 
@@ -322,7 +357,9 @@ The authoritative model will include at minimum:
 - admin decisions
 - evidence references
 - trail events
+- trail witness receipts
 - integrity checkpoints
+- integrity anchors
 
 Operational tables are mutable according to application rules. Trail events are append-only by contract and cryptographically linked.
 
@@ -390,7 +427,8 @@ Every dependency must be rechecked against current official documentation before
 - **Valkey unavailable** -> bypass cache and continue against authoritative state; never relax authorization.
 - **PostgreSQL unavailable** -> do not move money.
 - **Render Workflow failure** -> retry according to bounded policy; surface degraded state rather than pretending completion. Workflow task state must never contain sensitive invoice/model payloads because Render retains task inputs/outputs for 30 days.
-- **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified.
+- **Trail witness unavailable** -> fail closed for payment execution, policy changes, vendor-trust changes, blocks/unblocks, and admin consequential decisions; read-only work may continue only as UNWITNESSED.
+- **Trail verification mismatch** -> raise a first-class integrity incident and stop claiming affected trail history is verified. Mutation, deletion, insertion, reorder, truncation, fork, invalid receipt/signature, or anchor mismatch all fail verification.
 - **PayPal execution uncertainty** -> reconcile using authoritative payment/idempotency identifiers before any retry.
 
 ## What Was Simplified and Why
