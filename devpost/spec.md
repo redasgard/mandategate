@@ -682,7 +682,81 @@ Implements:
 - `prd.md > Payment Detail and Decision Evidence`
 - `prd.md > AI Security, Authority, and Traceability`
 
-Loads invoice bodies through `ArtifactStore`, validates the stored digest, extracts canonical invoice facts, and treats document content as data rather than instructions.
+The invoice path is explicit because document interpretation sits directly upstream of money movement.
+
+Dependencies at the current baseline:
+- `pdfjs-dist` 6.4.299 for local PDF parsing/text extraction and page rendering
+- `@napi-rs/canvas` 1.0.10 for bounded server-side PDF page rasterization where needed
+- Zod 4.6.5 for the canonical extraction contract
+- GLM-5.3 Flash through Experiential for the primary text/image interpretation path
+
+File admission:
+- accept only allowlisted PDF/JPEG/PNG invoice/evidence MIME types and verify magic bytes instead of trusting filename/Content-Type alone
+- existing 10 MiB artifact cap applies
+- POC maximum 20 PDF pages per invoice
+- reject encrypted/password-protected PDFs, malformed parse results, decompression/pathological rendering failures, and unsupported formats
+- parsing/rendering runs in the async analysis task with explicit timeout/memory/page limits; failure produces structured extraction failure evidence rather than partial authority
+
+Document preparation:
+- for text-bearing PDFs, PDF.js extracts page-separated text locally; page boundaries and artifact/page hashes are retained
+- for scanned/image-heavy PDFs, PDF.js renders bounded page images and the vision path receives only the required pages
+- JPEG/PNG invoices enter the same vision path after dimension/decoder validation
+- GLM-5.3 Flash is currently documented by Experiential as accepting text and image input; direct PDF input is not assumed
+- raw document instructions, QR-code text, notes, and embedded prose remain untrusted content
+
+Canonical extraction contract:
+- `vendor_name`
+- `invoice_number`
+- `invoice_date`
+- `due_date`
+- `currency`
+- `total_amount_decimal` as a decimal string, never a JavaScript floating-point amount
+- `line_items[]` with description, quantity/value strings when available
+- `invoice_payment_destination` as untrusted observed data
+- field-level `confidence`
+- field-level evidence references containing artifact ID, page number, and source fragment/reference
+
+The model does not receive authority-bearing tools. The extraction request exposes only one side-effect-free strict tool/schema, `emit_invoice_facts`, whose arguments match the canonical invoice schema. Experiential/model capability is preflighted from the live model metadata; if the selected route cannot honor the required strict tool/image capability or ZDR policy, that route is disabled rather than silently downgraded.
+
+Validation after every model response:
+1. parse the returned tool arguments with Zod; reject unknown fields
+2. normalize dates/currency/decimal strings deterministically
+3. never use binary floating point for the amount
+4. resolve vendor identity only against authoritative MandateGate vendor records
+5. treat the invoice payment destination only as an observed claim for comparison with the trusted vendor destination
+6. for text-bearing documents, verify quoted evidence fragments exist on the referenced page where practical; a mismatch lowers trust and escalates
+7. preserve the exact model/provider route metadata and the original artifact/page references in evidence
+
+Failure behavior:
+- malformed/invalid schema output -> one bounded repair/retry on the same immutable artifact; if still invalid, `ESCALATE` with `EXTRACTION_INVALID`
+- missing or ambiguous amount/currency/vendor -> `ESCALATE`
+- low confidence on any payment-critical field -> `ESCALATE`
+- amount/destination conflict between independent analysis and authoritative state -> deterministic controls win; never average the disagreement into ALLOW
+- prompt-injection suspicion or document instructions aimed at changing policy/tools/authority -> retain as evidence and raise risk; never execute them
+- image/vision route unavailable -> do not invent OCR output; mark extraction unavailable and escalate
+
+Verification fixtures before payment-relevant enablement:
+- normal text PDF
+- scanned PDF
+- JPEG/PNG invoice
+- malformed/truncated PDF
+- password-protected PDF
+- >20-page and >10 MiB rejection
+- missing/ambiguous amount
+- ambiguous vendor
+- destination substitution
+- direct and indirect prompt injection inside invoice text/image
+- model output with extra fields/wrong types
+- model output amount not supported by the source evidence
+- same artifact re-analysis produces provenance linked to the same immutable artifact hash
+
+Official/current references:
+- https://github.com/mozilla/pdf.js/releases
+- https://github.com/mozilla/pdf.js/wiki/Setup-pdf.js-in-a-website
+- https://www.npmjs.com/package/@napi-rs/canvas
+- https://github.com/colinhacks/zod/releases
+- https://platform.experientiallabs.ai/models/glm-5.3-flash
+- https://platform.experientiallabs.ai/docs/openai-compatibility
 
 ### Historical / Behavioral Analysis
 
@@ -927,7 +1001,11 @@ mandategate/
 │   ├── auth/                    # principal/session checks
 │   ├── db/                      # schema, migrations, repositories
 │   ├── artifacts/               # PostgreSQL bytea POC artifact store + interface
-│   ├── invoices/                # normalization/extraction
+│   ├── invoices/
+│   │   ├── schema.ts            # Zod canonical invoice extraction contract
+│   │   ├── pdf.ts               # bounded PDF.js text/raster preparation
+│   │   ├── extract.ts           # strict-tool GLM extraction + validation
+│   │   └── normalize.ts         # deterministic amount/date/currency normalization
 │   ├── risk/                    # behavioral analysis
 │   ├── policy/                  # deterministic policy engine
 │   ├── vendors/                 # trust + re-verification
