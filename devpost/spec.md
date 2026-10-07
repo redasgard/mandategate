@@ -42,7 +42,7 @@ PRD ref: `prd.md > The Core Journey`.
 
 ## Hackathon Release Priorities
 
-MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not a disposable prototype boundary. P0, P1, and P2 are all targeted for the November submission; the tiers control implementation order and emergency cut priority.
+MandateGate is the product. The PayPal AI Hackathon is the current release milestone. The Devpost Learn proof slice maps to P0; P1 and P2 remain targeted for the November submission. The tiers control implementation order and emergency cut priority rather than product scope.
 
 The non-negotiable rule is: **P1/P2 may extend or improve P0, but may never weaken or destabilize the P0 authority/payment path.**
 
