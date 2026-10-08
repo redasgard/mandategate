@@ -116,6 +116,14 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gate A implementation (2026-10-08)
+
+Code checkpoint c870270959facafc8f209e4a14f3dbb4bc806b77. CI 37811225079 SUCCESS: migration/seed idempotence, typecheck, 12 test files / 79 tests, production build, HTTP scope separation smoke, ALLOW/ESCALATE/DENY decisions without payout. Review: devpost/reviews/slice-3a-gate-a-review.md, CONTINUE to Gate B only (self-review 9.1/10).
+
+Invoice scopes: invoice:upload, invoice:analyze, invoice:read. Trusted direct payment scopes: payment:submit, payment:read. Legacy invoice:submit grants no authority. PostgreSQL disallows mixed new scopes; demo seed atomically updates existing principal to invoice-only and creates separately keyed payment principal.
+
+NOT DEPLOYED: the current stable Render Sandbox remains on verified Slice 2 code. A new DEMO_PAYMENT_AGENT_API_KEY is required before cutover; seed fails closed if absent or equal. Post-cutover secret/role verification is still pending. Invoice-derived payment integration remains BLOCKED.
+
 ## Slice 3A authority plan review
 
 Planning self-review: CONTINUE (9.1/10), limited strictly to beginning the first isolated implementation gate. Artifact: devpost/reviews/slice-3-authority-plan-review.md. The separate invoice-to-payment integration remains BLOCKED; none of the eight implementation subgates has been checked.
