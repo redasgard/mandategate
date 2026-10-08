@@ -904,6 +904,10 @@ Dependencies at the current baseline:
 - `@napi-rs/canvas` 1.0.10 for bounded server-side PDF page rasterization where needed
 - Zod 4.6.5 for the canonical extraction contract
 - GLM-5.3 Flash through Experiential for the primary text/image interpretation path
+- For image inputs, hard-pin the exact Experiential model slug `glm-5.3-flash`. Regular `glm-5.3` accepts text only and must NEVER be selected as an image fallback.
+- No custom model training, fine-tuning, or model-controlled payment tooling. Use repository-owned, versioned invoice observer/evidence Skills plus strict prompting; hash the actual runtime system instructions for audit.
+- Prior to sending image bytes, require an enabled, non-partial account-wide Experiential ZDR state, `require_zdr=true`, `require_no_training=true`, `capture_prompt_content=false`, and a Flash model route flagged ZDR-capable. Send `provider: {zdr: true}` on inference and verify `x-gateway-zdr: true`, exact resolved Flash identity, and no dropped/ignored required fields. Refuse or escalate on any drift.
+- The current JPEG/PNG image observer is advisory only. Because visually quoted text is not independently validated, mark its evidence unverified and escalate rather than using model confidence to authorize payment. PDF/image preparation and independent evidence checks remain mandatory before broader Slice 3 acceptance.
 
 File admission:
 - accept only allowlisted PDF/JPEG/PNG invoice/evidence MIME types and verify magic bytes instead of trusting filename/Content-Type alone
