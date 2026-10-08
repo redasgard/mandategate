@@ -7,6 +7,7 @@ import {
   InvoiceVisionGatewayError,
 } from "../ai/gateway/experiential-vision";
 import { assessUntrustedInvoiceExtraction } from "./schema";
+import { validateInvoiceImageContainer, InvoiceImageIntegrityError } from "./image-integrity";
 
 export class InvoiceImageAnalysisError extends Error {
   constructor(public readonly code: string, public readonly httpStatus: number) {
@@ -126,6 +127,14 @@ export async function analyzeStoredInvoiceImage(
   if (!artifact) throw new InvoiceImageAnalysisError("ARTIFACT_NOT_FOUND", 404);
   if (artifact.mimeType !== "image/jpeg" && artifact.mimeType !== "image/png") {
     throw new InvoiceImageAnalysisError("PDF_PREPARATION_REQUIRED", 422);
+  }
+  try {
+    validateInvoiceImageContainer(artifact.content, artifact.mimeType);
+  } catch (error) {
+    if (error instanceof InvoiceImageIntegrityError) {
+      throw new InvoiceImageAnalysisError(error.code, 422);
+    }
+    throw error;
   }
   if (!["STORED_UNTRUSTED", "PENDING", "FAILED"].includes(artifact.analysisStatus)) {
     throw new InvoiceImageAnalysisError("ARTIFACT_ALREADY_ANALYZED_OR_CLAIMED", 409);
