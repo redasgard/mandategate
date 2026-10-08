@@ -6,6 +6,16 @@ mode: fast
 
 # Build State
 
+## Slice 3A Gate C2: real PDF page-text provenance (2026-10-08)
+
+Status: isolated checkpoint CI **PASSED**; Gate H **BLOCKED**. Commit `7bdb70abf5722c99b5608608f9b136d568b12040`, GitHub Actions `37844738169`: frozen dependency install, migrations/seed twice, TypeScript, 18 test files / 136 tests, Next.js production build and smoke.
+
+- Pinned `pdfjs-dist@6.4.299`, regenerated frozen lockfile and removed the temporary one-time lockfile workflow.
+- PDF.js parses actual stored artifact bytes in a memory/time-bounded worker (20 pages max). Encrypted, malformed, textless, overly complex and active-content formats fail closed.
+- `invoice_pdf_source_pages` stores append-only per-page normalized PDF text, its SHA-256, exact parent artifact SHA-256 and parser version, scoped by organization. These are **page-text** hashes, not signed raw PDF page-stream hashes.
+- A signed-in organization admin may prepare/read PDF source evidence; a typed model candidate may only be assessed against those independently parsed page texts. The service does **not** mark model observations T2, authenticate the supplier, approve a binding, or call PayPal.
+- Self-review: `devpost/reviews/slice-3a-pdf-source-review.md`, CONTINUE to isolated parser-backed field verification only (8.6/10). No Slice 3 branch deploy or payout.
+
 ## Slice 1
 
 Status: complete and promoted to `main`.
