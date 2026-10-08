@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { loadInvoiceVisionPrompt, invoiceImageUserInstruction } from "../../invoices/prompts";
 import { INVOICE_VISION_RESPONSE_FORMAT } from "../../invoices/vision-json-schema";
 import type { InvoiceArtifactMime } from "../../artifacts/admission";
@@ -38,9 +39,9 @@ export type InvoiceVisionResponse = {
   routeProof: RouteProof;
 };
 
-async function readBoundedJson(response: Response): Promise<any> {
+async function readBoundedJson(response: Response, maxBytes = MAX_GATEWAY_RESPONSE_BYTES): Promise<any> {
   const contentLength = response.headers.get("content-length");
-  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_GATEWAY_RESPONSE_BYTES) {
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
     refused("EXPERIENTIAL_RESPONSE_TOO_LARGE");
   }
   if (!response.body) refused("EXPERIENTIAL_EMPTY_RESPONSE");
@@ -52,7 +53,7 @@ async function readBoundedJson(response: Response): Promise<any> {
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > MAX_GATEWAY_RESPONSE_BYTES) refused("EXPERIENTIAL_RESPONSE_TOO_LARGE");
+      if (bytes > maxBytes) refused("EXPERIENTIAL_RESPONSE_TOO_LARGE");
       buffers.push(chunk.value);
     }
   } finally {
@@ -100,7 +101,7 @@ export class ExperientialInvoiceVisionGateway {
       refused("EXPERIENTIAL_PREFLIGHT_UNAVAILABLE");
     }
     if (!response.ok) refused("EXPERIENTIAL_PREFLIGHT_REFUSED");
-    return readBoundedJson(response);
+    return readBoundedJson(response, 4 * 1024 * 1024);
   }
 
   async verifyPrivacyAndModel(): Promise<void> {
@@ -154,7 +155,8 @@ export class ExperientialInvoiceVisionGateway {
       refused("INVOICE_VISION_IMAGES_ONLY");
     }
     if (input.content.length === 0 || input.content.length > 10 * 1024 * 1024 ||
-      !/^[a-f0-9]{64}$/.test(input.artifactSha256)) {
+      !/^[a-f0-9]{64}$/.test(input.artifactSha256) ||
+      createHash("sha256").update(input.content).digest("hex") !== input.artifactSha256) {
       refused("INVOICE_IMAGE_INPUT_INVALID");
     }
     await this.verifyPrivacyAndModel();
