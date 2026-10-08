@@ -1,24 +1,27 @@
 import { randomBytes } from "node:crypto";
 import { betterAuth } from "better-auth";
-import { eq } from "drizzle-orm";
 import { loadLocalEnv } from "../src/env/load";
 
 loadLocalEnv();
 
-const [{ db }, { pool }, schema, { hashAgentKey }] = await Promise.all([
+const [{ db }, { pool }, schema, { provisionSeparatedDemoPrincipals, validateDemoPrincipalKeys }] = await Promise.all([
   import("../src/db/db"),
   import("../src/db/pool"),
   import("../src/db/schema"),
-  import("../src/auth/machine"),
+  import("../src/auth/principal-provisioning"),
 ]);
 
 const organizationId = "org_demo";
 const vendorId = "vendor_northstar";
 const policyId = "policy_demo_default";
 const principalId = "principal_demo_ops";
+const paymentPrincipalId = "principal_demo_payments";
 const adminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@mandategate.local";
 const configuredPassword = process.env.DEMO_ADMIN_PASSWORD;
 const configuredAgentKey = process.env.DEMO_AGENT_API_KEY;
+const configuredPaymentKey = process.env.DEMO_PAYMENT_AGENT_API_KEY;
+// Validate both keys before any demo state is changed.
+validateDemoPrincipalKeys({ invoiceKey: configuredAgentKey, paymentKey: configuredPaymentKey });
 const trustedDestination = process.env.DEMO_PAYPAL_RECEIVER_EMAIL ?? "ap@northstar.example";
 const usingSandboxReceiver = Boolean(process.env.DEMO_PAYPAL_RECEIVER_EMAIL);
 
@@ -90,32 +93,15 @@ if (!existingAdmin) {
   console.log(`demo admin exists: ${adminEmail}`);
 }
 
-const [existingPrincipal] = await db
-  .select({ id: schema.apiPrincipals.id })
-  .from(schema.apiPrincipals)
-  .where(eq(schema.apiPrincipals.id, principalId))
-  .limit(1);
 
-if (!existingPrincipal) {
-  const rawKey = configuredAgentKey ?? `mg_demo_${randomBytes(24).toString("base64url")}`;
-  await db.insert(schema.apiPrincipals).values({
-    id: principalId,
-    organizationId,
-    name: "Synthetic Operations Agent",
-    keyHash: hashAgentKey(rawKey),
-    scopes: ["invoice:submit", "payment:read"],
-    active: true,
-  });
-  console.log("demo agent principal created; API key material is intentionally not logged");
-} else if (configuredAgentKey) {
-  await db
-    .update(schema.apiPrincipals)
-    .set({ keyHash: hashAgentKey(configuredAgentKey), active: true })
-    .where(eq(schema.apiPrincipals.id, principalId));
-  console.log("demo agent API key synchronized from environment");
-} else {
-  console.log("demo agent exists; API key unchanged");
-}
+await provisionSeparatedDemoPrincipals({
+  organizationId,
+  invoicePrincipalId: principalId,
+  paymentPrincipalId,
+  invoiceKey: configuredAgentKey!,
+  paymentKey: configuredPaymentKey!,
+});
+console.log("demo invoice and privileged payment principal roles synchronized (keys not logged)");
 
 console.log(usingSandboxReceiver ? "sandbox receiver fixture enabled" : "synthetic receiver fixture enabled");
 console.log(JSON.stringify({
