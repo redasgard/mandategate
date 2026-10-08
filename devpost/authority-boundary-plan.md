@@ -1,6 +1,6 @@
 # MandateGate Slice 3A: Provenance-Enforced Payment Authority
 
-Status: PROPOSED IMPLEMENTATION PLAN, not built or approved for payout integration
+Status: ACTIVE BUILD; Gate A code verified in CI, live deployment pending. Invoice-to-payment integration remains BLOCKED.
 Date: 2026-10-08
 Branch: build/slice-3-invoice-intake (draft PR #2)
 Current gate: BLOCK for invoice-to-payment integration
