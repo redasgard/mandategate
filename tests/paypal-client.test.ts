@@ -29,6 +29,12 @@ describe("PayPal Payouts client",()=>{
     expect((await client.createSinglePayout(input)).payoutBatchId).toBe("ORIGINAL-1");
   });
 
+  it("does not treat an unrelated error containing a payout link as duplicate recovery",async()=>{
+    const fakeFetch:typeof fetch=async(input:any,init:any={})=>{const url=String(input);if(url.endsWith("/v1/oauth2/token"))return jsonResponse(200,{access_token:"token",expires_in:3600});if(url.endsWith("/v1/payments/payouts")&&init.method==="POST")return jsonResponse(400,{name:"INVALID_REQUEST",links:[{rel:"self",href:"https://api-m.sandbox.paypal.com/v1/payments/payouts/NOT-A-DUPLICATE"}]});throw new Error("unexpected");};
+    const client=new PayPalPayoutsClient({baseUrl:"https://api-m.sandbox.paypal.com",clientId:"id",clientSecret:"secret",fetchImpl:fakeFetch});
+    await expect(client.createSinglePayout(input)).rejects.toThrow("INVALID_REQUEST");
+  });
+
   it("rejects production hosts in the hackathon build",()=>{
     expect(()=>new PayPalPayoutsClient({baseUrl:"https://api-m.paypal.com",clientId:"id",clientSecret:"secret"})).toThrow(/Sandbox/);
   });
