@@ -1,6 +1,7 @@
 import {
   boolean,
   integer,
+  uuid,
   jsonb,
   pgTable,
   text,
@@ -67,6 +68,7 @@ export const paymentRequests = pgTable(
     requestedDestination: text("requested_destination").notNull(),
     status: text("status").notNull(),
     source: text("source").notNull(),
+    authorityBindingId: uuid("authority_binding_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("payment_requests_org_idempotency_uq").on(table.organizationId, table.idempotencyKey)],
