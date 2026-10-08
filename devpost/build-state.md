@@ -31,7 +31,8 @@ The Slice 2 CI run later re-ran the shared migration and seed twice successfully
 
 Checklist status: complete.
 
-Draft PR: #1, `wire PayPal Sandbox payout execution`
+Merged PR: #1, `wire PayPal Sandbox payout execution`
+Main release merge commit: `afab57dc9fca4c87f4f26eee4669e977c6eadbfa`
 Staged branch: `build/slice-2-gated`
 CI run: `37705824345` — success at repaired branch head `11a577594d7f1949b83bae282995e252312bb68b`
 
@@ -93,6 +94,31 @@ Scope revision:
 - APIMatic Context Plugin is now optional/deferred and is no longer a Slice 2 completion requirement.
 - The change is recorded in `devpost/spec.md` and `devpost/checklist.md`.
 - The revised contract passed formal critical review and Slice 2 is checked complete.
+
+## Slice 3
+
+Status: in progress, not yet accepted. Draft PR #2: `https://github.com/redasgard/mandategate/pull/2`.
+
+Branch: `build/slice-3-invoice-intake`, created from the Slice 2 `main` merge.
+
+First security-boundary implementation:
+- agent-authenticated raw-body `POST /api/agent/invoice-artifacts` accepts PDF, JPEG, or PNG and limits both declared length and actually streamed bytes to 10 MiB, without unbounded multipart parsing;
+- admission checks magic bytes, rejects trivially truncated PDF envelopes, and bounds image pixel dimensions; admitted data is explicitly `STORED_UNTRUSTED`, not considered parsed or safe;
+- PostgreSQL `bytea` `invoice_artifacts` table stores the exact bytes, SHA-256 digest, organization ownership, MIME, status, and timestamps; deduplication is per organization and content hash;
+- `GET /api/agent/invoice-artifacts/{id}` returns only metadata, filtered by the machine principal's organization, never invoice bytes;
+- internal artifact read re-verifies SHA-256 before analysis;
+- strict Zod extraction fields include model confidence and artifact/page/fragment evidence, while ISO dates and decimal amounts are normalized deterministically without floating-point money arithmetic;
+- the current extraction assessment never grants payment authority; unsupported evidence, invalid schema, low confidence, missing facts, or destination mismatch escalates;
+- initial admission, store, and extraction contract tests were committed to the branch.
+
+Still required for completing Slice 3:
+- robust PDF.js parsing, 20-page ceiling, encrypted/malformed PDF failure paths, and bounded page rasterization;
+- actual image decoding and scanned PDF vision preparation;
+- live Experiential route-capability/ZDR/no-training preflight, strict JSON-schema GLM extraction, gateway metadata and privacy evidence;
+- artifact-linked page hashes and provenance from actual parsed content; async analysis lifecycle, rate/resource budgets, fail-closed error handling, and canonical request handoff into the unchanged authority kernel;
+- full adversarial fixture suite, one live compliant extraction, hosted verification, and formal Slice 3 critical review.
+
+Do not deploy the in-progress Slice 3 branch over the stable Render Sandbox service or check Slice 3 complete before these gates pass.
 
 ## Render Sandbox Deployment
 
@@ -176,7 +202,7 @@ Formal review artifact: `devpost/reviews/slice-2-critical-review.md`.
 
 Final repaired-branch review: `CONTINUE`, score 9.4/10, self-review supplemented by deterministic CI and external Render/PayPal Sandbox evidence.
 
-The five ordered repairs from the previous `BLOCK` are implemented and verified to the evidence level recorded in `devpost/reviews/slice-2-critical-review.md`. PR #1 is technically merge-ready once the CI run on this final documentation state is green.
+The five ordered repairs from the previous `BLOCK` were implemented and verified to the evidence level recorded in `devpost/reviews/slice-2-critical-review.md`. Final CI passed and PR #1 was squash-merged to `main` at `afab57dc9fca4c87f4f26eee4669e977c6eadbfa`.
 
 Residual non-blocking limitations:
 - historical Render logs still contain invalidated credential strings and must remain access-restricted;
