@@ -116,6 +116,12 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gate C semantic evidence verifier
+
+TypeScript error repaired (currency match array type); 10 adversarial tests added. CI run 37821205892 at abc9bcf87a4dfb52946f38467c0ae0a3b2e8d64c: PASS, 14 test files / 103 tests, migrations/seed twice, typecheck, build and smoke. Checks now compare field values against labeled evidence quotes, distinguish totals and subtotals, reject mismatched invoice/PO identifiers, and refuse image self-citations. Self-review devpost/reviews/slice-3a-gate-c-review.md: CONTINUE to Gate D isolated work only (8.6/10).
+
+Critical limit: the page-text context is not yet independently extracted from immutable artifacts. Parsing/provenance and origin are unverified. Gate C may NOT elevate evidence to T2 or authorize any payment until bound parser output is implemented and audited. The separate invoice-derived payment integration BLOCK stands.
+
 ## Slice 3A Gate B immutable provenance records
 
 Code checkpoint c708e2a84b175add8dd0bf2a71e944c4a634237c. CI 37813228504: SUCCESS (8 migrations twice, typecheck, seed twice, 14 test files / 93 tests, Next build and smoke). Added five authority/provenance tables, database-enforced tenant and exact artifact SHA-256 relations, append-only source/evidence/trace history, immutable payment tuple, and strict SHA-256 canonical value contracts. Review devpost/reviews/slice-3a-gate-b-review.md: CONTINUE to Gate C (8.8/10 self-review).
