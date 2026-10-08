@@ -174,4 +174,11 @@ The database's external allowlist remains intentionally empty. Hosted Render MCP
 
 Formal review artifact: `devpost/reviews/slice-2-critical-review.md`.
 
-The previous review decision was `BLOCK` pending the five repairs above. Those repairs are now implemented and mechanically/live-safe verified. A final re-review of the repaired branch is required before PR #1 may merge.
+Final repaired-branch review: `CONTINUE`, score 9.4/10, self-review supplemented by deterministic CI and external Render/PayPal Sandbox evidence.
+
+The five ordered repairs from the previous `BLOCK` are implemented and verified to the evidence level recorded in `devpost/reviews/slice-2-critical-review.md`. PR #1 is technically merge-ready once the CI run on this final documentation state is green.
+
+Residual non-blocking limitations:
+- historical Render logs still contain invalidated credential strings and must remain access-restricted;
+- a new real signed PayPal webhook has not yet traversed the post-repair durable-receipt layer; the signature path was proven live before the persistence change and the new receipt/dedupe/recovery layer is database-integration-tested;
+- receipt recovery is immediate on normal delivery plus startup/duplicate-delivery recovery; periodic recovery is deferred to the broader background-execution slice.
