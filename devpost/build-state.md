@@ -6,6 +6,15 @@ mode: fast
 
 # Build State
 
+## Gate D2: Pre-enrolled issuer channel enforcement (2026-10-08)
+
+Status: CI **PASS**, 20 files / 147 tests, GitHub Actions `37855010516`, commit `ef4c69e6db457f07cdef9d691005772689b90484`.
+
+- Reject a post-invoice origin-channel enrollment at T3 attestation, proposal, and executor/binding guard. Even a directly inserted forged attestation cannot bypass the timestamp check.
+- An authenticated admin-only Same-Origin issuer-attestation endpoint accepts only a pre-enrolled channel and a separately obtained external callback/ERP/portal reference; no model or machine principal gains this authority.
+- Live supplier evidence is **NOT verified**. The API records a human claim, not a cryptographic supplier receipt. Genuine out-of-band confirmation is still required.
+- Self-review: `devpost/reviews/slice-3a-issuer-preenrollment-review.md`, 8.6/10, CONTINUE to staging reviewer UI only. Gate H remains BLOCKED.
+
 ## Slice 3A Gate C3: exact PDF verified-field lineage (2026-10-08)
 
 Status: parser-backed T2 implementation CI **PASSED**; Gate H **BLOCKED**. Code commit `96931eff6717ebaab81cc3c3d19bde26a43dc943`, GitHub Actions `37845500331` SUCCESS: migrations/seed twice, TypeScript, 19 test files / 143 tests, build and smoke.
