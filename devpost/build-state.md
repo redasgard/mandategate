@@ -6,6 +6,15 @@ mode: fast
 
 # Build State
 
+## Gate H bounded three-case Sandbox runner (2026-10-08)
+
+Status: runner **code CI verified**, external proof NOT RUN. Commit `6e0a5d82fe29168daf50110b676d07dbd7bc541e`, GitHub Actions `37856559061`, 24 files / 160 tests green including typecheck/build/smoke.
+
+- New guarded `pnpm gate-h:sandbox preflight|submit|verify` accepts only separately verified staging/DB identity, exact USD 1.01 Sandbox receiver, original PDF and tuple SHA identities, actually approved T2/T3/T4 binding, causal ESCALATE/DENY fixtures and fresh GLM metadata/request proof. A single physical Payouts POST at most is enforced inside this proof runner, even on PayPal client retry. CI never invokes submission.
+- Read-only verification demands actual PayPal batch/item, exactly one submission event, verified webhook/reconciliation and zero reconcile failures. It cannot fabricate a live result.
+- Runbook: `devpost/gate-h-live-runbook.md`. Critique: `devpost/reviews/slice-3a-gate-h-runner-review.md`, 8.5/10 for isolated code, live Gate H **BLOCKED**.
+- No issuer callback, Render staging service, Experiential real inference or PayPal Sandbox Payouts POST was performed. Render account selection needs explicit user confirmation. `main` and stable Render unchanged.
+
 ## Gate F2 / GLM privacy staging preflight (2026-10-08)
 
 Status: isolated code verified, live staging unverified. Reviewer journey commit `84e9574b3cd1d355e2b8aa33245d20723fdfb2f9`: GitHub Actions `37855588215` 21 files / 149 tests. GLM metadata/allowlisted image proof lane commit `aaf75f5fee0b9301fbc3c734e4733266c9c025eb`: GitHub Actions `37856010215` 23 files / 155 tests.
