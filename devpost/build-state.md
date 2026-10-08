@@ -116,6 +116,12 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gate D trusted issuer-channel attestation
+
+CI 37822386898 on code 9d0a12fbf3ed215b9f061980a932163c483f540d SUCCESS: 9 migrations twice, 15 test files / 109 tests, seed twice, typecheck, build and smoke. Enrolled per-vendor origin-channel registry, authenticated organization-admin membership, bounded independent source references, immutable tenant-bound origin attestations, permanent channel revocation and test-only synthetic channel. Review devpost/reviews/slice-3a-gate-d-review.md: CONTINUE to isolated Gate E only, self-review 8.8/10.
+
+A human-entered off-channel record reference is an accountable **human attestation**, not cryptographic vendor identity. There is no admin UI route yet; real independent channel verification and Gate C actual source parsing are still missing. No invoice-derived payout is authorized.
+
 ## Slice 3A Gate C semantic evidence verifier
 
 TypeScript error repaired (currency match array type); 10 adversarial tests added. CI run 37821205892 at abc9bcf87a4dfb52946f38467c0ae0a3b2e8d64c: PASS, 14 test files / 103 tests, migrations/seed twice, typecheck, build and smoke. Checks now compare field values against labeled evidence quotes, distinguish totals and subtotals, reject mismatched invoice/PO identifiers, and refuse image self-citations. Self-review devpost/reviews/slice-3a-gate-c-review.md: CONTINUE to Gate D isolated work only (8.6/10).
