@@ -1,4 +1,4 @@
-import { pool } from "@/src/db/pool";
+import { pool } from "../../db/pool";
 
 export type PayPalWebhookRefs = {
   payoutItemId?: string;
