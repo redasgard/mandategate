@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { pool } from "@/src/db/pool";
+import { pool } from "../../db/pool";
 import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
 import type {
