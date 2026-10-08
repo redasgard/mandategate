@@ -32,6 +32,11 @@ create table if not exists vendor_origin_channels (
 alter table invoice_origin_attestations
   add column if not exists origin_channel_id text;
 
+alter table invoice_origin_attestations
+  add column if not exists independent_evidence_reference text;
+
+
+
 do $$
 begin
   if not exists (
@@ -93,3 +98,6 @@ begin
   end if;
 end;
 $$;
+
+create unique index if not exists invoice_attestation_org_source_channel_evidence_uq
+  on invoice_origin_attestations (organization_id, artifact_id, origin_channel_id, proof_sha256);
