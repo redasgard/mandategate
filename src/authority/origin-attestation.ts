@@ -66,13 +66,19 @@ export async function attestInvoiceIssuerFromTrustedChannel(input: {
 
     const enrolled = await client.query(
       [
-        "select id, kind from vendor_origin_channels",
-        "where id=$1 and organization_id=$2 and vendor_id=$3 and active=true for share",
+        "select ch.id,ch.kind,(ch.created_at < art.created_at) as predates_artifact",
+        "from vendor_origin_channels ch",
+        "join invoice_artifacts art on art.id=$4 and art.organization_id=ch.organization_id",
+        "where ch.id=$1 and ch.organization_id=$2 and ch.vendor_id=$3 and ch.active=true",
+        "for share of ch,art",
       ].join(" "),
-      [input.channelId, input.organizationId, input.vendorId],
+      [input.channelId, input.organizationId, input.vendorId, input.artifactId],
     );
     const channel = enrolled.rows[0];
     if (!channel) reject("TRUSTED_VENDOR_ORIGIN_CHANNEL_REQUIRED", 409);
+    if (channel.predates_artifact !== true) {
+      reject("TRUSTED_CHANNEL_MUST_PREDATE_INVOICE", 409);
+    }
 
     const kind: string = channel.kind;
     const prefix: Record<string, string> = {

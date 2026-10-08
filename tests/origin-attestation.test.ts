@@ -13,6 +13,7 @@ const artifactId = randomUUID();
 const channelId = "channel_" + randomUUID();
 const badChannelId = "channel_" + randomUUID();
 const syntheticChannelId = "channel_" + randomUUID();
+const lateChannelId = "channel_" + randomUUID();
 const pdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
 const digest = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 let actor = "";
@@ -43,25 +44,35 @@ beforeAll(async () => {
     "insert into organization_admin_memberships(user_id,organization_id,role) values ($1,$2,'ADMIN')",
     [actor,org],
   );
-  await pool.query(
-    "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content) values ($1,$2,'application/pdf',$3,$4,$5)",
-    [artifactId,org,pdf.length,digest(pdf),pdf],
-  );
   for(const [id,orgId,vendorId,kind] of [
     [channelId,org,vendor,"KNOWN_CALLBACK"],
     [badChannelId,other,otherVendor,"KNOWN_CALLBACK"],
     [syntheticChannelId,org,vendor,"SYNTHETIC_FIXTURE"],
   ]) {
     await pool.query(
-      "insert into vendor_origin_channels(id,organization_id,vendor_id,kind,enrolled_evidence_sha256,enrolled_by_user_id) values($1,$2,$3,$4,$5,$6)",
+      "insert into vendor_origin_channels(id,organization_id,vendor_id,kind,enrolled_evidence_sha256,enrolled_by_user_id,created_at) values($1,$2,$3,$4,$5,$6,now()-interval '1 day')",
       [id,orgId,vendorId,kind,digest("independent-enrollment:"+id),actor],
     );
   }
+  await pool.query(
+    "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content) values ($1,$2,'application/pdf',$3,$4,$5)",
+    [artifactId,org,pdf.length,digest(pdf),pdf],
+  );
+  await pool.query(
+    "insert into vendor_origin_channels(id,organization_id,vendor_id,kind,enrolled_evidence_sha256,enrolled_by_user_id,created_at) values($1,$2,$3,'KNOWN_CALLBACK',$4,$5,now()+interval '1 day')",
+    [lateChannelId,org,vendor,digest("untrusted-after-invoice"),actor],
+  );
 });
 
 afterAll(async () => { await pool.end(); });
 
 describe("Gate D: trusted origin channel must predate invoice-derived authority", () => {
+  it("refuses a channel enrolled after the invoice even when an admin supplies a callback reference", async () => {
+    await expect(attestInvoiceIssuerFromTrustedChannel({
+      ...basic(),channelId:lateChannelId,
+    })).rejects.toMatchObject({code:"TRUSTED_CHANNEL_MUST_PREDATE_INVOICE"});
+  });
+
   it("refuses unprivileged issuer attestation without an organization admin", async () => {
     await expect(attestInvoiceIssuerFromTrustedChannel({
       ...basic(), actorUserId: "fake-human-actor",

@@ -137,6 +137,31 @@ beforeAll(async () => {
 afterAll(async()=>{await pool.end();});
 
 describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
+  it("rejects a forged out-of-band channel registered after the invoice", async()=>{
+    const f=await makeFixture("CHANNEL-RACE");
+    const lateChannel="channel_"+randomUUID();
+    await pool.query([
+      "insert into vendor_origin_channels",
+      "(id,organization_id,vendor_id,kind,enrolled_evidence_sha256,enrolled_by_user_id,created_at)",
+      "values($1,$2,$3,'KNOWN_CALLBACK',$4,$5,now()+interval '1 day')",
+    ].join(" "),[lateChannel,org,vendorId,sha("late-enrollment"),admin]);
+    const attested=(await pool.query([
+      "insert into invoice_origin_attestations",
+      "(organization_id,artifact_id,artifact_sha256,vendor_id,origin_channel_id,method,",
+      "verifier_actor,proof_sha256,independent_evidence_reference,expires_at)",
+      "select organization_id,id,sha256,$3,$4,'ADMIN_OUT_OF_BAND',$5,$6,",
+      "'callback-record:late-registered-callback',now()+interval '1 day'",
+      "from invoice_artifacts where organization_id=$1 and id=$2 returning id",
+    ].join(" "),[org,f.artifactId,vendorId,lateChannel,admin,sha("late-attestation")])).rows[0].id;
+    const result=await prepareInvoicePaymentProposal({
+      organizationId:org,artifactId:f.artifactId,
+      claimSetId:f.claimSetId,attestationId:attested,
+    });
+    expect(result).toMatchObject({
+      outcome:"ESCALATE",paymentAuthorized:false,bindingId:null,
+      reasonCodes:["TRUSTED_CHANNEL_MUST_PREDATE_INVOICE"],
+    });
+  });
   it("builds only an ESCALATED immutable proposal, never a payment or payout",async()=>{
     const f=await makeFixture("NORMAL");
     const first=await propose(f);
