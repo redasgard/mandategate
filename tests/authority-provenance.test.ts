@@ -11,6 +11,7 @@ const vendor1 = "vendor_" + randomUUID();
 const vendor2 = "vendor_" + randomUUID();
 const destination1 = "destination_" + randomUUID();
 const policy1 = "policy_" + randomUUID();
+const originChannel1 = "channel_" + randomUUID();
 const trace = randomUUID();
 const pdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
 const hash = createHash("sha256").update(pdf).digest("hex");
@@ -84,14 +85,23 @@ beforeAll(async () => {
     [org1, artifact1, claimId, digest("Total Due 1.01"), digest("1.01")],
   );
 
+  await client.query(
+    [
+      "insert into vendor_origin_channels",
+      "(id, organization_id, vendor_id, kind, enrolled_evidence_sha256)",
+      "values ($1, $2, $3, 'SYNTHETIC_FIXTURE', $4)",
+    ].join(" "),
+    [originChannel1, org1, vendor1, digest("test-pre-enrolled-channel")],
+  );
+
   attestationId = (await client.query(
     [
       "insert into invoice_origin_attestations",
-      "(organization_id, artifact_id, artifact_sha256, vendor_id, method,",
-      "verifier_actor, proof_sha256, expires_at)",
-      "values ($1, $2, $3, $4, 'SYNTHETIC_FIXTURE', 'ci-test-only', $5, now() + interval '1 day') returning id",
+      "(organization_id, artifact_id, artifact_sha256, vendor_id, origin_channel_id, method,",
+      "verifier_actor, proof_sha256, independent_evidence_reference, expires_at)",
+      "values ($1, $2, $3, $4, $5, 'SYNTHETIC_FIXTURE', 'ci-test-only', $6, 'synthetic-fixture:pre-enrolled-ci-test', now() + interval '1 day') returning id",
     ].join(" "),
-    [org1, artifact1, hash, vendor1, digest("synthetic-origin-test")],
+    [org1, artifact1, hash, vendor1, originChannel1, digest("synthetic-origin-test")],
   )).rows[0].id;
 
   bindingId = (await client.query(
