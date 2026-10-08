@@ -18,11 +18,11 @@ const field = (value: string | null, fragment?: string, confidence = 0.99) => ({
 function normal() {
   return {
     vendor_name: field("Northstar Components", "Northstar Components"),
-    invoice_number: field("NS-1009", "NS-1009"),
-    invoice_date: field("2026-10-01", "2026-10-01"),
-    due_date: field("2026-11-01", "2026-11-01"),
+    invoice_number: field("NS-1009", "Invoice NS-1009"),
+    invoice_date: field("2026-10-01", "Date 2026-10-01"),
+    due_date: field("2026-11-01", "Due 2026-11-01"),
     currency: field("USD", "USD"),
-    total_amount_decimal: field("1.01", "1.01"),
+    total_amount_decimal: field("1.01", "Total 1.01"),
     invoice_payment_destination: field("trusted@example.com", "trusted@example.com"),
     line_items: [],
     observed_instructions: [] as string[],
@@ -111,6 +111,93 @@ describe("untrusted invoice extraction contract", () => {
     const result = assessUntrustedInvoiceExtraction(adversarial, context);
     expect(result.state).toBe("ESCALATE");
     expect(result.reasonCodes).toContain("DOCUMENT_INSTRUCTIONS_SUSPECTED");
+  });
+
+  it("rejects contradicted total even when the source quote exists", () => {
+    const bad = normal();
+    bad.total_amount_decimal = field("999.00", "Total 1.01");
+    const result = assessUntrustedInvoiceExtraction(bad, context);
+    expect(result.state).toBe("ESCALATE");
+    expect(result.reasonCodes).toContain("TOTAL_VALUE_NOT_BOUND_TO_FINAL_LABEL");
+    expect(result.reasonCodes).toContain("FINAL_TOTAL_CONTRADICTS_MODEL");
+  });
+
+  it("cannot relabel a subtotal as the final payable amount", () => {
+    const bad = normal();
+    bad.total_amount_decimal = field("50.00", "Subtotal 50.00");
+    const result = assessUntrustedInvoiceExtraction(bad, {
+      artifactId, pages: [{ text: text + " Subtotal 50.00" }],
+    });
+    expect(result.state).toBe("ESCALATE");
+    expect(result.reasonCodes).toContain("TOTAL_VALUE_NOT_BOUND_TO_FINAL_LABEL");
+  });
+
+  it("escalates when two conflicting source totals exist", () => {
+    const result = assessUntrustedInvoiceExtraction(normal(), {
+      artifactId, pages: [{ text: text + " Total Due 19.99" }],
+    });
+    expect(result.reasonCodes).toContain("FINAL_TOTAL_AMBIGUOUS_OR_ABSENT");
+  });
+
+  it("rejects PO instead of invoice ID even if PO is in the source", () => {
+    const bad = normal();
+    bad.invoice_number = field("PO-123", "PO PO-123");
+    const result = assessUntrustedInvoiceExtraction(bad, {
+      artifactId, pages: [{ text: text + " PO PO-123" }],
+    });
+    expect(result.reasonCodes).toContain("INVOICE_NUMBER_NOT_BOUND_TO_INVOICE_LABEL");
+    expect(result.reasonCodes).toContain("INVOICE_NUMBER_AMBIGUOUS_OR_CONTRADICTED");
+  });
+
+  it("rejects invented currency despite a valid amount quote", () => {
+    const bad = normal();
+    bad.currency = field("USD", "Total 1.01");
+    const result = assessUntrustedInvoiceExtraction(bad, context);
+    expect(result.reasonCodes).toContain("CURRENCY_NOT_SOURCE_GROUNDED");
+  });
+
+  it("rejects swapped invoice and due dates", () => {
+    const bad = normal();
+    bad.due_date = field("2026-10-01", "Due 2026-11-01");
+    const result = assessUntrustedInvoiceExtraction(bad, context);
+    expect(result.reasonCodes).toContain("DATE_NOT_BOUND_TO_CORRECT_LABEL");
+  });
+
+  it("does not treat a quote from another page or artifact as proof", () => {
+    const bad = normal();
+    bad.total_amount_decimal.evidence = [{
+      artifact_id: "22222222-2222-4222-8222-222222222222",
+      page_number: 1, source_fragment: "Total 1.01",
+    }];
+    const result = assessUntrustedInvoiceExtraction(bad, context);
+    expect(result.reasonCodes).toContain("EVIDENCE_REFERENCE_MISMATCH");
+  });
+
+  it("does not mistake high-confidence image self-citations for verified evidence", () => {
+    const result = assessUntrustedInvoiceExtraction(normal(), {
+      artifactId, pages: [{ text: null }],
+    });
+    expect(result.state).toBe("ESCALATE");
+    expect(result.reasonCodes).toContain("IMAGE_EVIDENCE_NOT_VERIFIED");
+  });
+
+  it("requires the observed_instructions key even when an attacker hides attacks", () => {
+    const bad = { ...normal() } as Record<string, unknown>;
+    delete bad.observed_instructions;
+    const result = assessUntrustedInvoiceExtraction(bad, context);
+    expect(result.reasonCodes).toContain("EXTRACTION_INVALID");
+  });
+
+  it("does not derive trusted destination from a documented-looking invoice", () => {
+    const bad = normal();
+    bad.invoice_payment_destination = field("attacker@example.com", "attacker@example.com");
+    const result = assessUntrustedInvoiceExtraction(bad, {
+      artifactId,
+      pages: [{ text: text + " attacker@example.com" }],
+      trustedDestination: "trusted@example.com",
+    });
+    expect(result.state).toBe("ESCALATE");
+    expect(result.reasonCodes).toContain("DESTINATION_MISMATCH_UNTRUSTED");
   });
 
 });
