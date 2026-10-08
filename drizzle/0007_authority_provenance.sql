@@ -2,6 +2,8 @@
 -- payment authority. No privileged application route writes to these tables.
 -- Idempotent: scripts/migrate.ts replays every SQL file on each startup.
 
+create unique index if not exists invoice_artifact_org_identity_fk_uq
+  on invoice_artifacts (organization_id, id);
 create unique index if not exists invoice_artifact_provenance_fk_uq
   on invoice_artifacts (organization_id, id, sha256);
 create unique index if not exists vendor_org_identity_fk_uq
@@ -240,6 +242,22 @@ begin
   then
     raise exception 'PAYMENT_BINDING_TUPLE_IMMUTABLE';
   end if;
+  if old.authorization_status in ('AUTHORIZED','CONSUMED','REVOKED')
+    and (
+      new.approval_actor is distinct from old.approval_actor
+      or new.approval_proof_sha256 is distinct from old.approval_proof_sha256
+    )
+  then
+    raise exception 'PAYMENT_BINDING_APPROVAL_IMMUTABLE';
+  end if;
+  if old.authorization_status in ('CONSUMED', 'REVOKED')
+    and (
+      new.consumed_at is distinct from old.consumed_at
+      or new.revoked_at is distinct from old.revoked_at
+    )
+  then
+    raise exception 'PAYMENT_BINDING_TERMINAL_IMMUTABLE';
+  end if;
   if not (
     (old.authorization_status = 'PROPOSED' and new.authorization_status in ('PROPOSED', 'AUTHORIZED', 'REVOKED'))
     or (old.authorization_status = 'AUTHORIZED' and new.authorization_status in ('AUTHORIZED', 'CONSUMED', 'REVOKED'))
@@ -262,6 +280,20 @@ begin
     create trigger payment_authority_bindings_mutation_guard
     before update on payment_authority_bindings
     for each row execute function guard_authority_binding_mutation();
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'payment_authority_bindings_delete_guard'
+      and tgrelid = 'payment_authority_bindings'::regclass
+  ) then
+    create trigger payment_authority_bindings_delete_guard
+    before delete on payment_authority_bindings
+    for each row execute function reject_authority_provenance_mutation();
   end if;
 end;
 $$;
