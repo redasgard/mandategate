@@ -53,6 +53,18 @@ describe("Gate B: authority provenance contracts (non-authorizing)", () => {
     }
   });
 
+  it("distinguishes missing values from attacker-selected literal sentinel strings", () => {
+    const nullValue = { ...claim, fields: [
+      { ...claim.fields[0], observedValue: null },
+      claim.fields[1],
+    ] };
+    const literal = { ...claim, fields: [
+      { ...claim.fields[0], observedValue: "<NULL>" },
+      claim.fields[1],
+    ] };
+    expect(hashUnverifiedClaimSnapshot(nullValue)).not.toBe(hashUnverifiedClaimSnapshot(literal));
+  });
+
   it("does not accept duplicates, forged authority keys or invalid hash shapes", () => {
     expect(unverifiedClaimInputSchema.safeParse({...claim, authorized: true}).success).toBe(false);
     expect(unverifiedClaimInputSchema.safeParse({
