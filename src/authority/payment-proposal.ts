@@ -273,7 +273,7 @@ export async function prepareInvoicePaymentProposal(input: {
         "vendor_id,destination_id,policy_id,invoice_number,amount_cents,currency,",
         "destination_sha256,policy_snapshot_sha256,tuple_sha256,expires_at,",
         "proposed_outcome,proposed_reason_codes)",
-        "values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'ALLOW','[]'::jsonb)",
+        "values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'ESCALATE','[\"PENDING_EXACT_HUMAN_APPROVAL\"]'::jsonb)",
         "on conflict (organization_id,artifact_id,tuple_sha256) do nothing returning id",
       ].join(" "),
       [
@@ -312,7 +312,7 @@ export async function prepareInvoicePaymentProposal(input: {
       );
     }
     await client.query("commit");
-    return {outcome:"ALLOW",reasonCodes:["PENDING_EXACT_HUMAN_APPROVAL"],bindingId,tupleSha256,traceId,paymentAuthorized:false};
+    return {outcome:"ESCALATE",reasonCodes:["PENDING_EXACT_HUMAN_APPROVAL"],bindingId,tupleSha256,traceId,paymentAuthorized:false};
   } catch(error) {
     await client.query("rollback").catch(()=>undefined);
     throw error;
