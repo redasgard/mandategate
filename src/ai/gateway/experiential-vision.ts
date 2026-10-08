@@ -39,6 +39,21 @@ export type InvoiceVisionResponse = {
   routeProof: RouteProof;
 };
 
+// Only fields actually validated against the provider metadata API appear in
+// this receipt. It contains no key, prompt, document or model response.
+export type PrivacyPreflightReceipt = {
+  checkedAt: string;
+  accountOrgId: string;
+  targetModel: typeof INVOICE_VISION_MODEL;
+  accountZdr: true;
+  providerRequiresZdr: true;
+  providerRequiresNoTraining: true;
+  promptCaptureDisabled: true;
+  targetModelHasZdrCapability: true;
+  documentBytesSubmitted: false;
+  servingRouteVerified: false;
+};
+
 async function readBoundedJson(response: Response, maxBytes = MAX_GATEWAY_RESPONSE_BYTES): Promise<any> {
   const contentLength = response.headers.get("content-length");
   if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maxBytes) {
@@ -104,7 +119,7 @@ export class ExperientialInvoiceVisionGateway {
     return readBoundedJson(response, 4 * 1024 * 1024);
   }
 
-  async verifyPrivacyAndModel(): Promise<void> {
+  async verifyPrivacyAndModel(): Promise<PrivacyPreflightReceipt> {
     if (!this.apiKey) refused("EXPERIENTIAL_API_KEY_REQUIRED");
 
     // No image bytes are sent in any of these preflight requests.
@@ -143,6 +158,18 @@ export class ExperientialInvoiceVisionGateway {
     ) {
       refused("EXPERIENTIAL_FLASH_ZDR_ROUTE_UNAVAILABLE");
     }
+    return {
+      checkedAt: new Date().toISOString(),
+      accountOrgId: orgId,
+      targetModel: INVOICE_VISION_MODEL,
+      accountZdr: true,
+      providerRequiresZdr: true,
+      providerRequiresNoTraining: true,
+      promptCaptureDisabled: true,
+      targetModelHasZdrCapability: true,
+      documentBytesSubmitted: false,
+      servingRouteVerified: false,
+    };
   }
 
   async observeImage(input: {
