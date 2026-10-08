@@ -116,6 +116,13 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gates F/G implementation and Gate H preflight (2026-10-08)
+
+- Gate F: organization-admin exact-tuple review service, protected JSON GET/POST and simple reviewer UI. The reviewer supplies an explicit reason and confirms independent source check; the server enforces active admin membership, current authority tuple, same-origin mutation, immutable decision and replay rejection. `d1fe7941c034c26d29c7d7e7007e37fdfcca42d6` passed CI 37829328199 (121 tests); UI commit `3a77c82c5e88532c480cc2caa8780ac4f892db25` passed CI 37830327662. Self-review devpost/reviews/slice-3a-gate-f-review.md, CONTINUE to adversarial test only.
+- Gate G: checked clean baseline event lineage against actual stored value digests, substituted receiver denial, and forged instruction marker ablation with different stored artifact bytes. Commit `7556989eb32e8b7bf085472577868a797103b22a` CI 37830032708 SUCCESS (16 test files/124 tests), no payouts. Self-review devpost/reviews/slice-3a-gate-g-review.md, limited CONTINUE to preflight, not full GLM/source composition proof.
+- Gate H: **BLOCK**. Preflight devpost/reviews/slice-3a-gate-h-preflight.md. Independently parsed artifact/page provenance, live authenticated issuer/source, live reviewer/Render principal cutover and verified model ZDR posture are not established. No invoice-derived PayPal payout was attempted; prior Slice 2 payout proof is separate.
+- Stable Render web service and `main` remain unchanged. Draft PR #2 cannot merge before this release BLOCK is repaired.
+
 ## Slice 3A Gate E exact execution-bound authorization
 
 CI 37824558943 at 44ad41f799b84d3bdf1dd33e08a3ec9ef4c70618: SUCCESS, 11 migrations twice, seed twice, 16 test files/119 tests, typecheck, build/smoke. A server-only proposal takes only verified source/attestation IDs, resolves amount/vendor/destination from current trusted records, hard-denies receiver substitution, and remains ESCALATED pending approval. An explicitly approved single-use binding is atomically consumed into one verified_invoice payment request, with a current-policy/vendor/source/approval guard in PostgresExecutionStore before PayPal dispatch. The direct agent_api payout path remains independent. Review: devpost/reviews/slice-3a-gate-e-review.md, CONTINUE Gate F (9.0/10 self-review).
