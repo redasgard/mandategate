@@ -116,6 +116,19 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3 Flash image extraction checkpoint (in progress)
+
+Hard-pin confirmed against the official Experiential catalog:
+- only `glm-5.3-flash` is allowed for invoice images; text-only `glm-5.3` is not an accepted fallback.
+- Runtime actually loads and hashes the two repository skills in `skills/mandategate-invoice-observer/` and `skills/mandategate-invoice-evidence/`.
+- `src/invoices/vision-json-schema.ts` sends a strict `response_format: json_schema` contract, with runtime Zod validation in `src/invoices/schema.ts`; the prompt requests direct observation with quote evidence and explicitly ignores instructions printed inside the document.
+- `src/ai/gateway/experiential-vision.ts` preflights organization ZDR/no-training/capture policy and model route before transmitting invoice bytes, then requests `provider.zdr=true` and checks response serving-model and `x-gateway-zdr` headers. Errors fail closed, without a downgrade.
+- `POST /api/agent/invoice-artifacts/{id}/analyze` records a single tenant-scoped model observation and marks document state; `GET .../{id}/analysis` returns the observation only to a machine principal with `payment:read` scope.
+- Observations do not update trusted vendor destinations, do not create canonical payment requests, and do not call the PayPal executor. Image quotes are not independently verified and therefore escalate even when model confidence is high.
+- The model is not fine-tuned or trained. No training on invoice data by any serving provider is a separate external privacy-policy requirement and must be externally verified.
+- GitHub Actions CI run `37730620805` on commit `95b504d88682318358608d8ad854210c56845efa` passed all steps: migrations/seed twice, TypeScript, **10 test files / 61 tests**, Next build, smoke.
+- No live Experiential image inference was performed in this checkpoint; a configured API key and verified organization privacy controls are prerequisites. No Slice 3 code has been deployed to the stable Render web service.
+
 Still required for completing Slice 3:
 - robust PDF.js parsing, 20-page ceiling, encrypted/malformed PDF failure paths, and bounded page rasterization;
 - actual image decoding and scanned PDF vision preparation;
