@@ -57,7 +57,7 @@ T2 SOURCE_CORROBORATED:
 - a dedicated non-LLM verifier shows that the claimed value, its type/label and its page are consistent with independently extracted or human-transcribed source evidence. This establishes what the invoice appears to say, NOT who authored the invoice or whether it is legitimate.
 
 T3 ORIGIN_ATTESTED:
-- the document's issuer/channel is authenticated through an independent trusted integration/mandate, or an authorized human confirms the actual original artifact and source. An uploaded document that merely mentions a known vendor is not origin-attested. For this hackathon slice, human attestation or an explicitly pre-attested synthetic test fixture are sufficient; external supplier-signing integrations are deferred. Synthetic fixtures must not be misrepresented as real-world vendor authentication.
+- the document's issuer/channel is authenticated through an independent trusted integration/mandate, or an authorized human checks the issuer against a pre-established trusted source outside the invoice and records the method/evidence. Simply looking at the invoice, recognizing a logo, clicking a confirmation checkbox or trusting a printed email is NOT origin attestation. An uploaded document mentioning a known vendor is not origin-attested. For this hackathon slice, independently documented admin attestation or an explicitly pre-attested synthetic fixture are sufficient; external supplier-signing integrations are deferred. Synthetic fixtures must not be misrepresented as real-world vendor authentication.
 
 T4 PAYMENT_AUTHORIZED:
 - the server binds T2 evidence + T3 origin + trusted vendor registry + current policy + explicit standing mandate or fresh human approval to one exact payment tuple. Only the authority service may create this state.
@@ -88,7 +88,7 @@ ALLOW:
 - existing deterministic thresholds and execution idempotency pass.
 
 HUMAN-APPROVED ESCALATION:
-- a distinct authenticated authorized admin may attest the original document and approve one frozen tuple with reason, actor, timestamp and optional attachment, provided there is no hard block.
+- a distinct authenticated authorized admin may attest issuer origin using a documented independent channel, then approve one frozen tuple with reason, actor, timestamp and optional attachment, provided there is no hard block. Evidence transcription verification and issuer authentication are separate explicit actions; a single generic 'looks fine' click cannot silently satisfy both.
 - Approval is not permission to mutate a trusted destination or policy.
 - Any source, amount, vendor, destination, risk, schedule or policy version change makes it stale and requires fresh evaluation and approval.
 
@@ -187,7 +187,7 @@ Gate C: Independent semantic verification
 - Verify: source-grounded fixture matrix and malicious-but-valid-JSON models.
 
 Gate D: Origin attestation and trusted vendor binding
-- Build: authorized admin review / synthetic pre-attested fixture with explicit provenance label; bind issuer identity to trusted org/vendor; destination remains registry-owned.
+- Build: authorized admin verifies issuer origin through a pre-existing trusted directory/contact or authenticated source channel, records which channel/evidence was consulted; synthetic pre-attested fixture is labeled demo-only. Bind issuer identity to trusted org/vendor; destination remains registry-owned. A self-reported invoice field or same-image/model re-read is not an independent origin check.
 - Accept: an invoice asserting a valid vendor and matching destination without source authentication cannot auto-pay. Destination mismatch is a hard DENY, never ordinary admin override.
 - Verify: untrusted-source and out-of-band-attestation matrix.
 
@@ -249,11 +249,12 @@ Not in Slice 3A: fine-tuning/training, a generic prompt-injection firewall, auto
 
 Rollout:
 - All work remains on draft PR #2 until security gate passes. Do not overwrite the stable Slice 2 Render service during development.
-- Migrate principal scopes atomically and test old/new credentials and role boundaries; demo seed must update scopes of an existing principal, not just its secret hash.
+- Migrate principal scopes atomically and test old/new credentials and role boundaries; demo seed must update scopes of an existing principal, not just its secret hash. Never temporarily allow both invoice:submit and payment:submit for a lower-trust principal as a compatibility shortcut.
 - Re-run existing PayPal executor regression suite, typecheck, migrations/seed twice, build, smoke, and live-safe idempotency checks.
 - Run external-path verification with explicitly synthetic input and zero unintended payment requests.
 - Preserve current BLOCK review until gates pass; final review must report independent-vs-self review honestly.
 - Keep the one verified live PayPal payout from Slice 2 as a separate existing evidence artifact, not evidence that Slice 3A is complete.
+- Operational deadline: the currently configured Render free PostgreSQL instance expires November 6, before the November 12 hackathon deadline. Upgrade/replace with a verified restored database and rerun Sandbox demo before final submission; do not let a storage cutoff invalidate otherwise good evidence.
 
 Unresolved product tradeoff to lock before coding:
 - Default proposal: user-uploaded/unknown-origin invoices require source attestation or a recognized trusted ingress channel before ALLOW. A checked invoice amount alone is never sufficient. This preserves the approved PRD's useful autopay scenario only when the source is genuinely trusted.
