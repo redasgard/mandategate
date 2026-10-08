@@ -16,7 +16,8 @@
     "demo:seed": "tsx scripts/seed.ts",
     "smoke": "tsx scripts/smoke.ts",
     "verify:slice2:sandbox": "tsx scripts/verify-slice2-sandbox.ts",
-    "security:rotate-demo-credentials": "tsx scripts/rotate-demo-credentials.ts"
+    "security:rotate-demo-credentials": "tsx scripts/rotate-demo-credentials.ts",
+    "recover:paypal-webhooks": "tsx scripts/recover-paypal-webhooks.ts"
   },
   "dependencies": {
     "better-auth": "1.7.7",
