@@ -22,8 +22,10 @@ function createPdf(lines: string[]): Buffer {
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
   for (const [index,line] of lines.entries()) {
     const pageId=4+index*2,contentId=5+index*2;
-    const escaped=line.replace(/([()\\])/g,"\\$1");
-    const text=`BT /F1 12 Tf 30 700 Td (${escaped}) Tj ET`;
+    const displayedLines=line.split("\\n").map(part =>
+      "(" + part.replace(/([()\\])/g,"\\$1") + ") Tj"
+    ).join(" 0 -16 Td ");
+    const text=`BT /F1 12 Tf 30 700 Td ${displayedLines} ET`;
     objects[pageId]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
     objects[contentId]=`<< /Length ${Buffer.byteLength(text)} >>\nstream\n${text}\nendstream`;
   }
@@ -59,7 +61,7 @@ function untrustedCandidate(artifact: string, amount="1.01") {
     observed_instructions:[],line_items:[],
   };
 }
-const invoiceText="Northstar Components Invoice NS-1009 Date 2026-10-01 Due 2026-11-01 USD Total 1.01 trusted@example.com";
+const invoiceText="Northstar Components Invoice NS-1009 Date 2026-10-01\nDue 2026-11-01 USD Total 1.01 trusted@example.com";
 const pdf=createPdf([invoiceText,"Supplemental supporting page NS-1009"]);
 const encryptedPdf=Buffer.from(
   "JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgPDZhYmZiZDZmNGQ+Cj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbIDQgMCBSIF0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9SZXNvdXJjZXMgPDwKPj4KL01lZGlhQm94IFsgMC4wIDAuMCA2MTIgNzkyIF0KL1BhcmVudCAyIDAgUgo+PgplbmRvYmoKNSAwIG9iago8PAovViAyCi9SIDMKL0xlbmd0aCAxMjgKL1AgNDI5NDk2NzI5MgovRmlsdGVyIC9TdGFuZGFyZAovTyA8MmQ1ZTEwZTUzZDc0ODMwZTQ0NmMxODA0YzRlZjUyYmVjYzU3NTZkMTYzNzg2OTZiNTNkNWIyOTIxNDRlMmUzND4KL1UgPDc5ZTBlMDljZTdmYWQyMjZlZmY1NTRhYzQ1NGEyM2JhMjhiZjRlNWU0ZTc1OGE0MTY0MDA0ZTU2ZmZmYTAxMDg+Cj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA1OSAwMDAwMCBuIAowMDAwMDAwMTE4IDAwMDAwIG4gCjAwMDAwMDAxNjcgMDAwMDAgbiAKMDAwMDAwMDI2MSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMyAwIFIKL0luZm8gMSAwIFIKL0lEIFsgPDM1NjEzMTMyNjIzNzY0MzczODM1NjEzNjY0MzUzNTM3MzUzNjM5NjI2MjM3MzA2NDMyMzQzMjMyNjEzNzMwMzk+IDwzNTYxMzEzMjYyMzc2NDM3MzgzNTYxMzY2NDM1MzUzNzM1MzYzOTYyNjIzNzMwNjQzMjM0MzIzMjYxMzczMDM5PiBdCi9FbmNyeXB0IDUgMCBSCj4+CnN0YXJ0eHJlZgo0NzYKJSVFT0YK",
