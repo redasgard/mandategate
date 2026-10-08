@@ -6,6 +6,16 @@ mode: fast
 
 # Build State
 
+## Slice 3A Gate C3: exact PDF verified-field lineage (2026-10-08)
+
+Status: parser-backed T2 implementation CI **PASSED**; Gate H **BLOCKED**. Code commit `96931eff6717ebaab81cc3c3d19bde26a43dc943`, GitHub Actions `37845500331` SUCCESS: migrations/seed twice, TypeScript, 19 test files / 143 tests, build and smoke.
+
+- A signed-in organization admin can POST exact reviewed PDF fields (vendor, invoice ID, currency, total, destination) and reason to a bounded endpoint; the service checks each quote/semantic value against independently parsed immutable page text, hashes and cross-page contradictions.
+- New migration `0013_pdf_field_lineage.sql` adds composite foreign keys from T2 field evidence to exact PDF parser page-text digests, prevents unsupported promotion and duplicate verified snapshot replay.
+- Gate E proposal and execution-bound guards now reject PDF_TEXT T2 records without pinned page-source proof. The existing direct Slice 2 PayPal path is unchanged.
+- Real PDF positive and malicious amount/receiver/page substitution/cross-document conflict fixtures pass. Missing independent issuer origin still ESCALATES and yields zero payment requests.
+- Self-review: `devpost/reviews/slice-3a-pdf-field-verification-review.md`, CONTINUE to isolated origin/reviewer integration only, not release. Hosted human reviewer, real issuer contact proof, live model ZDR and invoice-derived PayPal payout remain unverified.
+
 ## Slice 3A Gate C2: real PDF page-text provenance (2026-10-08)
 
 Status: isolated checkpoint CI **PASSED**; Gate H **BLOCKED**. Commit `7bdb70abf5722c99b5608608f9b136d568b12040`, GitHub Actions `37844738169`: frozen dependency install, migrations/seed twice, TypeScript, 18 test files / 136 tests, Next.js production build and smoke.
