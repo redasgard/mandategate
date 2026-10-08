@@ -10,6 +10,7 @@ import { consumeApprovedInvoiceBinding } from "../src/authority/consume-invoice-
 import { executeAuthorizedPayment } from "../src/payments/executor/service";
 import { postgresExecutionStore } from "../src/payments/executor/postgres-store";
 import { PayPalPayoutsClient } from "../src/payments/paypal/client";
+import { ExperientialInvoiceVisionGateway } from "../src/ai/gateway/experiential-vision";
 
 loadLocalEnv();
 const mode=process.argv[2];
@@ -104,12 +105,14 @@ async function outcomeChecks(){
       claimSetId:config.GATE_H_ESCALATE_CLAIM_SET_ID,
       attestationId:config.GATE_H_ESCALATE_ATTESTATION_ID,
       expected:"ESCALATE" as const,
+      requiredReason:"ISSUER_ORIGIN_UNVERIFIED_OR_EXPIRED",
     },
     {
       artifactId:config.GATE_H_DENY_ARTIFACT_ID,
       claimSetId:config.GATE_H_DENY_CLAIM_SET_ID,
       attestationId:config.GATE_H_DENY_ATTESTATION_ID,
       expected:"DENY" as const,
+      requiredReason:"INVOICE_DESTINATION_SUBSTITUTION",
     },
   ];
   for(const c of specs){
@@ -118,6 +121,8 @@ async function outcomeChecks(){
       claimSetId:c.claimSetId,attestationId:c.attestationId,
     });
     assertNegativeCaseResult(proposal,c.expected);
+    if(!proposal.reasonCodes.includes(c.requiredReason))
+      throw new GateHSandboxError("GATE_H_NEGATIVE_REASON_NOT_CAUSAL");
     results.push({
       artifactId:c.artifactId,
       outcome:proposal.outcome,reasonCodes:proposal.reasonCodes,
@@ -167,6 +172,9 @@ try{
   }else if(mode==="submit"){
     const b=await getBound();
     await assertActualGlmObservation();
+    // Recheck actual provider account policy immediately before any payment
+    // movement. A historical mock or old GLM request ID is insufficient.
+    await new ExperientialInvoiceVisionGateway().verifyPrivacyAndModel();
     // All three cases are now fixed to exactly one organization and approved
     // SHA identities. Negative controls are evaluated before any PayPal client
     // exists or any approved binding is consumed.

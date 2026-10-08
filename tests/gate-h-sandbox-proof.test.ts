@@ -7,6 +7,7 @@ import {
 
 const uuid=(s:string)=>s.padEnd(8,"0")+"-1111-4111-8111-111111111111";
 const data:NodeJS.ProcessEnv={
+ NODE_ENV:"test",
  MANDATEGATE_STAGING:"1",
  GATE_H_ISOLATED_DATABASE_CONFIRMED:"1",
  PAYPAL_BASE_URL:"https://api-m.sandbox.paypal.com",
