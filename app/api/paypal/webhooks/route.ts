@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { getPayPalClient } from "@/src/payments/paypal/runtime";
-import { postgresExecutionStore } from "@/src/payments/executor/postgres-store";
-import { reconcileExecution } from "@/src/payments/executor/service";
+import { processVerifiedPayoutWebhook } from "@/src/payments/paypal/webhook-processor";
+import { persistVerifiedWebhookReceipt } from "@/src/payments/paypal/webhook-receipts";
 
 function requiredHeader(request: Request, name: string) {
   const value = request.headers.get(name);
@@ -16,9 +16,15 @@ function refs(event: any) {
   };
 }
 
+function isPayoutEvent(eventType: string) {
+  return eventType.startsWith("PAYMENT.PAYOUTS-ITEM.") || eventType.startsWith("PAYMENT.PAYOUTSBATCH.");
+}
+
 export async function POST(request: Request) {
   const event = await request.json().catch(() => null);
-  if (!event || typeof event?.event_type !== "string") return Response.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
+  if (!event || typeof event?.id !== "string" || typeof event?.event_type !== "string") {
+    return Response.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
+  }
 
   let headers;
   try {
@@ -34,20 +40,22 @@ export async function POST(request: Request) {
   }
 
   const paypal = getPayPalClient();
-  if (!(await paypal.verifyWebhook(headers, event))) return Response.json({ error: "INVALID_WEBHOOK_SIGNATURE" }, { status: 401 });
+  if (!(await paypal.verifyWebhook(headers, event))) {
+    return Response.json({ error: "INVALID_WEBHOOK_SIGNATURE" }, { status: 401 });
+  }
 
-  if (event.event_type.startsWith("PAYMENT.PAYOUTS-ITEM.") || event.event_type.startsWith("PAYMENT.PAYOUTSBATCH.")) {
-    const paypalRefs = refs(event);
-    after(async () => {
-      const logicalPaymentId = await postgresExecutionStore.findLogicalPaymentIdByPayPalRef(paypalRefs);
-      if (!logicalPaymentId) return;
-      await postgresExecutionStore.appendEvent(logicalPaymentId, "PAYPAL_WEBHOOK_VERIFIED", { eventId: event.id, eventType: event.event_type });
-      try {
-        await reconcileExecution(logicalPaymentId, { store: postgresExecutionStore, gateway: paypal });
-      } catch (error) {
-        await postgresExecutionStore.appendEvent(logicalPaymentId, "PAYPAL_WEBHOOK_RECONCILE_FAILED", { errorClass: error instanceof Error ? error.name : "UnknownError" });
-      }
-    });
+  if (isPayoutEvent(event.event_type)) {
+    const persisted = await persistVerifiedWebhookReceipt(
+      event.id,
+      event.event_type,
+      refs(event),
+    );
+
+    if (persisted.receipt.status !== "PROCESSED") {
+      after(async () => {
+        await processVerifiedPayoutWebhook(event.id);
+      });
+    }
   }
 
   return Response.json({ received: true });
