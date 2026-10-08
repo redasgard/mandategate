@@ -157,7 +157,7 @@ describe("Gate B: tenant-bound immutable authority records", () => {
 
   it("rejects cross-tenant field and source-to-sink lineage references", async () => {
     await expectRejected(
-      "insert into invoice_claim_field_sources (organization_id, artifact_id, claim_set_id, field_name, claimed_value_sha256) values ($1,$2,$3,'total_amount_decimal',$4)",
+      "insert into invoice_claim_field_sources (organization_id, artifact_id, claim_set_id, field_name, claimed_value_sha256) values ($1,$2,$3,'invoice_number',$4)",
       [org2, artifact2, claimId, digest("101")],
       "23503",
     );
