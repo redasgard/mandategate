@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { invoiceDecimalToCents, isIsoCalendarDate } from "./normalize";
+import { verifyFieldEvidenceBinding } from "./semantic-evidence";
 
 // Source references are evidence claims made by the model, not trusted proof.
 export const invoiceEvidenceSchema = z.object({
@@ -22,7 +23,7 @@ export const invoiceExtractionSchema = z.object({
   currency: invoiceFieldSchema,
   total_amount_decimal: invoiceFieldSchema,
   invoice_payment_destination: invoiceFieldSchema,
-  observed_instructions: z.array(z.string().min(1).max(500)).max(5).optional(),
+  observed_instructions: z.array(z.string().min(1).max(500)).max(5),
   line_items: z.array(z.object({
     description: z.string().min(1).max(1000),
     quantity_decimal: z.string().max(64).nullable(),
@@ -116,29 +117,65 @@ export function assessUntrustedInvoiceExtraction(
     reasons.add("DESTINATION_MISMATCH_UNTRUSTED");
   }
 
-  const evidence = [
-    ...Object.values(invoice).filter(
-      (item): item is z.infer<typeof invoiceFieldSchema> =>
-        typeof item === "object" && item !== null && "evidence" in item &&
-        "confidence" in item,
-    ).flatMap((field) => field.evidence),
-    ...invoice.line_items.flatMap((line) => line.evidence),
-  ];
+  const fieldNames = [
+    "vendor_name",
+    "invoice_number",
+    "invoice_date",
+    "due_date",
+    "currency",
+    "total_amount_decimal",
+    "invoice_payment_destination",
+  ] as const;
 
-  for (const ref of evidence) {
-    if (ref.artifact_id !== context.artifactId || ref.page_number > context.pages.length) {
-      reasons.add("EVIDENCE_REFERENCE_MISMATCH");
-      continue;
+  // Compare every claimed field with the exact page quote AND its labeled
+  // semantic value. A quote merely existing somewhere cannot validate a
+  // contradictory amount, invoice ID, date or currency.
+  for (const fieldName of fieldNames) {
+    const field = invoice[fieldName];
+    if (field.value && field.evidence.length === 0) {
+      reasons.add("MISSING_EVIDENCE_" + fieldName.toUpperCase());
     }
-    const source = context.pages[ref.page_number - 1]?.text;
-    if (source === null || source === undefined) {
-      // A model quote of an image is not independently verified evidence.
-      reasons.add("IMAGE_EVIDENCE_NOT_VERIFIED");
-    } else if (!normalizedText(source).includes(normalizedText(ref.source_fragment))) {
-      reasons.add("EVIDENCE_QUOTE_MISMATCH");
+    for (const ref of field.evidence) {
+      if (ref.artifact_id !== context.artifactId || ref.page_number > context.pages.length) {
+        reasons.add("EVIDENCE_REFERENCE_MISMATCH");
+        continue;
+      }
+      const source = context.pages[ref.page_number - 1]?.text;
+      if (source === null || source === undefined) {
+        // Visual quotes reported by the image model are not independently
+        // validated against OCR and cannot become trusted evidence.
+        reasons.add("IMAGE_EVIDENCE_NOT_VERIFIED");
+      } else if (field.value !== null) {
+        for (const issue of verifyFieldEvidenceBinding({
+          field: fieldName,
+          claimedValue: field.value,
+          quote: ref.source_fragment,
+          pageText: source,
+        })) reasons.add(issue);
+      } else if (!normalizedText(source).includes(normalizedText(ref.source_fragment))) {
+        reasons.add("EVIDENCE_QUOTE_MISMATCH");
+      }
+      if (POSSIBLE_DOCUMENT_INSTRUCTIONS.test(ref.source_fragment)) {
+        reasons.add("DOCUMENT_INSTRUCTIONS_SUSPECTED");
+      }
     }
-    if (POSSIBLE_DOCUMENT_INSTRUCTIONS.test(ref.source_fragment)) {
-      reasons.add("DOCUMENT_INSTRUCTIONS_SUSPECTED");
+  }
+
+  // Line items cannot authorize payment; their evidence is checked only for
+  // actual source presence. Reconciliation against the payable total is a
+  // separate deterministic step.
+  for (const item of invoice.line_items) {
+    for (const ref of item.evidence) {
+      if (ref.artifact_id !== context.artifactId || ref.page_number > context.pages.length) {
+        reasons.add("EVIDENCE_REFERENCE_MISMATCH");
+        continue;
+      }
+      const source = context.pages[ref.page_number - 1]?.text;
+      if (source === null || source === undefined) {
+        reasons.add("IMAGE_EVIDENCE_NOT_VERIFIED");
+      } else if (!normalizedText(source).includes(normalizedText(ref.source_fragment))) {
+        reasons.add("EVIDENCE_QUOTE_MISMATCH");
+      }
     }
   }
 
