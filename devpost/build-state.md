@@ -105,11 +105,16 @@ First security-boundary implementation:
 - agent-authenticated raw-body `POST /api/agent/invoice-artifacts` accepts PDF, JPEG, or PNG and limits both declared length and actually streamed bytes to 10 MiB, without unbounded multipart parsing;
 - admission checks magic bytes, rejects trivially truncated PDF envelopes, and bounds image pixel dimensions; admitted data is explicitly `STORED_UNTRUSTED`, not considered parsed or safe;
 - PostgreSQL `bytea` `invoice_artifacts` table stores the exact bytes, SHA-256 digest, organization ownership, MIME, status, and timestamps; deduplication is per organization and content hash;
+- database trigger rejects mutation of original content/ownership; serialized per-organization quota limits retained storage to 128 MiB and 500 distinct artifacts;
 - `GET /api/agent/invoice-artifacts/{id}` returns only metadata, filtered by the machine principal's organization, never invoice bytes;
 - internal artifact read re-verifies SHA-256 before analysis;
 - strict Zod extraction fields include model confidence and artifact/page/fragment evidence, while ISO dates and decimal amounts are normalized deterministically without floating-point money arithmetic;
 - the current extraction assessment never grants payment authority; unsupported evidence, invalid schema, low confidence, missing facts, or destination mismatch escalates;
-- initial admission, store, and extraction contract tests were committed to the branch.
+- admission, store, quota/immutability, and extraction contract tests were committed to the branch;
+- GitHub Actions run `37726857849` passed migrations/seed idempotence, typecheck, tests, production build, and smoke on code commit `49fa88fc21f050f8f4b8e0b7edf8fac6bb144abc`;
+- an intermediate SQL syntax failure was repaired before this green run; no Slice 3 code has been deployed to the stable Render service.
+
+Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
 Still required for completing Slice 3:
 - robust PDF.js parsing, 20-page ceiling, encrypted/malformed PDF failure paths, and bounded page rasterization;
