@@ -116,6 +116,10 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A authority plan review
+
+Planning self-review: CONTINUE (9.1/10), limited strictly to beginning the first isolated implementation gate. Artifact: devpost/reviews/slice-3-authority-plan-review.md. The separate invoice-to-payment integration remains BLOCKED; none of the eight implementation subgates has been checked.
+
 ## Slice 3A authority repair PLAN (2026-10-08)
 
 Status: planned, not implemented. Authoritative proposed design: devpost/authority-boundary-plan.md.
