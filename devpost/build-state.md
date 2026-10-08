@@ -6,6 +6,17 @@ mode: fast
 
 # Build State
 
+## Gate F2 / GLM privacy staging preflight (2026-10-08)
+
+Status: isolated code verified, live staging unverified. Reviewer journey commit `84e9574b3cd1d355e2b8aa33245d20723fdfb2f9`: GitHub Actions `37855588215` 21 files / 149 tests. GLM metadata/allowlisted image proof lane commit `aaf75f5fee0b9301fbc3c734e4733266c9c025eb`: GitHub Actions `37856010215` 23 files / 155 tests.
+
+- Authenticated reviewer can list org-scoped artifacts and walk through original PDF, verified T2 page-text facts, pre-enrolled T3 channel, human independent callback/ERP record, proposed frozen tuple and separate approval.
+- Live GLM metadata preflight checks account identity, ZDR, no-training, content-capture and Flash model without sending invoice content. Its receipt explicitly sets `servingRouteVerified:false`.
+- Adversarial GLM inference is disabled except explicit isolated staging flags and an exact synthetic image SHA allowlist. It records a T1 observation and always returns `paymentAuthorized:false`.
+- **No Render workspace selected**: Render connector refuses service inspection until the user confirms which workspace to use. Connected workspace offered: “Yevhen’s workspace.” No staging deploy or account key lookup performed.
+- **No live supplier callback, GLM API request, or PayPal Sandbox invoice-derived payout occurred.** Gate H stays BLOCKED.
+- Self-reviews `devpost/reviews/slice-3a-reviewer-journey-review.md` (8.3/10) and `devpost/reviews/slice-3a-glm-privacy-preflight-review.md` (8.5/10), CONTINUE to staging preflight only.
+
 ## Gate D2: Pre-enrolled issuer channel enforcement (2026-10-08)
 
 Status: CI **PASS**, 20 files / 147 tests, GitHub Actions `37855010516`, commit `ef4c69e6db457f07cdef9d691005772689b90484`.
