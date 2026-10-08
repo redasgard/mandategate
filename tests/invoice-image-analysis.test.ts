@@ -7,6 +7,10 @@ import { analyzeStoredInvoiceImage, getInvoiceImageObservation } from "../src/in
 
 const owner = "vision_test_" + randomUUID();
 const outsider = "vision_test_" + randomUUID();
+const recovered = "vision_test_" + randomUUID();
+const exhausted = "vision_test_" + randomUUID();
+const concurrent = "vision_test_" + randomUUID();
+const extraArtifacts: Record<string, string> = {};
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6Z0AAAAASUVORK5CYII=",
   "base64",
@@ -67,7 +71,7 @@ function mockedGateway(zdrEnabled = true) {
 }
 
 beforeAll(async () => {
-  for (const id of [owner, outsider]) {
+  for (const id of [owner, outsider, recovered, exhausted, concurrent]) {
     await pool.query("insert into organizations(id, name) values ($1, 'Image test org')", [id]);
   }
   const artifact = await storeUntrustedInvoiceArtifact({
@@ -76,10 +80,14 @@ beforeAll(async () => {
     content: png,
   });
   artifactId = artifact.artifactId;
+  for (const organizationId of [recovered, exhausted, concurrent]) {
+    const extra = await storeUntrustedInvoiceArtifact({ organizationId, contentType: "image/png", content: png });
+    extraArtifacts[organizationId] = extra.artifactId;
+  }
 });
 
 afterAll(async () => {
-  await pool.query("delete from invoice_image_observations where organization_id = any($1::text[])", [[owner, outsider]]);
+  await pool.query("delete from invoice_image_observations where organization_id = any($1::text[])", [[owner, outsider, recovered, exhausted, concurrent]]);
   await pool.query("delete from invoice_artifacts where organization_id = any($1::text[])", [[owner, outsider]]);
   await pool.query("delete from organizations where id = any($1::text[])", [[owner, outsider]]);
   await pool.end();
@@ -126,4 +134,53 @@ describe("tenant-scoped GLM invoice image observation", () => {
     });
     expect(postCount).toBe(1);
   });
+  it("reclaims a stale PENDING job once, preserving one observation", async () => {
+    const staleId = extraArtifacts[recovered];
+    await pool.query(
+      "update invoice_artifacts set analysis_status = 'PENDING', analysis_claim_id = $2, analysis_claimed_at = now() - interval '2 minutes', analysis_attempts = 1 where id = $1",
+      [staleId, "crashed-worker"],
+    );
+    const result = await analyzeStoredInvoiceImage(recovered, staleId, mockedGateway());
+    expect(result.status).toBe("ESCALATE");
+    const state = await pool.query(
+      "select analysis_status, analysis_attempts, analysis_claim_id from invoice_artifacts where id = $1",
+      [staleId],
+    );
+    expect(state.rows[0]).toMatchObject({
+      analysis_status: "ESCALATED",
+      analysis_attempts: 2,
+      analysis_claim_id: null,
+    });
+    const count = await pool.query(
+      "select count(*)::int as n from invoice_image_observations where artifact_id = $1",
+      [staleId],
+    );
+    expect(count.rows[0].n).toBe(1);
+  });
+
+  it("refuses attempts beyond the bounded retry cap", async () => {
+    const id = extraArtifacts[exhausted];
+    await pool.query(
+      "update invoice_artifacts set analysis_status = 'FAILED', analysis_attempts = 3 where id = $1",
+      [id],
+    );
+    const before = postCount;
+    await expect(analyzeStoredInvoiceImage(exhausted, id, mockedGateway())).rejects.toMatchObject({
+      code: "ARTIFACT_ANALYSIS_NOT_CLAIMABLE",
+    });
+    expect(postCount).toBe(before);
+  });
+
+  it("permits only one concurrent inference claim for a fresh artifact", async () => {
+    const id = extraArtifacts[concurrent];
+    const before = postCount;
+    const outcomes = await Promise.allSettled([
+      analyzeStoredInvoiceImage(concurrent, id, mockedGateway()),
+      analyzeStoredInvoiceImage(concurrent, id, mockedGateway()),
+    ]);
+    expect(outcomes.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.filter((x) => x.status === "rejected")).toHaveLength(1);
+    expect(postCount - before).toBe(1);
+  });
+
 });
