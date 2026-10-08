@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { derivePayPalIds } from "../src/payments/executor/ids";
-import { executeAuthorizedPayment } from "../src/payments/executor/service";
+import { executeAuthorizedPayment, reconcileExecution } from "../src/payments/executor/service";
+import { canApplyRemoteStatusTransition } from "../src/payments/paypal/status";
 import type { AuthoritativePayment, ExecutionRecord, ExecutionStatus, ExecutionStore, PaymentGateway, PayoutItemSnapshot, PayoutSubmission } from "../src/payments/executor/types";
 
 const payment: AuthoritativePayment = {
@@ -22,14 +23,14 @@ class Store implements ExecutionStore {
   async markBlocked(_id:string,s:string,_n:Date){this.row!.status="PAYMENT_BLOCKED";this.row!.rawPaypalStatus=s;return structuredClone(this.row!);}
   async markUnknown(_id:string,n:Date){this.row!.status="PAYMENT_UNKNOWN";this.row!.outcomeUnknownSince??=n;return structuredClone(this.row!);}
   async markManualReconciliation(){this.row!.status="PAYMENT_UNKNOWN_MANUAL_RECONCILIATION";return structuredClone(this.row!);}
-  async applyRemoteStatus(_id:string,s:PayoutItemSnapshot,m:ExecutionStatus,n:Date){this.row!.status=m;this.row!.paypalPayoutBatchId=s.payoutBatchId;this.row!.paypalPayoutItemId=s.payoutItemId;this.row!.rawPaypalStatus=s.transactionStatus;this.row!.lastReconciledAt=n;return structuredClone(this.row!);}
+  async applyRemoteStatus(_id:string,s:PayoutItemSnapshot,m:ExecutionStatus,n:Date){const applied=canApplyRemoteStatusTransition(this.row!.status,m);if(applied){this.row!.status=m;this.row!.paypalPayoutBatchId=s.payoutBatchId;this.row!.paypalPayoutItemId=s.payoutItemId;this.row!.rawPaypalStatus=s.transactionStatus;this.row!.lastReconciledAt=n;}return{execution:structuredClone(this.row!),applied};}
   async appendEvent(){}
 }
 class Gateway implements PaymentGateway {
-  posts:PayoutSubmission[]=[]; fail=0;
+  posts:PayoutSubmission[]=[]; fail=0; status="SUCCESS";
   async createSinglePayout(i:PayoutSubmission){this.posts.push(i);if(this.fail-->0)throw new TypeError("lost");return{payoutBatchId:"B1"};}
-  async getBatchItem(b:string){return{payoutItemId:"I1",payoutBatchId:b,transactionStatus:"SUCCESS"};}
-  async getPayoutItem(i:string){return{payoutItemId:i,payoutBatchId:"B1",transactionStatus:"SUCCESS"};}
+  async getBatchItem(b:string){return{payoutItemId:"I1",payoutBatchId:b,transactionStatus:this.status};}
+  async getPayoutItem(i:string){return{payoutItemId:i,payoutBatchId:"B1",transactionStatus:this.status};}
 }
 
 describe("payment executor",()=>{
@@ -39,4 +40,6 @@ describe("payment executor",()=>{
   it("revalidates the trusted destination before any POST",async()=>{const store=new Store({...payment,currentTrustedDestination:"changed@example.net"});const gateway=new Gateway();await expect(executeAuthorizedPayment("request-1",{store,gateway})).rejects.toThrow("TRUSTED_DESTINATION_CHANGED");expect(gateway.posts).toHaveLength(0);});
   it("revalidates authority after the execution claim and before POST",async()=>{const store=new Store();const gateway=new Gateway();store.mutateAfterClaim=()=>{store.authoritative={...store.authoritative,currentTrustedDestination:"revoked@example.net"};};const result=await executeAuthorizedPayment("request-1",{store,gateway});expect(result.status).toBe("PAYMENT_BLOCKED");expect(result.rawPaypalStatus).toBe("TRUSTED_DESTINATION_CHANGED");expect(gateway.posts).toHaveLength(0);});
   it("rejects non-USD payout execution in the P0 build",async()=>{const store=new Store({...payment,currency:"EUR"});const gateway=new Gateway();await expect(executeAuthorizedPayment("request-1",{store,gateway})).rejects.toThrow("UNSUPPORTED_PAYOUT_CURRENCY");expect(gateway.posts).toHaveLength(0);});
+  it("does not regress PAID when a stale pending status is reconciled",async()=>{const store=new Store();await store.getOrCreateExecution(payment);store.row!.status="PAID";store.row!.paypalPayoutBatchId="B1";store.row!.paypalPayoutItemId="I1";const gateway=new Gateway();gateway.status="PENDING";expect((await reconcileExecution("logical-1",{store,gateway})).status).toBe("PAID");});
+  it("allows PAID to move to a reversal state",async()=>{const store=new Store();await store.getOrCreateExecution(payment);store.row!.status="PAID";store.row!.paypalPayoutBatchId="B1";store.row!.paypalPayoutItemId="I1";const gateway=new Gateway();gateway.status="REVERSED";expect((await reconcileExecution("logical-1",{store,gateway})).status).toBe("PAYMENT_REVERSED");});
 });
