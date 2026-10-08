@@ -25,7 +25,7 @@ function normal() {
     total_amount_decimal: field("1.01", "1.01"),
     invoice_payment_destination: field("trusted@example.com", "trusted@example.com"),
     line_items: [],
-    observed_instructions: [],
+    observed_instructions: [] as string[],
   };
 }
 
