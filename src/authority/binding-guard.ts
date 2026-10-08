@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { invoiceDecimalToCents } from "../invoices/normalize";
+import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
 import { hashPaymentAuthorityTuple } from "./contracts";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -111,7 +112,8 @@ export async function inspectCurrentAuthorityBinding(
 
   const values = await client.query(
     [
-      "select field_name,normalized_value,trust_tier,verifier_proof_sha256,source_quote_sha256",
+      "select field_name,normalized_value,trust_tier,verifier_proof_sha256,",
+      "source_quote_sha256,source_parser_version,source_page_text_sha256",
       "from invoice_claim_field_sources",
       "where organization_id=$1 and artifact_id=$2 and claim_set_id=$3 for share",
     ].join(" "),
@@ -121,7 +123,10 @@ export async function inspectCurrentAuthorityBinding(
   for(const f of values.rows) {
     if(criticalFields.some(x=>x===f.field_name)) {
       if(found.has(f.field_name) || f.trust_tier!==2 ||
-        !f.verifier_proof_sha256 || !f.source_quote_sha256 || !f.normalized_value) {
+        !f.verifier_proof_sha256 || !f.source_quote_sha256 || !f.normalized_value ||
+        (b.claim_source_kind==="PDF_TEXT" &&
+          (f.source_parser_version!==PDF_SOURCE_PARSER_VERSION ||
+           !f.source_page_text_sha256))) {
         refuse("FIELD_ORIGIN_NOT_VERIFIED");
       }
       found.set(f.field_name,f.normalized_value);

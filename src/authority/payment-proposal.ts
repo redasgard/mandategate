@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { pool } from "../db/pool";
 import { invoiceDecimalToCents } from "../invoices/normalize";
+import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
 import { evaluatePayment } from "../policy/decision";
 import { hashPaymentAuthorityTuple } from "./contracts";
 
@@ -100,7 +101,8 @@ export async function prepareInvoicePaymentProposal(input: {
 
     const fields = await client.query(
       [
-        "select field_name,normalized_value,trust_tier,source_quote_sha256,verifier_proof_sha256",
+        "select field_name,normalized_value,trust_tier,source_quote_sha256,verifier_proof_sha256,",
+        "source_parser_version,source_page_text_sha256",
         "from invoice_claim_field_sources where claim_set_id=$1 and organization_id=$2 and artifact_id=$3",
         "for share",
       ].join(" "),
@@ -111,7 +113,10 @@ export async function prepareInvoicePaymentProposal(input: {
       if (requiredFields.some((x) => x === row.field_name)) {
         if (found.has(row.field_name) || row.trust_tier !== 2 ||
           !row.verifier_proof_sha256 || !row.normalized_value ||
-          !row.source_quote_sha256) {
+          !row.source_quote_sha256 ||
+          (verified.source_kind==="PDF_TEXT" &&
+           (row.source_parser_version!==PDF_SOURCE_PARSER_VERSION ||
+            !row.source_page_text_sha256))) {
           const held = await refuse("ESCALATE",["SOURCE_FIELD_PROOF_INCOMPLETE"]);
           await client.query("commit");
           return held;
