@@ -83,7 +83,7 @@ async function assertNegativeArtifactsOwned(){
 }
 async function assertActualGlmObservation(){
   const r=await pool.query([
-    "select id from invoice_image_observations",
+    "select artifact_id from invoice_image_observations",
     "where organization_id=$1 and artifact_id=$2",
     "and gateway_request_id=$3 and model='glm-5.3-flash'",
     "and gateway_zdr=true and provider_name is not null and state='ESCALATE'",
