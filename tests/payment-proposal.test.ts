@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
 import { prepareInvoicePaymentProposal } from "../src/authority/payment-proposal";
+import { consumeApprovedInvoiceBinding } from "../src/authority/consume-invoice-binding";
+import { PostgresExecutionStore } from "../src/payments/executor/postgres-store";
 
 const org = "proposal_test_" + randomUUID();
 const foreignOrg = "proposal_test_" + randomUUID();
@@ -13,6 +15,8 @@ const sha = (s: string | Buffer) => createHash("sha256").update(s).digest("hex")
 const pdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
 let admin = "";
 const trusted = "trusted@example.com";
+let approvedBindingId: string | null = null;
+let approvedRequestId: string | null = null;
 
 type Fixture = { artifactId: string; claimSetId: string; attestationId: string };
 
@@ -138,6 +142,7 @@ describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
       paymentAuthorized:false,
     });
     expect(first.bindingId).toBeTruthy();
+    approvedBindingId=first.bindingId;
     expect(first.tupleSha256).toMatch(/^[a-f0-9]{64}$/);
     const again=await propose(f);
     expect(again.bindingId).toBe(first.bindingId);
@@ -164,6 +169,75 @@ describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
     )).rejects.toThrow(/PAYMENT_BINDING_TUPLE_IMMUTABLE/);
   });
 
+
+  it("consumes only an explicitly approved binding exactly once into verified_invoice",async()=>{
+    if(!approvedBindingId)throw new Error("BASELINE_PROPOSAL_REQUIRED");
+    await pool.query(
+      "update payment_authority_bindings set authorization_status='AUTHORIZED',approval_actor=$2,approval_proof_sha256=$3 where id=$1",
+      [approvedBindingId,admin,sha("signed-approval-stand-in:"+approvedBindingId)],
+    );
+    const first=await consumeApprovedInvoiceBinding(approvedBindingId);
+    const replay=await consumeApprovedInvoiceBinding(approvedBindingId);
+    expect(first).toMatchObject({
+      status:"ALLOWED",replayed:false,paymentExecuted:false,
+      decision:{outcome:"ALLOW"},
+    });
+    expect(replay).toMatchObject({
+      requestId:first.requestId,replayed:true,paymentExecuted:false,
+    });
+    approvedRequestId=first.requestId;
+    const req=await pool.query(
+      "select source,authority_binding_id,amount_cents,requested_destination from payment_requests where id=$1",
+      [first.requestId],
+    );
+    expect(req.rows[0]).toMatchObject({
+      source:"verified_invoice",authority_binding_id:approvedBindingId,
+      amount_cents:101,requested_destination:trusted,
+    });
+    const authoritative=await new PostgresExecutionStore().getAuthoritativePayment(first.requestId);
+    expect(authoritative).toMatchObject({
+      requestId:first.requestId,amountCents:101,requestedDestination:trusted,decisionOutcome:"ALLOW",
+    });
+    const count=await pool.query(
+      "select count(*)::int as n from payment_requests where authority_binding_id=$1",
+      [approvedBindingId],
+    );
+    expect(count.rows[0].n).toBe(1);
+  });
+
+  it("denies forged verified_invoice payment without an authority binding",async()=>{
+    await expect(pool.query(
+      [
+        "insert into payment_requests",
+        "(id,logical_payment_id,organization_id,vendor_id,invoice_number,amount_cents,",
+        "currency,requested_destination,status,source)",
+        "values($1,$2,$3,$4,'FORGED-UNBOUND',101,'USD',$5,'ALLOWED','verified_invoice')",
+      ].join(" "),
+      [randomUUID(),randomUUID(),org,vendorId,trusted],
+    )).rejects.toMatchObject({code:"23514"});
+  });
+
+  it("rejects newly disabled trusted destinations at the executor revalidation boundary",async()=>{
+    if(!approvedRequestId)throw new Error("BOUND_REQUEST_REQUIRED");
+    await pool.query("update vendor_destinations set trusted=false where id=$1",[destinationId]);
+    try {
+      const result=await new PostgresExecutionStore().getAuthoritativePayment(approvedRequestId);
+      expect(result).toBeNull();
+    } finally {
+      await pool.query("update vendor_destinations set trusted=true where id=$1",[destinationId]);
+    }
+  });
+
+  it("rejects policy changes after approval instead of trusting an old tuple hash",async()=>{
+    if(!approvedRequestId)throw new Error("BOUND_REQUEST_REQUIRED");
+    await pool.query("update policies set auto_pay_max_amount_cents=10 where id=$1",[policyId]);
+    try {
+      const result=await new PostgresExecutionStore().getAuthoritativePayment(approvedRequestId);
+      expect(result).toBeNull();
+    } finally {
+      await pool.query("update policies set auto_pay_max_amount_cents=10000 where id=$1",[policyId]);
+    }
+  });
   it("hard denies a forged printed receiver; it never selects the payout destination",async()=>{
     const f=await makeFixture("FORGED-RECEIVER",{printedReceiver:"attacker@example.com"});
     const result=await propose(f);
