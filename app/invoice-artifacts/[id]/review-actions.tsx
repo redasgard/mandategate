@@ -110,7 +110,7 @@ export function InvoiceArtifactReview(props:{
   });
   const propose=()=>run("proposal",async()=>{
     const result=await send("/proposals",{
-      claimSetId,attestationId,
+      claimSetId:claimId,attestationId,
       expectedArtifactSha256:props.artifactSha256,
     });
     setProposal(result.proposal);
