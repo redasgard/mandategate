@@ -116,6 +116,18 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3 authority provenance audit (2026-10-08)
+
+**Decision: BLOCK invoice-to-payment integration**, not the existing isolated image observer or the completed Slice 2 executor. See `devpost/reviews/slice-3-injection-boundary-audit.md`.
+
+Reviewed actual SANS MCP slide deck, DEF CON Urd workshop deck, our prior SANS Find Evil! judging methodology, and the official Find Evil! judge requirements. Prior wording that the implemented system had proven "explicit prompt-injection defenses" was overstated.
+
+High findings:
+- Canonical payment-request API and policy do not require a provenance-bound invoice claim, so an invoice-derived automation bridge would permit low-trust field influence unless a new server-side authority check is added.
+- For text evidence, source-fragment existence is checked but the actual value is not semantically verified against the fragment. Model-reported quote+amount can contradict each other.
+
+Additional issues: `observed_instructions` is model self-report and optional in Zod, English regex sees only selected quotes; no Urd-style source-to-sink trace/ablation or live adversarial Flash evidence. Current images always escalate due unverified quotes. Do not wire the model observations into canonical payment submission until the ordered repairs pass.
+
 ## Slice 3 Flash image extraction checkpoint (in progress)
 
 Hard-pin confirmed against the official Experiential catalog:
