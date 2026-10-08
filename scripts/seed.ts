@@ -94,6 +94,38 @@ if (!existingAdmin) {
 }
 
 
+// The demo-only known issuer channel is seeded independently of any invoice.
+// Never infer these references from GLM output or fields inside the document.
+const [verifiedDemoAdmin] = (await pool.query(
+  'select id from "user" where email = $1 limit 1',
+  [adminEmail],
+)).rows;
+if (!verifiedDemoAdmin) throw new Error("DEMO_ADMIN_NOT_PROVISIONED");
+await pool.query(
+  [
+    "insert into organization_admin_memberships",
+    "(user_id, organization_id, role, active) values ($1, $2, 'ADMIN', true)",
+    "on conflict (user_id, organization_id) do nothing",
+  ].join(" "),
+  [verifiedDemoAdmin.id, organizationId],
+);
+await pool.query(
+  [
+    "insert into vendor_origin_channels",
+    "(id, organization_id, vendor_id, kind, enrolled_evidence_sha256)",
+    "values ($1, $2, $3, 'SYNTHETIC_FIXTURE', $4)",
+    "on conflict (id) do nothing",
+  ].join(" "),
+  [
+    "origin_channel_demo_synthetic_northstar",
+    organizationId,
+    vendorId,
+    (await import("node:crypto")).createHash("sha256")
+      .update("mandategate/synthetic-fixture/northstar/v1")
+      .digest("hex"),
+  ],
+);
+
 await provisionSeparatedDemoPrincipals({
   organizationId,
   invoicePrincipalId: principalId,
