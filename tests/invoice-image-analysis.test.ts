@@ -12,7 +12,7 @@ const exhausted = "vision_test_" + randomUUID();
 const concurrent = "vision_test_" + randomUUID();
 const extraArtifacts: Record<string, string> = {};
 const png = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6Z0AAAAASUVORK5CYII=",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
   "base64",
 );
 let artifactId = "";
@@ -100,6 +100,24 @@ describe("tenant-scoped GLM invoice image observation", () => {
     });
     expect(await getInvoiceImageObservation(outsider, artifactId)).toBeNull();
     expect(postCount).toBe(0);
+  });
+
+  it("rejects a corrupt image before privacy preflight or inference", async () => {
+    const corrupt = Buffer.from(png);
+    corrupt[42] ^= 1;
+    const artifact = await storeUntrustedInvoiceArtifact({
+      organizationId: outsider,
+      contentType: "image/png",
+      content: corrupt,
+    });
+    const initialPostCount = postCount;
+    await expect(analyzeStoredInvoiceImage(outsider, artifact.artifactId, mockedGateway()))
+      .rejects.toMatchObject({ code: "PNG_CHUNK_CRC_INVALID", httpStatus: 422 });
+    expect(postCount).toBe(initialPostCount);
+    const state = await pool.query(
+      "select analysis_status from invoice_artifacts where id = $1", [artifact.artifactId],
+    );
+    expect(state.rows[0].analysis_status).toBe("STORED_UNTRUSTED");
   });
 
   it("refuses provider capture/ZDR violations before claiming or sending bytes", async () => {
