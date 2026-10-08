@@ -24,6 +24,7 @@ export default async function DashboardPage() {
         <div>
           <p className="eyebrow">MandateGate / authority console</p>
           <h1>The firewall between AI agents and your money.</h1>
+          <p className="muted"><Link href="/invoice-artifacts">Review source invoices</Link></p>
         </div>
         <div className="identity">{session.user.email}</div>
       </header>
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
       <section className="panel">
         <div className="panel-head">
           <div><p className="eyebrow">Recent authority decisions</p><h2>Agent requests, MandateGate decisions</h2></div>
-          <span className="badge">No payment execution in slice 1</span>
+          <span className="badge">Payment decisions require separate authorization</span>
         </div>
         {rows.length === 0 ? (
           <div className="empty">

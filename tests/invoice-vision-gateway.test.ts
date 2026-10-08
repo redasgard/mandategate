@@ -100,6 +100,40 @@ const request = {
 };
 
 describe("GLM-5.3 Flash image gateway", () => {
+  it("returns a source-derived privacy receipt without keys or invoice content", async () => {
+    const { gateway, calls } = mockGateway();
+    const receipt = await gateway.verifyPrivacyAndModel();
+    expect(receipt).toMatchObject({
+      accountOrgId:"org_test",
+      targetModel:"glm-5.3-flash",
+      accountZdr:true,
+      providerRequiresZdr:true,
+      providerRequiresNoTraining:true,
+      promptCaptureDisabled:true,
+      targetModelHasZdrCapability:true,
+      documentBytesSubmitted:false,
+      servingRouteVerified:false,
+    });
+    expect(receipt.checkedAt).toMatch(/^\d{4}-\d\d-\d\dT/);
+    expect(JSON.stringify(receipt)).not.toContain("test-only-key");
+    expect(calls).toHaveLength(5);
+    expect(calls.every(c=>String(c.init.method)==="GET")).toBe(true);
+    expect(calls.some(c=>c.url.endsWith("/v1/chat/completions"))).toBe(false);
+  });
+
+  it("never produces a passing privacy receipt when required account settings drift",async()=>{
+    for(const config of [
+      {zdrEnabled:false},
+      {captureEnabled:true},
+      {requireNoTraining:false},
+      {modelOnRoute:false},
+    ]) {
+      const {gateway,calls}=mockGateway(config);
+      await expect(gateway.verifyPrivacyAndModel()).rejects.toThrow();
+      expect(calls.some(c=>c.url.endsWith("/v1/chat/completions"))).toBe(false);
+    }
+  });
+
   it("uses only GLM-5.3 Flash, multimodal image input, strict JSON, and no payment tools", async () => {
     const { gateway, calls } = mockGateway();
     const result = await gateway.observeImage(request);
