@@ -37,6 +37,15 @@ Build mode: fast
   Build: Add PostgreSQL `bytea` ArtifactStore, bounded file admission, SHA-256 integrity metadata, PDF.js text/page preparation, bounded rasterization, Experiential route preflight/ZDR enforcement, GLM structured JSON-schema extraction, Zod validation, field-level evidence/provenance, async analysis adapter, and explicit extraction-failure/escalation states.
   Verify (mechanical): Run the invoice fixture suite covering text PDF, scanned PDF, JPEG/PNG, malformed/truncated/password-protected/oversized documents, missing or ambiguous payment fields, destination substitution, prompt injection, invalid model schema output, unsupported model route, and artifact-hash/provenance consistency; with Experiential env configured, run one live normal-invoice extraction through a compliant route.
   Additional Flash-only gate: prove image inference always calls exactly `glm-5.3-flash` (never text-only `glm-5.3`), loads versioned skill prompts, fails before image transmission when ZDR/no-training/capture settings are noncompliant, rejects mismatched serving-model/ZDR headers and ignored strict-schema parameters, records prompt/provider evidence, and never permits extraction alone to authorize a payout.
+  Authority-blocker repair plan: devpost/authority-boundary-plan.md, Gates A-H. These are mandatory acceptance subgates before checking Slice 3 or calling invoice-to-payment integrated; do not substitute a green LLM-mock suite for value-flow proof.
+  Subgate A (unchecked): separate invoice upload/analyze scopes from privileged payment:submit, migrate existing demo principal scopes, keep the existing direct Sandbox path green.
+  Subgate B (unchecked): immutable field-verification, issuer-attestation and authorization-binding records with tenant isolation and append-only lineage.
+  Subgate C (unchecked): independent field-to-evidence semantics, ambiguous-value handling and visual evidence marked unverified until independently checked.
+  Subgate D (unchecked): attested issuer/vendor mapping; printed new payment destination never overrides trusted registry, ordinary approval cannot waive mismatch.
+  Subgate E (unchecked): internal-only verified invoice -> immutable canonical payment binding, exact tuple and version checks, no model/tool/direct-path bypass.
+  Subgate F (unchecked): authorized human approval bound to immutable tuple, explanation and actor, with stale/revoked state.
+  Subgate G (unchecked): Urd-style baseline, compromised composition, and marker-ablation source-to-sink tests; no unauthorized PayPal invocation.
+  Subgate H (unchecked): synthetic real Sandbox ALLOW, ESCALATE and DENY proof, independently inspectable event trace and final critical review.
   Learner check: Upload a normal invoice and inspect the extracted amount/vendor/destination plus page-level evidence; then upload a hostile or malformed fixture and confirm it escalates or fails closed instead of inventing authority.
   Commit: `add invoice intake`
 

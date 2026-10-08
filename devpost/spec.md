@@ -1028,6 +1028,26 @@ Official/current references:
 - https://www.npmjs.com/package/csv-parse
 - https://github.com/adaltas/node-csv/security/advisories/GHSA-8cw4-87c7-c6xx
 
+### Provenance-Enforced Invoice Authority (planned)
+
+Implements:
+- prd.md > AI Security, Authority, and Traceability
+- prd.md > Payment Detail and Decision Evidence
+- prd.md > Vendor Trust and Re-verification
+- prd.md > Escalation Review
+
+Detailed data model, API roles, trust tiers, threat model, invariants, source-to-sink trace contract, approval binding, adversarial acceptance matrix and ordered build gates are in devpost/authority-boundary-plan.md.
+
+Required architecture:
+1. Separate invoice upload/analysis machine credentials from privileged direct payment submission. Existing invoice:submit must not authorize both.
+2. Store independent field verification and issuer/source attestation as immutable organization-scoped records, separate from untrusted GLM observations. Extraction confidence, a copied source quote or lack of an injection flag cannot grant authority.
+3. Use a server-only invoice-derived payment bridge: resolve trusted vendor and actual PayPal receiver from current authoritative records; bind one immutable source artifact hash, verified claim set, current policy/vendor versions and exact canonical tuple.
+4. Let an authorized admin approve a frozen ESCALATE tuple with identity, reason, expiry and no hard-block override. Any material change invalidates prior approval.
+5. Revalidate authority/binding at the PayPal execution boundary and preserve permanent idempotency; no cross-network transaction atomicity is assumed.
+6. Record field-level source-to-sink lineage and validate baseline/attack/metadata-ablation traces. Untrusted invoice content must not select privileged payment parameters without independent verification.
+
+Current status: PLANNED / BLOCKED for integration. The existing isolated GLM-5.3 Flash image observer remains advisory and the Slice 2 PayPal executor stays unchanged until implementation and review gates pass.
+
 ### Policy and Decision Engine
 
 Implements:

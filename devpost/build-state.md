@@ -116,6 +116,13 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A authority repair PLAN (2026-10-08)
+
+Status: planned, not implemented. Authoritative proposed design: devpost/authority-boundary-plan.md.
+Core boundary: document/model-observed values never become payment authority without independently verified field semantics, authenticated issuer/source or valid admin attestation, trusted vendor/destination binding, current policy, and an exact, expiring, single-use authorization tuple.
+Implementation order: (A) split invoice/payment principals; (B) immutable source/claim/binding records; (C) source-to-field verifier; (D) source/issuer attestation; (E) internal-only payment bridge; (F) bound admin approval; (G) Urd-style causal/ablation tests; (H) synthetic Sandbox proof and full review.
+Current Slice 3 security BLOCK remains. This commit contains PLANNING DOCUMENTS only, with no application code or PayPal execution change.
+
 ## Slice 3 authority provenance audit (2026-10-08)
 
 **Decision: BLOCK invoice-to-payment integration**, not the existing isolated image observer or the completed Slice 2 executor. See `devpost/reviews/slice-3-injection-boundary-audit.md`.
