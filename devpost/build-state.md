@@ -129,6 +129,16 @@ Hard-pin confirmed against the official Experiential catalog:
 - GitHub Actions CI run `37730620805` on commit `95b504d88682318358608d8ad854210c56845efa` passed all steps: migrations/seed twice, TypeScript, **10 test files / 61 tests**, Next build, smoke.
 - No live Experiential image inference was performed in this checkpoint; a configured API key and verified organization privacy controls are prerequisites. No Slice 3 code has been deployed to the stable Render web service.
 
+## Slice 3 Flash reliability and container validation checkpoint
+
+- Image observation processing now uses 90-second expiring lease claims, UUID fencing, and at most three attempts. Stale PENDING claims can be reclaimed; concurrent contenders cannot both publish an observation.
+- Image decoding admission verifies PNG chunk CRC/order, bounded IDAT inflate and scanline length; JPEG is structurally checked for SOF, scan markers and EOI but does **not** yet claim full entropy decode.
+- Malformed image data is rejected before Experiential preflight or sending invoice bytes; a previously broken synthetic one-pixel PNG/JPEG fixture was replaced with reproducible correct-CRC/valid encodings.
+- CI run `37732011144` succeeded on commit `cf6f8faf7dc58290af08496d256c0926d0420966`: all migration and seed idempotence checks, TypeScript, **11 test files / 72 tests**, production build and smoke passed.
+- Full Slice 3 still remains **unchecked**. No live Experiential call, private customer invoice, regular GLM-5.3 inference, PayPal payout, or stable Render deployment was involved.
+- The reproducible adversarial prompt regression suite is documented at `devpost/vision-prompt-evaluation.md`. This is a fixture plan, not measured model-quality evidence.
+- Self-review artifact: `devpost/reviews/slice-3-flash-reliability-review.md` records the remaining delivery and verification gaps.
+
 Still required for completing Slice 3:
 - robust PDF.js parsing, 20-page ceiling, encrypted/malformed PDF failure paths, and bounded page rasterization;
 - actual image decoding and scanned PDF vision preparation;
