@@ -67,3 +67,16 @@ dd { margin: 5px 0 0; overflow-wrap: anywhere; }
 .chips span { border: 1px solid var(--line); padding: 7px 9px; color: var(--amber); font-size: 12px; }
 pre { background: #0e0d0b; border: 1px solid var(--line); padding: 16px; overflow: auto; color: #d8cdbb; }
 @media (max-width: 720px) { .topbar, .panel-head, .detail-title { flex-direction: column; } .metrics { grid-template-columns: 1fr; } dl { grid-template-columns: 1fr; } }
+
+.review-wizard { display: grid; gap: 30px; margin-top: 28px; }
+.review-stage { border-top: 1px solid var(--line); padding-top: 24px; display: grid; gap: 16px; }
+.review-stage h2 { margin: 0; }
+.review-grid { display: grid; gap: 14px; }
+.review-field { display: grid; gap: 10px; border: 1px solid var(--line); padding: 16px; background: var(--surface-2); }
+.review-page { border: 1px solid var(--line); margin-top: 10px; }
+.review-page-header { padding: 10px 12px; color: var(--amber); overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 12px; }
+.review-page pre { margin: 0; border: 0; border-top: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 300px; overflow-y: auto; }
+.review-stage select, .review-stage textarea { width: 100%; background: #0e0d0b; color: var(--text); border: 1px solid var(--line); padding: 12px 13px; font: inherit; }
+.review-checkbox { display: flex; align-items: flex-start; gap: 12px; line-height: 1.5; }
+.review-checkbox input { width: auto; margin-top: 5px; }
+.review-notice { color: var(--green); }
