@@ -45,7 +45,7 @@ export async function parseIndependentPdfSource(input: {
   // Even a default-password PDF uses the /Encrypt trailer and must not be
   // silently admitted as independently verified plain text. A false-positive
   // on attacker-chosen text is safe: it only escalates the document.
-  if (/\\/Encrypt\\b/.test(input.content.toString("latin1"))) {
+  if (/\/Encrypt\b/.test(input.content.toString("latin1"))) {
     throw new PdfSourceError("PDF_ENCRYPTED_UNSUPPORTED");
   }
 
