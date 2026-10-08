@@ -322,6 +322,72 @@ describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
     });
   });
 
+  it("Gate G: clean baseline emits only traceable verifier-sourced parameter selections",async()=>{
+    const f=await makeFixture("G-BASELINE");
+    const proposal=await propose(f);
+    expect(proposal).toMatchObject({outcome:"ESCALATE",paymentAuthorized:false,
+      reasonCodes:["PENDING_EXACT_HUMAN_APPROVAL"]});
+    const trace=await pool.query(
+      "select sequence,source_kind,trust_tier,event_type,field_name,observed_value_sha256,sink_component,sink_field from parameter_lineage_events where trace_id=$1 order by sequence",
+      [proposal.traceId],
+    );
+    expect(trace.rows).toHaveLength(5);
+    expect(trace.rows.map(x=>x.field_name).sort()).toEqual([
+      "currency","invoice_number","invoice_payment_destination","total_amount_decimal","vendor_name",
+    ]);
+    for(const event of trace.rows)expect(event).toMatchObject({
+      source_kind:"VERIFIER",trust_tier:2,event_type:"PROPOSAL_FIELD_SELECTED",
+      sink_component:"authority.payment_proposal",
+    });
+    const claims=await pool.query(
+      "select field_name,normalized_value from invoice_claim_field_sources where claim_set_id=$1",
+      [f.claimSetId],
+    );
+    const groundTruth=new Map(claims.rows.map(x=>[x.field_name,x.normalized_value]));
+    for(const event of trace.rows){
+      expect(event.observed_value_sha256).toBe(sha(groundTruth.get(event.field_name)!));
+      expect(event.sink_field).toBe(event.field_name);
+    }
+    const money=await pool.query("select count(*)::int as n from payment_requests where organization_id=$1 and invoice_number=$2",
+      [org,"INV-G-BASELINE"]);
+    expect(money.rows[0].n).toBe(0);
+  });
+
+  it("Gate G: plausible receiver substitution remains denied without privileged sink movement",async()=>{
+    for(const [name,receiver] of [
+      ["G-RECEIVER-1","attacker@example.com"],
+      ["G-RECEIVER-2","trusted+alternate@example.com"],
+      ["G-RECEIVER-3","trusted@example.com.attacker.test"],
+    ]){
+      const f=await makeFixture(name,{printedReceiver:receiver});
+      const attempted=await propose(f);
+      expect(attempted).toMatchObject({outcome:"DENY",bindingId:null,
+        reasonCodes:["INVOICE_DESTINATION_SUBSTITUTION"],paymentAuthorized:false});
+      const trace=await pool.query(
+        "select event_type,sink_component from parameter_lineage_events where trace_id=$1",
+        [attempted.traceId],
+      );
+      expect(trace.rows).toEqual([{event_type:"DENY",sink_component:"payment_proposal"}]);
+      const payments=await pool.query(
+        "select count(*)::int as n from payment_requests where organization_id=$1 and invoice_number=$2",
+        [org,"INV-"+name],
+      );
+      expect(payments.rows[0].n).toBe(0);
+    }
+  });
+
+  it("Gate G: removing friendly provenance hints does not change receiver authorization",async()=>{
+    // This test deliberately does not inspect reported prompt instructions or
+    // attacker labels. It tests the same actual receiver value regardless of
+    // annotation, as in Urd's marker-ablation reasoning.
+    for(const name of ["G-ABLATED", "G-ANNOTATED"]){
+      const f=await makeFixture(name,{printedReceiver:"another@example.com"});
+      const result=await propose(f);
+      expect(result.outcome).toBe("DENY");
+      expect(result.reasonCodes).toContain("INVOICE_DESTINATION_SUBSTITUTION");
+    }
+  });
+
   it("never reads an artifact from a different organization",async()=>{
     const f=await makeFixture("CROSS-TENANT");
     const result=await propose(f,foreignOrg);
