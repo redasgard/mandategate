@@ -91,13 +91,16 @@ describe("Admin-attested exact-artifact source verification", () => {
     expect(result).toMatchObject({
       artifactId,artifactSha256:sha(png),issuerAuthenticated:false,
       paymentAuthorized:false,humanAttested:true,machineCorroborated:false,
+      sourceCorroborated:false,
     });
     const rows=await pool.query(
       "select field_name,trust_tier,source_page from invoice_claim_field_sources where claim_set_id=$1",
       [result.claimSetId],
     );
     expect(rows.rows).toHaveLength(5);
-    expect(rows.rows.every(r=>r.trust_tier===2 && r.source_page===1)).toBe(true);
+    expect(rows.rows.every(r=>r.trust_tier===1 && r.source_page===1)).toBe(true);
+    const claim = await pool.query("select verification_status from invoice_verified_claim_sets where id=$1",[result.claimSetId]);
+    expect(claim.rows[0].verification_status).toBe("UNVERIFIED");
     const actions=await pool.query(
       "select action from invoice_review_actions where claim_set_id=$1",
       [result.claimSetId],

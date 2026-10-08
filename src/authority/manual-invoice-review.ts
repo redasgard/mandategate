@@ -39,6 +39,8 @@ const sha=(value:string|Buffer)=>createHash("sha256").update(value).digest("hex"
  * invoke this, authenticate as an admin, or elevate its self-reported quotes.
  * A human attests to checking the actual stored image independently.
  * Typed fragments are HUMAN ATTESTATION, not machine-parsed source proof.
+ * These records stay UNVERIFIED / T1 until independent source corroboration;
+ * no payment proposal may elevate the values merely because admin typed them.
  * This does NOT authenticate the issuer and DOES NOT approve a payment.
  */
 export async function recordExplicitHumanInvoiceFacts(input:{
@@ -114,7 +116,7 @@ export async function recordExplicitHumanInvoiceFacts(input:{
         "insert into invoice_verified_claim_sets",
         "(organization_id,artifact_id,artifact_sha256,observation_sha256,snapshot_sha256,",
         "source_kind,verification_status,verifier_method,verifier_actor,verifier_proof_sha256)",
-        "values($1,$2,$3,$4,$5,'HUMAN_TRANSCRIPTION','VERIFIED','ADMIN_EXPLICIT',$6,$7) returning id",
+        "values($1,$2,$3,$4,$5,'HUMAN_TRANSCRIPTION','UNVERIFIED','ADMIN_EXPLICIT',$6,$7) returning id",
       ].join(" "),
       [
         input.organizationId,artifactId,row.sha256,
@@ -131,7 +133,7 @@ export async function recordExplicitHumanInvoiceFacts(input:{
           "(organization_id,artifact_id,claim_set_id,field_name,evidence_index,",
           "raw_value,normalized_value,source_page,source_quote_sha256,claimed_value_sha256,",
           "trust_tier,verifier_proof_sha256)",
-          "values($1,$2,$3,$4,0,$5,$5,$6,$7,$8,2,$9)",
+          "values($1,$2,$3,$4,0,$5,$5,$6,$7,$8,1,$9)",
         ].join(" "),
         [
           input.organizationId,artifactId,claimSetId,snap.fieldName,value.value,
@@ -150,8 +152,9 @@ export async function recordExplicitHumanInvoiceFacts(input:{
     await client.query("commit");
     return {
       claimSetId,artifactId,artifactSha256:row.sha256,
-      reviewer:input.actorUserId,verification:"EXPLICIT_HUMAN_TRANSCRIPTION",
+      reviewer:input.actorUserId,verification:"HUMAN_TRANSCRIPTION_RECORDED_UNVERIFIED",
       humanAttested:true as const,machineCorroborated:false as const,
+      sourceCorroborated:false as const,
       issuerAuthenticated:false as const,paymentAuthorized:false as const,
     };
   } catch(error) {
