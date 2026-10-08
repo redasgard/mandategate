@@ -23,10 +23,11 @@ async function makeFixture(name: string, opts: {
   insufficientField?: boolean;
 } = {}): Promise<Fixture> {
   const artifactId = randomUUID();
+  const fixturePdf = Buffer.from("%PDF-1.7\n% Invoice fixture " + name + "\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
   const invoiceNumber = "INV-" + name;
   await pool.query(
     "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content) values($1,$2,'application/pdf',$3,$4,$5)",
-    [artifactId,org,pdf.length,sha(pdf),pdf],
+    [artifactId,org,fixturePdf.length,sha(fixturePdf),fixturePdf],
   );
   const claimSetId = (await pool.query(
     [
@@ -36,7 +37,7 @@ async function makeFixture(name: string, opts: {
       "values($1,$2,$3,$4,$5,'HUMAN_TRANSCRIPTION',$6,$7,$8,$9) returning id",
     ].join(" "),
     [
-      org,artifactId,sha(pdf),sha("untrusted-model:"+name),sha("verified-snapshot:"+name),
+      org,artifactId,sha(fixturePdf),sha("untrusted-model:"+name),sha("verified-snapshot:"+name),
       opts.claimVerified===false?"UNVERIFIED":"VERIFIED",
       opts.claimVerified===false?null:"ADMIN_EXPLICIT",
       opts.claimVerified===false?null:admin,
@@ -74,7 +75,7 @@ async function makeFixture(name: string, opts: {
       "verifier_actor,proof_sha256,independent_evidence_reference,expires_at)",
       "values($1,$2,$3,$4,$5,'ADMIN_OUT_OF_BAND',$6,$7,$8,now()+($9 || ' minutes')::interval) returning id",
     ].join(" "),
-    [org,artifactId,sha(pdf),vendorId,channelId,admin,sha("origin:"+name),
+    [org,artifactId,sha(fixturePdf),vendorId,channelId,admin,sha("origin:"+name),
      "callback-record:test-"+name,opts.expiredOrigin?"-10":"60"],
   )).rows[0].id;
   return {artifactId,claimSetId,attestationId};
