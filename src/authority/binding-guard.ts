@@ -37,6 +37,7 @@ export async function inspectCurrentAuthorityBinding(
       "a.proof_sha256 as origin_proof_sha256,a.independent_evidence_reference,",
       "a.expires_at as origin_expires_at,a.artifact_sha256 as origin_artifact_sha256,",
       "ch.kind as channel_kind,ch.active as channel_active,",
+      "(ch.created_at < art.created_at) as channel_predates_artifact,",
       "art.sha256 as current_artifact_sha256,",
       "v.name as current_vendor_name,v.normal_max_amount_cents,",
       "vd.destination as current_destination,vd.trusted as destination_trusted,",
@@ -69,7 +70,8 @@ export async function inspectCurrentAuthorityBinding(
   const now = Date.now();
   if (new Date(b.expires_at).getTime() <= now ||
     new Date(b.origin_expires_at).getTime() <= now) refuse("BINDING_OR_ORIGIN_EXPIRED");
-  if (!b.channel_active || b.channel_kind === "SYNTHETIC_FIXTURE" ||
+  if (!b.channel_active || !b.channel_predates_artifact ||
+    b.channel_kind === "SYNTHETIC_FIXTURE" ||
     b.origin_method !== "ADMIN_OUT_OF_BAND" || !b.origin_proof_sha256 ||
     !b.independent_evidence_reference) refuse("ISSUER_ORIGIN_NOT_TRUSTED");
   if (b.claim_status !== "VERIFIED" ||

@@ -133,12 +133,14 @@ export async function prepareInvoicePaymentProposal(input: {
     const att = await client.query(
       [
         "select a.id,a.vendor_id,a.method,a.verifier_actor,a.expires_at,a.artifact_sha256,",
-        "ch.kind,ch.active",
+        "ch.kind,ch.active,(ch.created_at < art.created_at) as channel_predates_artifact",
         "from invoice_origin_attestations a",
         "join vendor_origin_channels ch on ch.id=a.origin_channel_id",
         "and ch.organization_id=a.organization_id and ch.vendor_id=a.vendor_id",
+        "join invoice_artifacts art on art.id=a.artifact_id",
+        "and art.organization_id=a.organization_id",
         "where a.id=$1 and a.organization_id=$2 and a.artifact_id=$3",
-        "for share of a, ch",
+        "for share of a, ch, art",
       ].join(" "),
       [input.attestationId,input.organizationId,input.artifactId],
     );
@@ -146,6 +148,11 @@ export async function prepareInvoicePaymentProposal(input: {
     if (!attested || attested.artifact_sha256 !== sourceHash ||
       !attested.active || new Date(attested.expires_at).getTime() <= Date.now()) {
       const held = await refuse("ESCALATE",["ISSUER_ORIGIN_UNVERIFIED_OR_EXPIRED"]);
+      await client.query("commit");
+      return held;
+    }
+    if (attested.channel_predates_artifact !== true) {
+      const held = await refuse("ESCALATE",["TRUSTED_CHANNEL_MUST_PREDATE_INVOICE"]);
       await client.query("commit");
       return held;
     }
