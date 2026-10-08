@@ -3,7 +3,7 @@ import {
   ArtifactAdmissionError,
   readBoundedInvoiceBody,
 } from "@/src/artifacts/admission";
-import { storeUntrustedInvoiceArtifact } from "@/src/artifacts/postgres-store";
+import { ArtifactQuotaError, storeUntrustedInvoiceArtifact } from "@/src/artifacts/postgres-store";
 
 export const runtime = "nodejs";
 
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
       contentType: request.headers.get("content-type") ?? "",
       content: body,
     });
-    return Response.json({ artifact }, { status: artifact.replayed ? 200 : 201 });
+    return Response.json({ artifact }, { status: artifact.replayed ? 200 : 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    if (error instanceof ArtifactAdmissionError) {
+    if (error instanceof ArtifactAdmissionError || error instanceof ArtifactQuotaError) {
       return Response.json({ error: error.code }, { status: error.httpStatus });
     }
     throw error;
