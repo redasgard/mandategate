@@ -123,7 +123,7 @@ export function InvoiceArtifactReview(props:{
       {pages.length===0?
         <button type="button" onClick={()=>void prepare()} disabled={busy!==null}>
           Parse original stored PDF (no AI inference)
-        </button>
+        </button>:
         <div>{pages.map(p=><div className="review-page" key={p.pageNumber}>
           <div className="review-page-header">Page {p.pageNumber} / text SHA-256 {p.textSha256}</div>
           <pre>{p.text}</pre>
