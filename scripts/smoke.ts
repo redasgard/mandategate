@@ -3,6 +3,7 @@ const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const apiKey = process.env.DEMO_AGENT_API_KEY;
 const adminEmail = process.env.DEMO_ADMIN_EMAIL;
 const adminPassword = process.env.DEMO_ADMIN_PASSWORD;
+const trustedDestination = process.env.DEMO_PAYPAL_RECEIVER_EMAIL ?? "ap@northstar.example";
 
 if (!apiKey || !adminEmail || !adminPassword) {
   throw new Error("DEMO_AGENT_API_KEY, DEMO_ADMIN_EMAIL, and DEMO_ADMIN_PASSWORD are required");
@@ -22,11 +23,11 @@ if (!signIn.headers.get("set-cookie")) throw new Error("admin sign-in returned n
 const cases = [
   {
     expected: "ALLOW",
-    body: { vendorId: "vendor_northstar", invoiceNumber: "SMOKE-ALLOW", amountCents: 120000, currency: "USD", paymentDestination: "ap@northstar.example" },
+    body: { vendorId: "vendor_northstar", invoiceNumber: "SMOKE-ALLOW", amountCents: 120000, currency: "USD", paymentDestination: trustedDestination },
   },
   {
     expected: "ESCALATE",
-    body: { vendorId: "vendor_northstar", invoiceNumber: "SMOKE-ESCALATE", amountCents: 280000, currency: "USD", paymentDestination: "ap@northstar.example" },
+    body: { vendorId: "vendor_northstar", invoiceNumber: "SMOKE-ESCALATE", amountCents: 280000, currency: "USD", paymentDestination: trustedDestination },
   },
   {
     expected: "DENY",
@@ -34,16 +35,17 @@ const cases = [
   },
 ] as const;
 
-for (const testCase of cases) {
+for (const [index, testCase] of cases.entries()) {
   const response = await fetch(`${baseUrl}/api/agent/payment-requests`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
+      "idempotency-key": `smoke-${index}-${testCase.expected.toLowerCase()}`,
     },
     body: JSON.stringify(testCase.body),
   });
-  if (response.status !== 201) {
+  if (![200, 201].includes(response.status)) {
     throw new Error(`submission failed: ${response.status} ${await response.text()}`);
   }
   const result = (await response.json()) as {
@@ -54,7 +56,7 @@ for (const testCase of cases) {
     throw new Error(`expected ${testCase.expected}, got ${result.decision.outcome}`);
   }
   if (result.paymentExecuted !== false) {
-    throw new Error("slice 1 must not execute a payment");
+    throw new Error("decision smoke must not execute a payment");
   }
 }
 

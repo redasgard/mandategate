@@ -19,6 +19,8 @@ const principalId = "principal_demo_ops";
 const adminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@mandategate.local";
 const configuredPassword = process.env.DEMO_ADMIN_PASSWORD;
 const configuredAgentKey = process.env.DEMO_AGENT_API_KEY;
+const trustedDestination = process.env.DEMO_PAYPAL_RECEIVER_EMAIL ?? "ap@northstar.example";
+const usingSandboxReceiver = Boolean(process.env.DEMO_PAYPAL_RECEIVER_EMAIL);
 
 await db
   .insert(schema.organizations)
@@ -43,12 +45,12 @@ await db
   .values({
     id: "dest_northstar_primary",
     vendorId,
-    destination: "ap@northstar.example",
+    destination: trustedDestination,
     trusted: true,
   })
   .onConflictDoUpdate({
     target: schema.vendorDestinations.id,
-    set: { destination: "ap@northstar.example", trusted: true },
+    set: { destination: trustedDestination, trusted: true },
   });
 
 await db
@@ -82,8 +84,8 @@ if (!existingAdmin) {
   await seedAuth.api.signUpEmail({
     body: { name: "Demo Admin", email: adminEmail, password },
   });
-  console.log(`demo admin: ${adminEmail}`);
-  console.log(`demo admin password: ${password}`);
+  console.log(`demo admin created: ${adminEmail}`);
+  console.log("demo admin credential material is intentionally not logged");
 } else {
   console.log(`demo admin exists: ${adminEmail}`);
 }
@@ -104,7 +106,7 @@ if (!existingPrincipal) {
     scopes: ["invoice:submit", "payment:read"],
     active: true,
   });
-  console.log(`demo agent API key: ${rawKey}`);
+  console.log("demo agent principal created; API key material is intentionally not logged");
 } else if (configuredAgentKey) {
   await db
     .update(schema.apiPrincipals)
@@ -115,11 +117,11 @@ if (!existingPrincipal) {
   console.log("demo agent exists; API key unchanged");
 }
 
-console.log("synthetic fixtures:");
+console.log(usingSandboxReceiver ? "sandbox receiver fixture enabled" : "synthetic receiver fixture enabled");
 console.log(JSON.stringify({
-  allow: { vendorId, invoiceNumber: "NS-1001", amountCents: 120000, currency: "USD", paymentDestination: "ap@northstar.example" },
-  escalate: { vendorId, invoiceNumber: "NS-1002", amountCents: 280000, currency: "USD", paymentDestination: "ap@northstar.example" },
-  deny: { vendorId, invoiceNumber: "NS-1003", amountCents: 120000, currency: "USD", paymentDestination: "changed-destination@example.net" }
+  allow: { vendorId, invoiceNumber: "NS-1001", amountCents: 120000, currency: "USD", paymentDestination: usingSandboxReceiver ? "[configured sandbox receiver]" : trustedDestination },
+  escalate: { vendorId, invoiceNumber: "NS-1002", amountCents: 280000, currency: "USD", paymentDestination: usingSandboxReceiver ? "[configured sandbox receiver]" : trustedDestination },
+  deny: { vendorId, invoiceNumber: "NS-1003", amountCents: 120000, currency: "USD", paymentDestination: "[changed destination fixture]" }
 }, null, 2));
 
 await pool.end();

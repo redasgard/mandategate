@@ -17,92 +17,99 @@ export type CanonicalPaymentRequest = {
   amountCents: number;
   currency: string;
   paymentDestination: string;
+  idempotencyKey: string;
   source: "agent_api" | "demo_fixture";
 };
 
+async function findReplay(input: CanonicalPaymentRequest) {
+  const [row] = await db
+    .select({
+      requestId: paymentRequests.id,
+      vendorId: paymentRequests.vendorId,
+      invoiceNumber: paymentRequests.invoiceNumber,
+      amountCents: paymentRequests.amountCents,
+      currency: paymentRequests.currency,
+      requestedDestination: paymentRequests.requestedDestination,
+      logicalPaymentId: paymentRequests.logicalPaymentId,
+      status: paymentRequests.status,
+      outcome: paymentDecisions.outcome,
+      reasonCodes: paymentDecisions.reasonCodes,
+      evidence: paymentDecisions.evidence,
+    })
+    .from(paymentRequests)
+    .innerJoin(paymentDecisions, eq(paymentRequests.id, paymentDecisions.paymentRequestId))
+    .where(and(eq(paymentRequests.organizationId, input.organizationId), eq(paymentRequests.idempotencyKey, input.idempotencyKey)))
+    .limit(1);
+
+  if (!row) return null;
+  const sameRequest =
+    row.vendorId === input.vendorId &&
+    row.invoiceNumber === input.invoiceNumber &&
+    row.amountCents === input.amountCents &&
+    row.currency === input.currency.toUpperCase() &&
+    row.requestedDestination === input.paymentDestination;
+  if (!sameRequest) throw new Error("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST");
+  return {
+    requestId: row.requestId,
+    logicalPaymentId: row.logicalPaymentId,
+    status: row.status,
+    decision: { outcome: row.outcome, reasonCodes: row.reasonCodes, evidence: row.evidence },
+    paymentExecuted: false,
+    replayed: true,
+  };
+}
+
 export async function submitCanonicalPaymentRequest(input: CanonicalPaymentRequest) {
-  return db.transaction(async (tx) => {
-    const [vendor] = await tx
-      .select()
-      .from(vendors)
-      .where(
-        and(
-          eq(vendors.id, input.vendorId),
-          eq(vendors.organizationId, input.organizationId),
-        ),
-      )
-      .limit(1);
+  const existing = await findReplay(input);
+  if (existing) return existing;
 
-    if (!vendor) throw new Error("VENDOR_NOT_FOUND");
+  try {
+    return await db.transaction(async (tx) => {
+      const [vendor] = await tx.select().from(vendors).where(and(eq(vendors.id, input.vendorId), eq(vendors.organizationId, input.organizationId))).limit(1);
+      if (!vendor) throw new Error("VENDOR_NOT_FOUND");
 
-    const [destination] = await tx
-      .select()
-      .from(vendorDestinations)
-      .where(
-        and(
-          eq(vendorDestinations.vendorId, vendor.id),
-          eq(vendorDestinations.trusted, true),
-        ),
-      )
-      .limit(1);
+      const [destination] = await tx.select().from(vendorDestinations).where(and(eq(vendorDestinations.vendorId, vendor.id), eq(vendorDestinations.trusted, true))).limit(1);
+      if (!destination) throw new Error("TRUSTED_DESTINATION_NOT_FOUND");
 
-    if (!destination) throw new Error("TRUSTED_DESTINATION_NOT_FOUND");
+      const [policy] = await tx.select().from(policies).where(and(eq(policies.organizationId, input.organizationId), eq(policies.active, true))).limit(1);
+      if (!policy) throw new Error("ACTIVE_POLICY_NOT_FOUND");
 
-    const [policy] = await tx
-      .select()
-      .from(policies)
-      .where(
-        and(eq(policies.organizationId, input.organizationId), eq(policies.active, true)),
-      )
-      .limit(1);
+      const decision = evaluatePayment({
+        amountCents: input.amountCents,
+        currency: input.currency,
+        requestedDestination: input.paymentDestination,
+        trustedDestination: destination.destination,
+        vendorNormalMaxAmountCents: vendor.normalMaxAmountCents,
+        policyAutoPayMaxAmountCents: policy.autoPayMaxAmountCents,
+      });
 
-    if (!policy) throw new Error("ACTIVE_POLICY_NOT_FOUND");
+      const requestId = randomUUID();
+      const logicalPaymentId = randomUUID();
+      const status = decision.outcome === "ALLOW" ? "ALLOWED" : decision.outcome === "ESCALATE" ? "ESCALATED" : "DENIED";
 
-    const decision = evaluatePayment({
-      amountCents: input.amountCents,
-      currency: input.currency,
-      requestedDestination: input.paymentDestination,
-      trustedDestination: destination.destination,
-      vendorNormalMaxAmountCents: vendor.normalMaxAmountCents,
-      policyAutoPayMaxAmountCents: policy.autoPayMaxAmountCents,
+      await tx.insert(paymentRequests).values({
+        id: requestId,
+        logicalPaymentId,
+        organizationId: input.organizationId,
+        vendorId: input.vendorId,
+        idempotencyKey: input.idempotencyKey,
+        invoiceNumber: input.invoiceNumber,
+        amountCents: input.amountCents,
+        currency: input.currency.toUpperCase(),
+        requestedDestination: input.paymentDestination,
+        status,
+        source: input.source,
+      });
+      await tx.insert(paymentDecisions).values({ id: randomUUID(), paymentRequestId: requestId, outcome: decision.outcome, reasonCodes: decision.reasonCodes, evidence: decision.evidence });
+
+      return { requestId, logicalPaymentId, status, decision, paymentExecuted: false, replayed: false };
     });
-
-    const requestId = randomUUID();
-    const logicalPaymentId = randomUUID();
-    const status =
-      decision.outcome === "ALLOW"
-        ? "ALLOWED"
-        : decision.outcome === "ESCALATE"
-          ? "ESCALATED"
-          : "DENIED";
-
-    await tx.insert(paymentRequests).values({
-      id: requestId,
-      logicalPaymentId,
-      organizationId: input.organizationId,
-      vendorId: input.vendorId,
-      invoiceNumber: input.invoiceNumber,
-      amountCents: input.amountCents,
-      currency: input.currency.toUpperCase(),
-      requestedDestination: input.paymentDestination,
-      status,
-      source: input.source,
-    });
-
-    await tx.insert(paymentDecisions).values({
-      id: randomUUID(),
-      paymentRequestId: requestId,
-      outcome: decision.outcome,
-      reasonCodes: decision.reasonCodes,
-      evidence: decision.evidence,
-    });
-
-    return {
-      requestId,
-      logicalPaymentId,
-      status,
-      decision,
-      paymentExecuted: false,
-    };
-  });
+  } catch (error) {
+    const pg = error as { code?: string; constraint?: string };
+    if (pg.code === "23505" && pg.constraint === "payment_requests_org_idempotency_uq") {
+      const replay = await findReplay(input);
+      if (replay) return replay;
+    }
+    throw error;
+  }
 }

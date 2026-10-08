@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mandategate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mandategate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/mandategate
+      BETTER_AUTH_SECRET: ci-only-synthetic-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      DEMO_ADMIN_EMAIL: admin@mandategate.local
+      DEMO_ADMIN_PASSWORD: synthetic-demo-password-2026
+      DEMO_AGENT_API_KEY: mg_demo_ci_only_synthetic_agent_key_2026
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+      - run: corepack enable
+      - run: corepack prepare pnpm@12.9.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Verify migration idempotence
+        run: |
+          pnpm db:migrate
+          pnpm db:migrate
+      - name: Verify seed idempotence
+        run: |
+          pnpm demo:seed
+          pnpm demo:seed
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Smoke
+        run: |
+          pnpm start >/tmp/mandategate-next.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/api/health
+          pnpm smoke
