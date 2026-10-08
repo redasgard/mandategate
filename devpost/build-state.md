@@ -116,6 +116,12 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gate E exact execution-bound authorization
+
+CI 37824558943 at 44ad41f799b84d3bdf1dd33e08a3ec9ef4c70618: SUCCESS, 11 migrations twice, seed twice, 16 test files/119 tests, typecheck, build/smoke. A server-only proposal takes only verified source/attestation IDs, resolves amount/vendor/destination from current trusted records, hard-denies receiver substitution, and remains ESCALATED pending approval. An explicitly approved single-use binding is atomically consumed into one verified_invoice payment request, with a current-policy/vendor/source/approval guard in PostgresExecutionStore before PayPal dispatch. The direct agent_api payout path remains independent. Review: devpost/reviews/slice-3a-gate-e-review.md, CONTINUE Gate F (9.0/10 self-review).
+
+Major limitations: CI synthesizes independent claims/approval by DB insertion; no actual protected user confirmation or PDF page provenance yet. Revocation concurrent with an already-started remote payout cannot be atomic. No live payout or Render rollout.
+
 ## Slice 3A Gate D trusted issuer-channel attestation
 
 CI 37822386898 on code 9d0a12fbf3ed215b9f061980a932163c483f540d SUCCESS: 9 migrations twice, 15 test files / 109 tests, seed twice, typecheck, build and smoke. Enrolled per-vendor origin-channel registry, authenticated organization-admin membership, bounded independent source references, immutable tenant-bound origin attestations, permanent channel revocation and test-only synthetic channel. Review devpost/reviews/slice-3a-gate-d-review.md: CONTINUE to isolated Gate E only, self-review 8.8/10.
