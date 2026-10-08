@@ -86,9 +86,12 @@ export function hashUnverifiedClaimSnapshot(input: unknown): string {
   ];
   for (const field of [...claim.fields].sort((a,b) => a.fieldName.localeCompare(b.fieldName))) {
     parts.push(["field_name", field.fieldName]);
-    parts.push(["raw_value", field.observedValue ?? "<NULL>"]);
-    parts.push(["source_page", field.sourcePage?.toString() ?? "<NULL>"]);
-    parts.push(["quote_sha256", field.sourceQuoteSha256 ?? "<NULL>"]);
+    parts.push(["raw_value_present", field.observedValue === null ? "0" : "1"]);
+    parts.push(["raw_value", field.observedValue ?? ""]);
+    parts.push(["source_page_present", field.sourcePage === null ? "0" : "1"]);
+    parts.push(["source_page", field.sourcePage?.toString() ?? ""]);
+    parts.push(["quote_present", field.sourceQuoteSha256 === null ? "0" : "1"]);
+    parts.push(["quote_sha256", field.sourceQuoteSha256 ?? ""]);
   }
   return hashCanonicalParts("mandategate/unverified-claim/v1", parts);
 }
