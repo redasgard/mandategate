@@ -44,8 +44,6 @@ describe("Gate H exact one Sandbox payout guard",()=>{
       {PAYPAL_BASE_URL:"https://api-m.paypal.com"},
       {GATE_H_DENY_ARTIFACT_ID:data.GATE_H_ESCALATE_ARTIFACT_ID},
     ]){
-      expect(()=>validateGateHSandboxEnvironment({...data,...override},"submit"))
-        .toBeInstanceOf; // overridden paths must refuse even in non-paying preflight
       expect(()=>validateGateHSandboxEnvironment({...data,...override},"preflight"))
         .toThrow(GateHSandboxError);
     }
