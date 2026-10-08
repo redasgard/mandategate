@@ -22,7 +22,7 @@ function createPdf(lines: string[]): Buffer {
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
   for (const [index,line] of lines.entries()) {
     const pageId=4+index*2,contentId=5+index*2;
-    const displayedLines=line.split("\\n").map(part =>
+    const displayedLines=line.split("\n").map(part =>
       "(" + part.replace(/([()\\])/g,"\\$1") + ") Tj"
     ).join(" 0 -16 Td ");
     const text=`BT /F1 12 Tf 30 700 Td ${displayedLines} ET`;
