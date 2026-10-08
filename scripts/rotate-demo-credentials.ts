@@ -12,6 +12,7 @@ const previousAdminPassword = required("DEMO_ADMIN_PREVIOUS_PASSWORD", process.e
 const newAdminPassword = required("DEMO_ADMIN_PASSWORD", process.env.DEMO_ADMIN_PASSWORD);
 const previousAgentKey = required("DEMO_AGENT_PREVIOUS_API_KEY", process.env.DEMO_AGENT_PREVIOUS_API_KEY);
 const newAgentKey = required("DEMO_AGENT_API_KEY", process.env.DEMO_AGENT_API_KEY);
+const paymentAgentKey = required("DEMO_PAYMENT_AGENT_API_KEY", process.env.DEMO_PAYMENT_AGENT_API_KEY);
 
 if (previousAdminPassword === newAdminPassword) {
   throw new Error("DEMO_ADMIN_PASSWORD must differ from the previous password");
@@ -69,17 +70,21 @@ async function rotateAdminPassword() {
 
 await rotateAdminPassword();
 
-const [oldAdminWorks, newAdminWorks, oldAgent, newAgent] = await Promise.all([
+const [oldAdminWorks, newAdminWorks, oldAgent, newAgent, invoiceMayPay, paymentMayInvoice, paymentMaySubmit] = await Promise.all([
   canSignIn(previousAdminPassword),
   canSignIn(newAdminPassword),
-  authenticateAgent(`Bearer ${previousAgentKey}`, "invoice:submit"),
-  authenticateAgent(`Bearer ${newAgentKey}`, "invoice:submit"),
+  authenticateAgent(`Bearer ${previousAgentKey}`, "invoice:upload"),
+  authenticateAgent(`Bearer ${newAgentKey}`, "invoice:upload"),
+  authenticateAgent(`Bearer ${newAgentKey}`, "payment:submit"),
+  authenticateAgent(`Bearer ${paymentAgentKey}`, "invoice:upload"),
+  authenticateAgent(`Bearer ${paymentAgentKey}`, "payment:submit"),
 ]);
 
 if (oldAdminWorks) throw new Error("previous admin password still authenticates after rotation");
 if (!newAdminWorks) throw new Error("new admin password does not authenticate after rotation");
 if (oldAgent) throw new Error("previous demo agent key still authenticates after rotation");
-if (!newAgent) throw new Error("new demo agent key does not authenticate after rotation");
+if (!newAgent) throw new Error("new invoice agent key does not authenticate after rotation");
+if (invoiceMayPay || paymentMayInvoice || !paymentMaySubmit) throw new Error("principal authority separation failed");
 
 console.log(JSON.stringify({
   credentialRotationVerified: true,
@@ -87,6 +92,8 @@ console.log(JSON.stringify({
   newAdminCredentialAccepted: true,
   previousAgentCredentialRejected: true,
   newAgentCredentialAccepted: true,
+  invoiceAgentCannotPay: true,
+  paymentAgentCannotInspectInvoices: true,
 }, null, 2));
 
 await pool.end();
