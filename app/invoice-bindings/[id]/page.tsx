@@ -12,7 +12,7 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
   if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
   const result=await pool.query(
     ["select b.id,b.authorization_status,b.tuple_sha256,b.expires_at,b.invoice_number,",
-     "b.amount_cents,b.currency,b.artifact_sha256,b.verified_claim_set_id,",
+     "b.amount_cents,b.currency,b.artifact_id,b.artifact_sha256,b.verified_claim_set_id,",
      "b.proposed_reason_codes,b.proposed_outcome,vd.destination as trusted_destination,",
      "v.name as vendor_name,c.verification_status,c.source_kind,a.method as origin_method,",
      "a.independent_evidence_reference,ch.kind as origin_channel",
@@ -51,6 +51,7 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
         <div><dt>Independent source reference</dt><dd>{binding.independent_evidence_reference ?? "Not supplied"}</dd></div>
         <div><dt>Expires</dt><dd>{new Date(binding.expires_at).toISOString()}</dd></div>
         <div><dt>Artifact digest</dt><dd className="mono">{binding.artifact_sha256}</dd></div>
+        <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect stored artifact (admin only)</a></dd></div>
         <div><dt>Frozen tuple digest</dt><dd className="mono">{binding.tuple_sha256}</dd></div>
       </dl>
       <h2>Payment-critical field evidence</h2>
