@@ -27,7 +27,8 @@
     "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "pdfjs-dist": "6.4.299"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
