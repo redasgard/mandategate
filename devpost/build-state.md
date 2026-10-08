@@ -1,6 +1,6 @@
 ---
 doc: build-state
-updated: 2026-10-07
+updated: 2026-10-08
 mode: fast
 ---
 
@@ -31,9 +31,9 @@ The Slice 2 CI run later re-ran the shared migration and seed twice successfully
 
 Checklist status: complete.
 
-Draft PR: #1, `WIP: wire PayPal Sandbox payout execution`
+Draft PR: #1, `wire PayPal Sandbox payout execution`
 Staged branch: `build/slice-2-gated`
-CI run: `37688851872` — success at code/runtime commit `60026accad1aa139a5fe49a8b0853a46d586e748`
+CI run: `37705824345` — success at repaired branch head `11a577594d7f1949b83bae282995e252312bb68b`
 
 Implemented:
 - permanent logical-payment execution record with deterministic PayPal correlation IDs
@@ -59,7 +59,7 @@ Mechanically verified on GitHub Actions with Node 24 / pnpm 12 / PostgreSQL 18:
 - application migrations ran twice successfully
 - demo seed ran twice successfully
 - TypeScript check succeeded
-- 4 Vitest files / 22 tests passed
+- 5 Vitest files / 30 tests passed
 - Next.js 16.3.8 production build compiled successfully
 - health endpoint returned database ready
 - admin sign-in plus ALLOW / ESCALATE / DENY smoke passed with zero payment execution
@@ -130,24 +130,48 @@ The PayPal MCP connector is now attached and responds to authenticated reporting
 
 A reporting response surfaced `api.paypal.com` links rather than Sandbox REST links. Treat the MCP environment as unproven for Sandbox mutation and do not use it for the payout proof. It is suitable for read-side inspection only until its environment is independently established.
 
-## Current blocker
+## Post-review repairs
 
-The Render service is live with its internal database binding, migrations, seed, and Next.js runtime healthy. The database's external allowlist remains intentionally empty; hosted Render MCP cannot query it externally, which is consistent with keeping the DB private.
+The blocking findings from the 2026-10-07 re-review were repaired in dependency order:
 
-PayPal Sandbox runtime variables and `PAYPAL_WEBHOOK_ID` are present on Render. The real payout, exact-once persistence, final PayPal SUCCESS state, verified webhook delivery, and webhook-triggered reconciliation are now proven.
+1. **Credential rotation**
+   - the previously logged demo admin credential and demo agent API key were rotated;
+   - a guarded rotation verifier proved the previous admin credential is rejected and the new credential is accepted;
+   - it likewise proved the previous agent key is rejected and the new key is accepted;
+   - temporary previous-credential variables and the rotation flag were cleared after proof;
+   - a clean redeploy confirmed credential rotation does not run in normal startup.
 
-APIMatic remains unavailable, but it is explicitly optional/deferred and carries no Slice 2 completion authority.
+2. **Durable webhook acknowledgement**
+   - verified payout webhooks are persisted in `paypal_webhook_receipts` before HTTP 200;
+   - receipts have explicit RECEIVED / PROCESSING / RETRY / PROCESSED state, attempt count, processing lease, and recovery timestamps;
+   - startup recovery scans recoverable verified receipts before the web service starts.
 
-Slice 2 has no remaining product/runtime blocker. PR #1 should still wait for the latest branch-head CI triggered by the final documentation/status commits to finish green before merge.
+3. **Webhook deduplication and recovery**
+   - PayPal `event_id` is the receipt primary key;
+   - deterministic audit-event IDs make repeat processing idempotent;
+   - database-backed tests prove duplicate receipt/audit insertion collapses to one logical record and an interrupted processing lease can be reclaimed and completed.
+
+4. **Monotonic payout reconciliation**
+   - remote status application is serialized with `SELECT ... FOR UPDATE`;
+   - terminal states cannot regress to weaker pending/unknown states;
+   - explicit post-success RETURNED / REFUNDED / REVERSED transitions remain allowed;
+   - tests cover stale PENDING after PAID and valid reversal after PAID.
+
+5. **Duplicate-batch recovery tightening**
+   - HATEOAS payout-link recovery is accepted only for PayPal `BATCH_ALREADY_EXISTS`;
+   - tests prove an unrelated error containing a payout-shaped link is rejected.
+
+Current repaired-code evidence:
+- branch head: `11a577594d7f1949b83bae282995e252312bb68b`;
+- GitHub Actions run `37705824345`: migration idempotence, seed idempotence, typecheck, 5 files / 30 tests, production build, and smoke all passed;
+- exact-code Render deployment `dep-db3dsurtqb8s73djfehg` proved the third migration and startup webhook-recovery runner;
+- live-safe proof deployment `dep-db3duutg1s2s73a29s8g` replayed the existing Sandbox proof without creating a second payout: logical payment, batch and item IDs stayed unchanged, executionRows=1, submittedEvents=1, final local `PAID` / PayPal `SUCCESS`, webhookVerifiedEvents=1, reconciledEvents=2, webhookReconcileFailures=0;
+- proof flags were reset to disabled and clean deployment `dep-db3e033tqb8s73djqfqg` of the same commit is live.
+
+The database's external allowlist remains intentionally empty. Hosted Render MCP therefore cannot query the database directly; this is a platform-access limitation, not an application runtime failure.
 
 ## Slice 2 Review Gate
 
 Formal review artifact: `devpost/reviews/slice-2-critical-review.md`.
 
-Decision: `CONTINUE`, score 9.3/10, self-review supplemented by deterministic CI and external Render/PayPal Sandbox evidence.
-
-The revised contract makes APIMatic optional/deferred. The verified mandatory evidence is: exactly one Sandbox payout, final PayPal `SUCCESS`, local `PAID`, one execution row, one `PAYPAL_SUBMITTED`, deterministic identifier reuse, live verified webhook delivery, successful reconciliation, and zero webhook reconciliation failures.
-
-Normal Render runtime is clean after verification: proof-only flags are disabled and deployment `dep-db3bipc9v7es73bjgp5g` is live at commit `60026accad1aa139a5fe49a8b0853a46d586e748`.
-
-Slice 2 was checked complete in `devpost/checklist.md` after the `CONTINUE` gate.
+The previous review decision was `BLOCK` pending the five repairs above. Those repairs are now implemented and mechanically/live-safe verified. A final re-review of the repaired branch is required before PR #1 may merge.
