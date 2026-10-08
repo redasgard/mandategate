@@ -125,8 +125,10 @@ export class PayPalPayoutsClient implements PaymentGateway {
           return { payoutBatchId: body.batch_header.payout_batch_id };
         }
 
-        const duplicateBatchId = parseBatchIdFromLinks(body, this.config.baseUrl);
-        if (duplicateBatchId) return { payoutBatchId: duplicateBatchId };
+        if (body?.name === "BATCH_ALREADY_EXISTS") {
+          const duplicateBatchId = parseBatchIdFromLinks(body, this.config.baseUrl);
+          if (duplicateBatchId) return { payoutBatchId: duplicateBatchId };
+        }
 
         if (response.status === 429 || response.status >= 500) {
           if (attempt < 2) {
