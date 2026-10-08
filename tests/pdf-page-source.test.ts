@@ -98,7 +98,7 @@ describe("immutable independently parsed PDF page provenance",()=>{
   });
   it("rejects encrypted or password protected PDFs",async()=>{
     await expect(parseIndependentPdfSource({content:encryptedPdf}))
-      .rejects.toMatchObject({code:"PDF_PASSWORD_REQUIRED"});
+      .rejects.toMatchObject({code:"PDF_ENCRYPTED_UNSUPPORTED"});
   });
   it("rejects page counts above twenty and missing text on any page",async()=>{
     await expect(parseIndependentPdfSource({content:createPdf(Array(21).fill("Invoice"))}))
@@ -126,8 +126,8 @@ describe("immutable independently parsed PDF page provenance",()=>{
   });
   it("allows source-to-field comparison but never payment authority",async()=>{
     const normal=await assessStoredPdfObservation(org,artifactId,untrustedCandidate(artifactId));
-    expect(normal.state).toBe("EXTRACTED_UNTRUSTED");
     expect(normal.reasonCodes).toEqual([]);
+    expect(normal.state).toBe("EXTRACTED_UNTRUSTED");
     expect(normal.pageTextDigests).toHaveLength(2);
     expect(normal.issuerAuthenticated).toBe(false);
     expect(normal.paymentAuthorized).toBe(false);
