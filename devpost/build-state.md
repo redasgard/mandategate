@@ -116,6 +116,12 @@ First security-boundary implementation:
 
 Checkpoint review: `devpost/reviews/slice-3-admission-checkpoint.md` covers admission/storage only, not full Slice 3 acceptance.
 
+## Slice 3A Gate B immutable provenance records
+
+Code checkpoint c708e2a84b175add8dd0bf2a71e944c4a634237c. CI 37813228504: SUCCESS (8 migrations twice, typecheck, seed twice, 14 test files / 93 tests, Next build and smoke). Added five authority/provenance tables, database-enforced tenant and exact artifact SHA-256 relations, append-only source/evidence/trace history, immutable payment tuple, and strict SHA-256 canonical value contracts. Review devpost/reviews/slice-3a-gate-b-review.md: CONTINUE to Gate C (8.8/10 self-review).
+
+Important limitation: these records are non-authorizing storage contracts, NOT real issuer attestation or independently verified claims. DB status strings and hashes alone cannot authorize a PayPal payout. No model data is promoted to source truth, no invoice-to-payment code is wired, and the stable Render service remains untouched.
+
 ## Slice 3A Gate A implementation (2026-10-08)
 
 Code checkpoint c870270959facafc8f209e4a14f3dbb4bc806b77. CI 37811225079 SUCCESS: migration/seed idempotence, typecheck, 12 test files / 79 tests, production build, HTTP scope separation smoke, ALLOW/ESCALATE/DENY decisions without payout. Review: devpost/reviews/slice-3a-gate-a-review.md, CONTINUE to Gate B only (self-review 9.1/10).
