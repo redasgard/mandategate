@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { pool } from "../../db/pool";
 import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
+import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
 import type {
   AuthoritativePayment,
   ExecutionRecord,
@@ -39,6 +40,10 @@ export class PostgresExecutionStore implements ExecutionStore {
               pr.currency,
               pr.requested_destination,
               pr.invoice_number,
+              pr.source,
+              pr.authority_binding_id,
+              pr.vendor_id,
+              pr.organization_id,
               pd.outcome,
               vd.destination as current_trusted_destination
          from payment_requests pr
@@ -56,6 +61,35 @@ export class PostgresExecutionStore implements ExecutionStore {
     );
     const row = result.rows[0];
     if (!row) return null;
+    if (row.source === "verified_invoice") {
+      if (!row.authority_binding_id) return null;
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        const bound = await inspectCurrentAuthorityBinding(
+          client, row.authority_binding_id, "CONSUMED",
+        );
+        if (
+          bound.linkedRequestId !== requestId ||
+          bound.organizationId !== row.organization_id ||
+          bound.vendorId !== row.vendor_id ||
+          bound.amountCents !== row.amount_cents ||
+          bound.currency !== row.currency ||
+          bound.invoiceNumber !== row.invoice_number ||
+          bound.recipient !== row.requested_destination
+        ) {
+          await client.query("rollback");
+          return null;
+        }
+        await client.query("commit");
+      } catch (error) {
+        await client.query("rollback").catch(() => undefined);
+        if (error instanceof AuthorityBindingRejected) return null;
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
     return {
       requestId: row.request_id,
       logicalPaymentId: row.logical_payment_id,
