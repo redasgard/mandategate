@@ -4,6 +4,7 @@ import { pool } from "../src/db/pool";
 import { prepareInvoicePaymentProposal } from "../src/authority/payment-proposal";
 import { consumeApprovedInvoiceBinding } from "../src/authority/consume-invoice-binding";
 import { PostgresExecutionStore } from "../src/payments/executor/postgres-store";
+import { reviewInvoiceBinding } from "../src/authority/admin-review";
 
 const org = "proposal_test_" + randomUUID();
 const foreignOrg = "proposal_test_" + randomUUID();
@@ -203,6 +204,53 @@ describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
       [approvedBindingId],
     );
     expect(count.rows[0].n).toBe(1);
+  });
+
+  it("Gate F: reviewer must be an active org admin and approve the exact current tuple",async()=>{
+    const f=await makeFixture("REVIEW-BOUND");
+    const proposal=await propose(f);
+    expect(proposal.bindingId).toBeTruthy();
+    const id=proposal.bindingId!;
+    const bogusAdmin=randomUUID();
+    await expect(reviewInvoiceBinding({
+      bindingId:id,reviewerId:bogusAdmin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Reviewed the independently attested source",
+    })).rejects.toMatchObject({code:"REVIEWER_NOT_AUTHORIZED"});
+    await expect(reviewInvoiceBinding({
+      bindingId:id,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:"f".repeat(64),reason:"Reviewed the independently attested source",
+    })).rejects.toMatchObject({code:"REVIEW_TUPLE_CHANGED"});
+    const approval=await reviewInvoiceBinding({
+      bindingId:id,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Verified source and exact payment details",
+    });
+    expect(approval).toMatchObject({status:"AUTHORIZED",paymentExecuted:false});
+    await expect(reviewInvoiceBinding({
+      bindingId:id,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Replaying a prior approval is disallowed",
+    })).rejects.toMatchObject({code:"REVIEW_ALREADY_RESOLVED"});
+    const events=await pool.query(
+      "select count(*)::int as n from parameter_lineage_events where binding_id=$1 and event_type='BOUND_REVIEW_APPROVED'",
+      [id],
+    );
+    expect(events.rows[0].n).toBe(1);
+  });
+
+  it("Gate F: rejection is terminal and never creates a payment request",async()=>{
+    const f=await makeFixture("REJECT-BOUND");
+    const proposal=await propose(f);
+    const rejected=await reviewInvoiceBinding({
+      bindingId:proposal.bindingId!,reviewerId:admin,action:"REJECT",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"I cannot independently confirm the source",
+    });
+    expect(rejected).toMatchObject({status:"REVOKED",paymentExecuted:false});
+    await expect(consumeApprovedInvoiceBinding(proposal.bindingId!))
+      .rejects.toThrow("PAYMENT_BINDING_NOT_APPROVED");
+    const payments=await pool.query(
+      "select count(*)::int as n from payment_requests where authority_binding_id=$1",
+      [proposal.bindingId],
+    );
+    expect(payments.rows[0].n).toBe(0);
   });
 
   it("denies forged verified_invoice payment without an authority binding",async()=>{
