@@ -14,7 +14,7 @@ const requestSchema = z.object({
 const idempotencySchema = z.string().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/);
 
 export async function POST(request: NextRequest) {
-  const principal = await authenticateAgent(request.headers.get("authorization"), "invoice:submit");
+  const principal = await authenticateAgent(request.headers.get("authorization"), "payment:submit");
   if (!principal) return Response.json({ error: "UNAUTHORIZED_AGENT" }, { status: 401 });
 
   const idempotency = idempotencySchema.safeParse(request.headers.get("idempotency-key"));

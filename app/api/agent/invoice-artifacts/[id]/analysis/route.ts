@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const principal = await authenticateAgent(
     request.headers.get("authorization"),
-    "payment:read",
+    "invoice:read",
   );
   if (!principal) return Response.json({ error: "UNAUTHORIZED_AGENT" }, { status: 401 });
   const { id } = await params;

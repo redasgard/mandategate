@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const principal = await authenticateAgent(
     request.headers.get("authorization"),
-    "invoice:submit",
+    "invoice:upload",
   );
   if (!principal) {
     return Response.json({ error: "UNAUTHORIZED_AGENT" }, { status: 401 });
