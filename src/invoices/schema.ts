@@ -22,6 +22,7 @@ export const invoiceExtractionSchema = z.object({
   currency: invoiceFieldSchema,
   total_amount_decimal: invoiceFieldSchema,
   invoice_payment_destination: invoiceFieldSchema,
+  observed_instructions: z.array(z.string().min(1).max(500)).max(5).optional(),
   line_items: z.array(z.object({
     description: z.string().min(1).max(1000),
     quantity_decimal: z.string().max(64).nullable(),
@@ -78,6 +79,7 @@ export function assessUntrustedInvoiceExtraction(
 
   const invoice = parsed.data;
   const reasons = new Set<string>();
+  if (invoice.observed_instructions?.length) reasons.add("DOCUMENT_INSTRUCTIONS_SUSPECTED");
   const critical: PaymentCriticalField[] = [
     "vendor_name", "invoice_number", "currency", "total_amount_decimal",
   ];
