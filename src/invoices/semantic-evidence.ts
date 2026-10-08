@@ -81,7 +81,7 @@ export function verifyFieldEvidenceBinding(input: {
       return issues;
     }
     case "currency": {
-      const explicitCurrencies = quote.match(/\b[A-Z]{3}\b/g) ?? [];
+      const explicitCurrencies: string[] = Array.from(quote.match(/\b[A-Z]{3}\b/g) ?? []);
       if (!explicitCurrencies.includes(value)) {
         issues.push("CURRENCY_NOT_SOURCE_GROUNDED");
       }
