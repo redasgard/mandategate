@@ -18,6 +18,7 @@ const manualFact=z.object({
 
 export const manualInvoiceReviewSchema=z.object({
   artifactId:z.string().uuid(),
+  expectedArtifactSha256:z.string().regex(/^[a-f0-9]{64}$/),
   facts:z.object(Object.fromEntries(
     fieldNames.map(name=>[name,manualFact])
   ) as Record<(typeof fieldNames)[number],typeof manualFact>).strict(),
@@ -36,7 +37,8 @@ const sha=(value:string|Buffer)=>createHash("sha256").update(value).digest("hex"
 /**
  * Gate F: explicit independent ADMIN visual transcription. A model cannot
  * invoke this, authenticate as an admin, or elevate its self-reported quotes.
- * A human attests to checking the actual downloaded artifact separately.
+ * A human attests to checking the actual stored image independently.
+ * Typed fragments are HUMAN ATTESTATION, not machine-parsed source proof.
  * This does NOT authenticate the issuer and DOES NOT approve a payment.
  */
 export async function recordExplicitHumanInvoiceFacts(input:{
@@ -46,7 +48,7 @@ export async function recordExplicitHumanInvoiceFacts(input:{
 }) {
   const parsed=manualInvoiceReviewSchema.safeParse(input.review);
   if(!parsed.success)reject("INVALID_MANUAL_FACTS_SCHEMA");
-  const {artifactId,facts,reviewerReason}=parsed.data;
+  const {artifactId,expectedArtifactSha256,facts,reviewerReason}=parsed.data;
 
   const client=await pool.connect();
   try {
@@ -71,12 +73,13 @@ export async function recordExplicitHumanInvoiceFacts(input:{
     const row=artifact.rows[0];
     const raw:Buffer=row.content;
     if(raw.length!==row.byte_size || sha(raw)!==row.sha256)reject("INVOICE_ARTIFACT_INTEGRITY_FAILURE");
-    if(row.mime_type==="image/png" || row.mime_type==="image/jpeg") {
-      validateInvoiceImageContainer(raw,row.mime_type);
-      if(fieldNames.some(name=>facts[name].pageNumber!==1)) {
-        reject("IMAGE_PAGE_NUMBER_INVALID");
-      }
-    }
+    if(expectedArtifactSha256!==row.sha256)reject("ARTIFACT_REVIEW_DIGEST_MISMATCH",409);
+    // The first auditable human-transcription path covers PNG only. JPEG's
+    // entropy decoding and PDF's page parsing have not been verified here.
+    // Neither format may be promoted to source corroboration by typed text.
+    if(row.mime_type!=="image/png")reject("MANUAL_SOURCE_FORMAT_NOT_YET_SUPPORTED");
+    validateInvoiceImageContainer(raw,"image/png");
+    if(fieldNames.some(name=>facts[name].pageNumber!==1))reject("IMAGE_PAGE_NUMBER_INVALID");
     // Never attempt to derive verification from the model's own responses.
     // The reviewer asserts visible labels from the original downloaded file.
     const snapshots=fieldNames.map(name=>{
@@ -103,7 +106,7 @@ export async function recordExplicitHumanInvoiceFacts(input:{
       sourceKind:"HUMAN_TRANSCRIPTION",fields:snapshots,
     });
     const proofSha=sha([
-      "mandategate/admin-source-review/v1",input.actorUserId,
+      "mandategate/admin-source-review/v2",input.actorUserId,
       input.organizationId,artifactId,row.sha256,snapshotSha,reviewerReason,
     ].join("\0"));
     const inserted=await client.query(
@@ -148,6 +151,7 @@ export async function recordExplicitHumanInvoiceFacts(input:{
     return {
       claimSetId,artifactId,artifactSha256:row.sha256,
       reviewer:input.actorUserId,verification:"EXPLICIT_HUMAN_TRANSCRIPTION",
+      humanAttested:true as const,machineCorroborated:false as const,
       issuerAuthenticated:false as const,paymentAuthorized:false as const,
     };
   } catch(error) {

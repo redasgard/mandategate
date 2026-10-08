@@ -149,3 +149,29 @@ export async function loadInvoiceArtifactForAnalysis(
   }
   return { ...metadata(row), content };
 }
+
+/**
+ * Admin-only original-byte access for a human reviewing a source artifact.
+ * The organization is derived from a live authenticated admin membership,
+ * not from a user-supplied organization or model claim.
+ */
+export async function loadInvoiceArtifactForHumanReview(actorUserId: string, artifactId: string) {
+  const result = await pool.query(
+    [
+      "select a.id,a.organization_id,a.mime_type,a.byte_size,a.sha256,a.analysis_status,",
+      "a.created_at,a.content from invoice_artifacts a",
+      "join organization_admin_memberships m on m.organization_id=a.organization_id",
+      "and m.user_id=$2 and m.role='ADMIN' and m.active=true",
+      "where a.id=$1 limit 1",
+    ].join(" "),
+    [artifactId, actorUserId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const content: Buffer = row.content;
+  const actual = createHash("sha256").update(content).digest("hex");
+  if (content.length !== Number(row.byte_size) || actual !== row.sha256) {
+    throw new Error("INVOICE_ARTIFACT_INTEGRITY_FAILURE");
+  }
+  return { ...metadata(row), organizationId: row.organization_id as string, content };
+}
