@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db } from "@/src/db/db";
-import { apiPrincipals } from "@/src/db/schema";
+import { db } from "../db/db";
+import { apiPrincipals } from "../db/schema";
 import { isValidSeparatedMachineScopes } from "./principal-scopes";
 
 export type AgentPrincipal = {
