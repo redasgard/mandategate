@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
 import {
+  ArtifactQuotaError,
+  MAX_ORGANIZATION_ARTIFACT_BYTES,
+  MAX_ORGANIZATION_ARTIFACT_COUNT,
+  assertInvoiceArtifactQuota,
   findInvoiceArtifactMetadata,
   loadInvoiceArtifactForAnalysis,
   storeUntrustedInvoiceArtifact,
@@ -49,5 +53,23 @@ describe("organization-bound artifact store", () => {
     expect((await loadInvoiceArtifactForAnalysis(orgOne, first.artifactId))?.content.equals(pdf)).toBe(true);
     expect(await findInvoiceArtifactMetadata(orgTwo, first.artifactId)).toBeNull();
     expect(await loadInvoiceArtifactForAnalysis(orgTwo, first.artifactId)).toBeNull();
+    await expect(
+      pool.query("update invoice_artifacts set content = $1 where id = $2", [
+        Buffer.from("tampered invoice"),
+        first.artifactId,
+      ]),
+    ).rejects.toThrow(/INVOICE_ARTIFACT_CONTENT_IMMUTABLE/);
   });
+  it("rejects organization quota exhaustion before a new write", () => {
+    expect(() =>
+      assertInvoiceArtifactQuota(MAX_ORGANIZATION_ARTIFACT_BYTES, 1, 1),
+    ).toThrow(ArtifactQuotaError);
+    expect(() =>
+      assertInvoiceArtifactQuota(0, MAX_ORGANIZATION_ARTIFACT_COUNT, 1),
+    ).toThrow(ArtifactQuotaError);
+    expect(() =>
+      assertInvoiceArtifactQuota(0, 0, 100),
+    ).not.toThrow();
+  });
+
 });

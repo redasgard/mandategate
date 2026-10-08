@@ -22,40 +22,99 @@ function metadata(row: any): InvoiceArtifactMetadata {
   };
 }
 
+export const MAX_ORGANIZATION_ARTIFACT_BYTES = 128 * 1024 * 1024;
+export const MAX_ORGANIZATION_ARTIFACT_COUNT = 500;
+
+export class ArtifactQuotaError extends Error {
+  readonly code = "INVOICE_ARTIFACT_ORGANIZATION_QUOTA_EXCEEDED";
+  readonly httpStatus = 429;
+
+  constructor() {
+    super("INVOICE_ARTIFACT_ORGANIZATION_QUOTA_EXCEEDED");
+    this.name = "ArtifactQuotaError";
+  }
+}
+
+export function assertInvoiceArtifactQuota(
+  existingBytes: number,
+  existingCount: number,
+  additionalBytes: number,
+) {
+  if (
+    !Number.isSafeInteger(existingBytes) ||
+    !Number.isSafeInteger(existingCount) ||
+    existingBytes < 0 || existingCount < 0 ||
+    existingBytes + additionalBytes > MAX_ORGANIZATION_ARTIFACT_BYTES ||
+    existingCount >= MAX_ORGANIZATION_ARTIFACT_COUNT
+  ) {
+    throw new ArtifactQuotaError();
+  }
+}
+
 export async function storeUntrustedInvoiceArtifact(input: {
   organizationId: string;
   contentType: string;
   content: Buffer;
 }) {
   const verified = inspectInvoiceArtifact(input.content, input.contentType);
-  const inserted = await pool.query(
-    [
-      "insert into invoice_artifacts",
-      "(id, organization_id, mime_type, byte_size, sha256, content)",
-      "values ($1, $2, $3, $4, $5, $6)",
-      "on conflict (organization_id, sha256) do nothing",
-      "returning id, mime_type, byte_size, sha256, analysis_status, created_at",
-    ].join(" "),
-    [
-      randomUUID(),
-      input.organizationId,
-      verified.mimeType,
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    // Lock the organization row so concurrent uploads cannot race past the
+    // per-organization byte/count budget. No global cross-tenant lock.
+    const owner = await client.query(
+      "select id from organizations where id = $1 for update",
+      [input.organizationId],
+    );
+    if (!owner.rows[0]) throw new Error("INVOICE_ARTIFACT_ORGANIZATION_NOT_FOUND");
+
+    const existing = await client.query(
+      [
+        "select id, mime_type, byte_size, sha256, analysis_status, created_at",
+        "from invoice_artifacts where organization_id = $1 and sha256 = $2",
+        "limit 1",
+      ].join(" "),
+      [input.organizationId, verified.sha256],
+    );
+    if (existing.rows[0]) {
+      await client.query("commit");
+      return { ...metadata(existing.rows[0]), replayed: true };
+    }
+
+    const usage = await client.query(
+      "select count(*)::int as n, coalesce(sum(byte_size), 0)::bigint as bytes from invoice_artifacts where organization_id = $1",
+      [input.organizationId],
+    );
+    assertInvoiceArtifactQuota(
+      Number(usage.rows[0]?.bytes ?? 0),
+      Number(usage.rows[0]?.n ?? 0),
       verified.byteSize,
-      verified.sha256,
-      input.content,
-    ],
-  );
-  const replayed = inserted.rowCount === 0;
-  const row = inserted.rows[0] ?? (await pool.query(
-    [
-      "select id, mime_type, byte_size, sha256, analysis_status, created_at",
-      "from invoice_artifacts where organization_id = $1 and sha256 = $2",
-      "limit 1",
-    ].join(" "),
-    [input.organizationId, verified.sha256],
-  )).rows[0];
-  if (!row) throw new Error("INVOICE_ARTIFACT_STORE_INCONSISTENT");
-  return { ...metadata(row), replayed };
+    );
+
+    const inserted = await client.query(
+      [
+        "insert into invoice_artifacts",
+        "(id, organization_id, mime_type, byte_size, sha256, content)",
+        "values ($1, $2, $3, $4, $5, $6)",
+        "returning id, mime_type, byte_size, sha256, analysis_status, created_at",
+      ].join(" "),
+      [
+        randomUUID(),
+        input.organizationId,
+        verified.mimeType,
+        verified.byteSize,
+        verified.sha256,
+        input.content,
+      ],
+    );
+    await client.query("commit");
+    return { ...metadata(inserted.rows[0]), replayed: false };
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function findInvoiceArtifactMetadata(
