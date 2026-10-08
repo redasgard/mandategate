@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db/db";
 import { apiPrincipals } from "@/src/db/schema";
+import { isValidSeparatedMachineScopes } from "./principal-scopes";
 
 export type AgentPrincipal = {
   id: string;
@@ -32,7 +33,7 @@ export async function authenticateAgent(
     .where(eq(apiPrincipals.keyHash, keyHash(rawKey)))
     .limit(1);
 
-  if (!principal?.active || !principal.scopes.includes(requiredScope)) return null;
+  if (!principal?.active || !isValidSeparatedMachineScopes(principal.scopes) || !principal.scopes.includes(requiredScope)) return null;
   return principal;
 }
 

@@ -14,7 +14,7 @@ export async function POST(
 ) {
   const principal = await authenticateAgent(
     request.headers.get("authorization"),
-    "invoice:submit",
+    "invoice:analyze",
   );
   if (!principal) return Response.json({ error: "UNAUTHORIZED_AGENT" }, { status: 401 });
   const { id } = await params;
