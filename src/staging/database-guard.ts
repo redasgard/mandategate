@@ -27,7 +27,7 @@ export function requireStagingDatabaseTarget(env: NodeJS.ProcessEnv): boolean {
   const paymentKey = env.DEMO_PAYMENT_AGENT_API_KEY;
   if (!invoiceKey || !paymentKey || invoiceKey === paymentKey ||
       invoiceKey.length < 32 || paymentKey.length < 32 ||
-      /\\s/.test(invoiceKey) || /\\s/.test(paymentKey))
+      /\s/.test(invoiceKey) || /\s/.test(paymentKey))
     throw new Error("STAGING_DISTINCT_AGENT_KEYS_REQUIRED");
   if (env.PAYPAL_BASE_URL !== "https://api-m.sandbox.paypal.com")
     throw new Error("STAGING_PAYPAL_HOST_MISMATCH");
