@@ -18,6 +18,17 @@ export function requireStagingDatabaseTarget(env: NodeJS.ProcessEnv): boolean {
   }
   if (env.BETTER_AUTH_URL !== "https://mandategate-gate-h-staging.onrender.com")
     throw new Error("STAGING_AUTH_ORIGIN_MISMATCH");
+  if (!env.BETTER_AUTH_SECRET || env.BETTER_AUTH_SECRET.length < 32)
+    throw new Error("STAGING_AUTH_SECRET_REQUIRED");
+  if (!env.DEMO_ADMIN_EMAIL || !env.DEMO_ADMIN_PASSWORD ||
+      env.DEMO_ADMIN_PASSWORD.length < 12)
+    throw new Error("STAGING_ADMIN_CREDENTIALS_REQUIRED");
+  const invoiceKey = env.DEMO_AGENT_API_KEY;
+  const paymentKey = env.DEMO_PAYMENT_AGENT_API_KEY;
+  if (!invoiceKey || !paymentKey || invoiceKey === paymentKey ||
+      invoiceKey.length < 32 || paymentKey.length < 32 ||
+      /\\s/.test(invoiceKey) || /\\s/.test(paymentKey))
+    throw new Error("STAGING_DISTINCT_AGENT_KEYS_REQUIRED");
   if (env.PAYPAL_BASE_URL !== "https://api-m.sandbox.paypal.com")
     throw new Error("STAGING_PAYPAL_HOST_MISMATCH");
   if (env.RUN_SLICE2_SANDBOX_PROOF === "1" || env.RUN_DEMO_CREDENTIAL_ROTATION === "1")
