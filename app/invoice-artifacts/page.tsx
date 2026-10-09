@@ -29,6 +29,7 @@ export default async function InvoiceArtifactListPage(){
       <p className="muted">Only artifacts in your active admin organizations are shown.
         PDF source fields and independent issuer attestation must be checked
         separately from final exact-tuple approval.</p>
+      <p><Link href="/vendor-origin-channels">1. Enroll independently known vendor origin channel (before invoice intake)</Link></p>
       <p><Link href="/invoice-artifacts/privacy">Check GLM account privacy metadata</Link></p>
       <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
         id:row.id as string,name:row.name as string,
