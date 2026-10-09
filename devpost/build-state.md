@@ -6,6 +6,16 @@ mode: fast
 
 # Build State
 
+## Slice 3 signed-in T2 → simulated T3 → T4 authorization smoke (2026-10-08 PT)
+
+**Implementation checkpoint:** `1f6712d0a33476b2319ec84e70f696fc293031e3`, GitHub Actions `37875399344` **SUCCESS** (28 test files, 172 tests; migrations and seed twice, typecheck, Next build, real Better Auth HTTP smoke).
+
+- Starting with an original PDF uploaded by authenticated admin, smoke obtains independently parsed PDF.js page source, verifies exact T2 labeled values, blocks forged receiver content, and proves missing T3 issuer stays **ESCALATE**.
+- Separately, CI registers a known portal channel before uploading the PDF and records an explicitly **simulated** admin origin attestation (`portal-event:synthetic-ci-...`). Proposal freezes server-selected values and remains **ESCALATE / PENDING_EXACT_HUMAN_APPROVAL** until a separate admin review; wrong expected tuple digest gets 409.
+- Admin's exact-tuple `APPROVE` transitions binding to **AUTHORIZED** (T4), replay approval returns 409. This verifies role/session/tuple flow but **creates no payment request or Payouts POST** in the smoke script.
+- **Do not count CI simulated portal source as a genuine issuer check**, or T4 synthetic success as actual external permission to pay. The real issuer, live GLM ZDR/served model and PayPal Sandbox payout/webhook remain **UNVERIFIED**.
+- Existing dev app still tracks Slice 2, PR #2 remains draft; Gate H **BLOCKED**. The separate authorizing Sandbox proof requires its original grant and actual external evidence.
+
 ## Slice 3 signed-in invoice intake, source verification and pre-invoice vendor registry (2026-10-08 PT)
 
 **Implementation:** `b52ca996b64b3f7bd9a404f7edaaa71fbc837342` on draft PR #2. **CI VERIFIED:** GitHub Actions `37874974336` SUCCESS, 28 test files / 172 tests, PostgreSQL 18 migrations and seed twice, TypeScript, Next production build and real authenticated HTTP smoke.
