@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
+import { InvoiceArtifactUpload } from "./upload-form";
 
 export default async function InvoiceArtifactListPage(){
   const session=await auth.api.getSession({headers:await headers()});
@@ -14,6 +15,12 @@ export default async function InvoiceArtifactListPage(){
     "and m.user_id=$1 and m.role='ADMIN' and m.active=true",
     "order by a.created_at desc,a.id desc limit 50",
   ].join(" "),[session.user.id]);
+  const organizations=await pool.query([
+    "select o.id,o.name from organizations o",
+    "join organization_admin_memberships m on m.organization_id=o.id",
+    "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
+    "order by o.name,o.id",
+  ].join(" "),[session.user.id]);
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
@@ -23,6 +30,9 @@ export default async function InvoiceArtifactListPage(){
         PDF source fields and independent issuer attestation must be checked
         separately from final exact-tuple approval.</p>
       <p><Link href="/invoice-artifacts/privacy">Check GLM account privacy metadata</Link></p>
+      <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
+        id:row.id as string,name:row.name as string,
+      }))}/>
       {result.rows.length===0?<p>No stored invoice artifacts found for your authorized organizations.</p>:
         <div className="table-wrap"><table>
           <thead><tr><th>Artifact</th><th>Media</th><th>Source SHA</th><th>Created</th></tr></thead>
