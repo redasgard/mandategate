@@ -27,30 +27,31 @@ const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
 const adminPdf=createPdf([
   "Northstar Components Invoice NS-SMOKE-ADM-01 USD Total 1.01 ap@northstar.example",
 ]);
+const adminBody=new Uint8Array(adminPdf);
 const adminHeaders={
   cookie:adminCookie,origin:baseUrl,"content-type":"application/pdf",
   "x-mandategate-organization-id":"org_demo",
 };
 const fakeOrigin=await fetch(adminUploadPath,{
   method:"POST",headers:{...adminHeaders,origin:"https://foreign-origin.example"},
-  body:adminPdf,
+  body:adminBody,
 });
 if(fakeOrigin.status!==403)throw new Error("admin upload accepted forged Origin");
 const anonymousUpload=await fetch(adminUploadPath,{
   method:"POST",
   headers:{origin:baseUrl,"content-type":"application/pdf",
     "x-mandategate-organization-id":"org_demo"},
-  body:adminPdf,
+  body:adminBody,
 });
 if(anonymousUpload.status!==401)throw new Error("admin upload accepted anonymous user");
 const unauthorizedOrgUpload=await fetch(adminUploadPath,{
   method:"POST",
   headers:{...adminHeaders,"x-mandategate-organization-id":"org_not_member"},
-  body:adminPdf,
+  body:adminBody,
 });
 if(unauthorizedOrgUpload.status!==404)throw new Error("admin upload crossed org membership");
 const adminUpload=await fetch(adminUploadPath,{
-  method:"POST",headers:adminHeaders,body:adminPdf,
+  method:"POST",headers:adminHeaders,body:adminBody,
 });
 if(![200,201].includes(adminUpload.status))
   throw new Error(`admin upload failed: ${adminUpload.status} ${await adminUpload.text()}`);
