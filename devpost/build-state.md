@@ -6,6 +6,17 @@ mode: fast
 
 # Build State
 
+## Gate H companion staging web service provisioned (2026-10-08 PT)
+
+Status: **STAGING SERVICE CREATED, AUTO-DEPLOY OFF**; no code deployed, no DB connectivity, no admin login or external proof. Gate H remains BLOCKED.
+
+- New Render web service `mandategate-gate-h-staging`, ID `srv-db4367u0tbcc73cugar0`, URL `https://mandategate-gate-h-staging.onrender.com`, Oregon, free web plan, `autoDeploy=no`, private GitHub repo `redasgard/mandategate`, branch `build/slice-3-invoice-intake`.
+- Build/start commands are standard pinned `pnpm@12.9.1`, frozen lockfile, `pnpm build` and then `pnpm db:migrate && pnpm demo:seed && pnpm start`. No deployment was triggered, and initial `list_deploys` returned no deploy records.
+- Render environment values set on **staging only**: `MANDATEGATE_STAGING=1`; `GATE_H_ISOLATED_DATABASE_CONFIRMED=0`; `GATE_H_LIVE_GLM_PROOF_ENABLED=0`; `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com`; and staging-specific `BETTER_AUTH_URL`. Sandbox submission grant and model-proof allowlist are absent.
+- The paid staging database remains `dpg-db4351rl550s73acup8g-a`, `status=available`. Its internal URL/password are **not available** through this Render connector and have **not** been configured on staging. Separately generate and configure private `BETTER_AUTH_SECRET`, admin password, invoice/principal keys, and only the necessary Sandbox/provider credentials in Render Dashboard before first deployment.
+- Existing stable web `srv-db39vmm7bikc73c55nh0`, old free database `dpg-db39d5rbc2fs73d1ke70-a` and `main` remain untouched.
+- After verifying `DATABASE_URL` points at `mandategate_gate_h_staging_db`, execute a manual one-time staging deploy, and check login, live issuer evidence, GLM privacy, and exact PayPal Sandbox proof separately. Do not equate service creation with deployed proof.
+
 ## Gate H isolated Render staging database provisioned (2026-10-08 PT)
 
 Status: **RESOURCE AVAILABLE**, application/schema connectivity **NOT VERIFIED**, Gate H **BLOCKED**.
