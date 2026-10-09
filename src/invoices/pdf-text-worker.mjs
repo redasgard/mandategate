@@ -76,6 +76,13 @@ try {
   }
   parentPort?.postMessage({ ok: true, pages });
 } catch (error) {
+  // CI-only diagnostic: emit error type/code, never PDF text, document names,
+  // URIs, credentials or the raw exception message.
+  if (process.env.PDF_PARSER_DIAGNOSTICS === "1") {
+    const kind=typeof error?.name==="string"?error.name.slice(0,70):"unknown";
+    const identifier=typeof error?.code==="string"?error.code.slice(0,70):"none";
+    console.error("[PDF_PARSER_CLASS]",kind,identifier);
+  }
   const code = error?.code
     ?? (error?.name === "PasswordException" ? "PDF_PASSWORD_REQUIRED" : "PDF_PARSE_FAILED");
   parentPort?.postMessage({
