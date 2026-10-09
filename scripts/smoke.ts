@@ -1,4 +1,4 @@
-export {};
+import { createPdf } from "../tests/helpers/pdf-fixture";
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const invoiceKey = process.env.DEMO_AGENT_API_KEY;
 const paymentKey = process.env.DEMO_PAYMENT_AGENT_API_KEY;
@@ -21,6 +21,69 @@ const signIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
 });
 if (!signIn.ok) throw new Error(`admin sign-in failed: ${signIn.status} ${await signIn.text()}`);
 if (!signIn.headers.get("set-cookie")) throw new Error("admin sign-in returned no session cookie");
+
+const adminCookie=signIn.headers.get("set-cookie")!.split(";")[0];
+const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
+const adminPdf=createPdf([
+  "Northstar Components Invoice NS-SMOKE-ADM-01 USD Total 1.01 ap@northstar.example",
+]);
+const adminHeaders={
+  cookie:adminCookie,origin:baseUrl,"content-type":"application/pdf",
+  "x-mandategate-organization-id":"org_demo",
+};
+const fakeOrigin=await fetch(adminUploadPath,{
+  method:"POST",headers:{...adminHeaders,origin:"https://foreign-origin.example"},
+  body:adminPdf,
+});
+if(fakeOrigin.status!==403)throw new Error("admin upload accepted forged Origin");
+const anonymousUpload=await fetch(adminUploadPath,{
+  method:"POST",
+  headers:{origin:baseUrl,"content-type":"application/pdf",
+    "x-mandategate-organization-id":"org_demo"},
+  body:adminPdf,
+});
+if(anonymousUpload.status!==401)throw new Error("admin upload accepted anonymous user");
+const unauthorizedOrgUpload=await fetch(adminUploadPath,{
+  method:"POST",
+  headers:{...adminHeaders,"x-mandategate-organization-id":"org_not_member"},
+  body:adminPdf,
+});
+if(unauthorizedOrgUpload.status!==404)throw new Error("admin upload crossed org membership");
+const adminUpload=await fetch(adminUploadPath,{
+  method:"POST",headers:adminHeaders,body:adminPdf,
+});
+if(![200,201].includes(adminUpload.status))
+  throw new Error(`admin upload failed: ${adminUpload.status} ${await adminUpload.text()}`);
+const adminUploaded=await adminUpload.json() as {
+  artifact:{artifactId:string;sha256:string;analysisStatus:string};
+  paymentAuthorized:boolean;paymentExecuted:boolean;trustState:string;
+};
+if(adminUploaded.artifact.analysisStatus!=="STORED_UNTRUSTED" ||
+   adminUploaded.trustState!=="STORED_UNTRUSTED" ||
+   adminUploaded.paymentAuthorized!==false ||adminUploaded.paymentExecuted!==false)
+  throw new Error("admin upload improperly gained payment authority");
+const adminId=adminUploaded.artifact.artifactId;
+const source=await fetch(`${adminUploadPath}/${adminId}/source`,{
+  headers:{cookie:adminCookie},
+});
+if(source.status!==200 ||source.headers.get("x-artifact-sha256")!==adminUploaded.artifact.sha256)
+  throw new Error("admin source read lost artifact SHA provenance");
+const sourceBytes=Buffer.from(await source.arrayBuffer());
+if(!sourceBytes.equals(adminPdf))throw new Error("admin original PDF bytes changed");
+const parse=await fetch(`${adminUploadPath}/${adminId}/pdf-pages`,{
+  method:"POST",headers:{cookie:adminCookie,origin:baseUrl},
+});
+if(![200,201].includes(parse.status))
+  throw new Error(`admin source page parse failed: ${parse.status} ${await parse.text()}`);
+const parsedPages=await parse.json() as {
+  pages:Array<{pageNumber:number;text:string;textSha256:string}>;
+  issuerAuthenticated:boolean;paymentAuthorized:boolean;artifactSha256:string;
+};
+if(parsedPages.artifactSha256!==adminUploaded.artifact.sha256 ||
+   parsedPages.pages.length!==1 ||
+   !parsedPages.pages[0].text.includes("NS-SMOKE-ADM-01") ||
+   parsedPages.issuerAuthenticated!==false ||parsedPages.paymentAuthorized!==false)
+  throw new Error("admin PDF parser provenance or untrusted status failed");
 
 const syntheticPdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n", "ascii");
 const deniedPayment = await fetch(`${baseUrl}/api/agent/payment-requests`, {
@@ -126,4 +189,4 @@ for (const [index, testCase] of cases.entries()) {
   }
 }
 
-console.log("smoke passed: separated principals + admin sign-in + ALLOW/ESCALATE/DENY, zero payouts executed");
+console.log("smoke passed: admin raw PDF upload + actual page parsing + scoped auth + separate principals + ALLOW/ESCALATE/DENY, zero payouts executed");
