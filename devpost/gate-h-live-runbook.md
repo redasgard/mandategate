@@ -1,8 +1,19 @@
 # Gate H live staging and PayPal Sandbox verification runbook
 
-**State:** BLOCKED for execution pending Render workspace confirmation, truly independent issuer proof, separate staging database, and live Experiential account evidence.
+**State:** BLOCKED for execution pending a safely configured, independently verified staging service, real issuer origin, authenticated reviewer and live Experiential account evidence. The paid staging database is created and available, but not connected.
 **Current implementation checkpoint:** `6e0a5d82fe29168daf50110b676d07dbd7bc541e`, GitHub Actions `37856559061`, 24 test files / 160 tests PASS.
 **Release rule:** no PR #2 merge or stable deployment until Gate H live evidence and independent review pass.
+
+## 0A. Isolated paid PostgreSQL resource (provisioned)
+
+- **Workspace:** Yevhen's workspace, `tea-d27bea6uk2gs73dv4up0`.
+- **New database:** `mandategate-gate-h-staging-db` (`dpg-db4351rl550s73acup8g-a`), PostgreSQL 18, Oregon, paid `basic_256mb`, 1 GB allocated, disk autoscaling disabled, public IP allowlist empty; Render status **available** when rechecked.
+- **Dashboard:** https://dashboard.render.com/d/dpg-db4351rl550s73acup8g-a
+- **Existing free database:** `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`) remains separate/unchanged. **Do not repurpose it or a stable database URL.**
+- **Billing:** Render lists $6/month compute for the 256 MB plan and includes the first GB of storage; compute prorates for short-lived instances. This paid database will **not** expire automatically. Delete it via the Render Dashboard when Gate H work is complete or abandoned; connector has no delete Postgres action.
+- **Credentials:** The connected API exposes no PostgreSQL connection string/password. A new isolated staging web service must receive the **internal** URL from the Render Dashboard via secrets. Configure separate Better Auth secret/base URL and reviewer credentials, distinct invoice/payment agent keys, Sandbox-only PayPal credentials, and Experiential credentials. Never place secrets in GitHub or chat. Auto-deploy must remain OFF.
+- **Before any migration:** independently inspect staging `DATABASE_URL` target metadata (expected DB `mandategate_gate_h_staging_db`), check it cannot reach the existing free/stable DB, verify effective runtime vars are scoped to staging, then run bounded migration/seed and health checks.
+- **No staging service or account-data access:** creating a database does not verify application isolation, active reviewer session, source origin, provider privacy or any PayPal operation.
 
 ## 0. Authority and safety boundaries
 

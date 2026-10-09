@@ -6,6 +6,19 @@ mode: fast
 
 # Build State
 
+## Gate H isolated Render staging database provisioned (2026-10-08 PT)
+
+Status: **RESOURCE AVAILABLE**, application/schema connectivity **NOT VERIFIED**, Gate H **BLOCKED**.
+
+- User explicitly selected temporary paid isolated Postgres after Render rejected a second free instance.
+- Connected Render workspace: `Yevhen's workspace` (`tea-d27bea6uk2gs73dv4up0`), Oregon.
+- Newly created: `mandategate-gate-h-staging-db`, ID `dpg-db4351rl550s73acup8g-a`, PostgreSQL 18, paid `basic_256mb`, 256 MB, 1 GB disk, disk autoscaling OFF, public IP allowlist empty. Render `get_postgres` subsequently returned `status=available`.
+- Existing free DB `dpg-db39d5rbc2fs73d1ke70-a` and live web `srv-db39vmm7bikc73c55nh0` were not modified. No staging web was created and no database was queried, migrated, seeded, or connected.
+- Posted rate from Render pricing (Oct 2026): $6/month compute, with 1 GB included storage; compute charges prorated to the second. Billing continues until the paid resource is explicitly deleted. [Render pricing](https://render.com/pricing).
+- **Credential boundary:** connected Render `get_postgres` provides configuration but no internal connection URL, password, or credentials. Do not invent or copy a URL from the stable app. Link this DB securely to a *new* staging web service using Render Dashboard's internal connection string/secret configuration, then verify database identity and isolated Better Auth, agent, provider and Sandbox keys before any deployment or mutation.
+- **Cleanup:** after Gate H or abandonment, explicitly delete the temporary paid staging DB in Render Dashboard after sanitizing/archiving necessary synthetic evidence. There is no automatic expiry/deletion configured and this connector cannot delete it.
+- **Review:** self-review CONTINUE to secret-safe staging wiring; BLOCK live review, GLM inference, payouts, merge or stable deploy until independent environment and external-evidence gates pass.
+
 ## Gate H bounded three-case Sandbox runner (2026-10-08)
 
 Status: runner **code CI verified**, external proof NOT RUN. Commit `6e0a5d82fe29168daf50110b676d07dbd7bc541e`, GitHub Actions `37856559061`, 24 files / 160 tests green including typecheck/build/smoke.
