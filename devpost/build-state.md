@@ -6,6 +6,17 @@ mode: fast
 
 # Build State
 
+## Slice 3 signed-in invoice intake, source verification and pre-invoice vendor registry (2026-10-08 PT)
+
+**Implementation:** `b52ca996b64b3f7bd9a404f7edaaa71fbc837342` on draft PR #2. **CI VERIFIED:** GitHub Actions `37874974336` SUCCESS, 28 test files / 172 tests, PostgreSQL 18 migrations and seed twice, TypeScript, Next production build and real authenticated HTTP smoke.
+
+- New signed-in `/invoice-artifacts` upload UI and `POST /api/admin/invoice-artifacts` ingest raw PDF/PNG/JPEG up to 10 MiB with exact SHA-256, deduplication, org quotas and source status `STORED_UNTRUSTED`. Same Origin, Better Auth session and *live* organization ADMIN membership required, with a second membership check inside the insert transaction. No user-supplied vendor/payment receiver gains authority.
+- New `/vendor-origin-channels` and admin `POST /api/admin/vendor-origin-channels` enroll a previously known callback/portal/ERP channel before invoice arrival. Organization membership and registered vendor are checked, database-generated enrollment time and evidence digest are immutable, digest-based re-enrollment replay is idempotent. This is an accountable **human assertion**, not independently authenticated supplier proof. `SYNTHETIC_FIXTURE` cannot be enrolled through the route.
+- Fixed two actual Next production integration failures: empty framework POST streams now accepted for PDF page preparation but nonempty payloads refused, and `pdfjs-dist` server-externalized in `next.config.ts` to prevent missing worker module under `.next/server/chunks`. Temporary diagnostic logging removed after the fix was verified.
+- Production Next HTTP smoke used a seeded synthetic admin login, simulated registry evidence, exact persisted PDF, PDF.js page parser, five T2 critical fields, malicious receiver rejection, and **missing issuer-origin proof -> ESCALATE**. No payment binding from the negative case and **zero payouts**.
+- **UNVERIFIED / NOT DONE:** live Render dev deployment, interactive hosted browser reviewer, genuine external issuer callback/portal verification, GLM serving-route ZDR/privacy request, invoice-derived PayPal Sandbox payout and webhook reconciliation. Prior Slice 2 Payouts evidence does not satisfy Slice 3.
+- **Next:** use the existing dev app and free DB after review, verify hosted signed-in reviewer and the actual GLM privacy lane, then run controlled three-case PayPal Sandbox proof. No new infrastructure. Keep Slice 3 unchecked, Gate H **BLOCKED**, PR #2 **DRAFT**.
+
 ## Gate H infrastructure simplification: one development/demo environment (2026-10-08 PT)
 
 **Authoritative current decision (supersedes the historical staging entries below):** The extra Render staging environment was unnecessary for this hackathon and is being retired. Keep one existing development app `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), one existing free database `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`), the actual Experiential/GLM route and **PayPal Sandbox**. There are no production invoices, customer payments or production environment to protect in this demo.

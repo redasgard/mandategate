@@ -49,6 +49,17 @@ Use the existing Render development app and existing free PostgreSQL database wi
 
 Live Payouts stay sandbox-only. No model observation or invoice text is payment authority without verified source evidence, trusted issuer channel, an authenticated approval and a one-time explicit test grant.
 
+## Slice 3 invoice reviewer demo (development branch)
+
+On `build/slice-3-invoice-intake`, the signed-in admin UI offers:
+
+1. `/vendor-origin-channels`: register a previously known vendor callback, portal, or ERP source **before** an invoice arrives. A checked box and digest are human evidence assertions, not proof that the vendor actually responded.
+2. `/invoice-artifacts`: upload the original PDF, PNG, or JPEG as untrusted bytes. The UI enforces the admin's organization membership and stores its SHA-256. No agent token is necessary for this manual demo.
+3. `/invoice-artifacts/[id]` (PDF): inspect the original source and independently parsed page text, record five typed/payment-critical field quotes and page numbers, and verify source fidelity as T2.
+4. Confirm the issuer through the previously known out-of-band source (T3), evaluate the server-frozen exact payment tuple, and navigate to `/invoice-bindings/[id]` for a separate signed-in review. Without real issuer evidence, the proposal **ESCALATES** and does not produce a payout.
+
+These routes are **CI-verified source-review code, not deployed or externally verified proof yet**. The GitHub Actions checkpoint `37874974336` executes the HTTP upload/parse/T2/negative proposal path with a synthetic fixture and **no PayPal payout**. The isolated GLM and payment gates remain separate.
+
 ## Local setup
 
 Prerequisites:

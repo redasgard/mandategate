@@ -23,6 +23,14 @@ The two extra web deployments both failed during their builds, before applicatio
 
 **Deletion status:** NOT DONE. The connected Render app has no delete-service/delete-Postgres action. An operator must delete both extra resources in Render Dashboard (Settings -> Delete) and verify their IDs disappear from the Render resource lists. Delete the **paid database** to stop its continued billing. No account/database cleanup is automatic.
 
+## Latest source-to-review CI checkpoint (2026-10-08)
+
+- Code `b52ca996b64b3f7bd9a404f7edaaa71fbc837342`; GitHub Actions `37874974336` SUCCESS with 28 test files, 172 tests, migration/seed replay, Next build, and real Better Auth admin HTTP smoke.
+- Reviewer first visits `/vendor-origin-channels` to enroll an **independently checked** known vendor source using a pre-invoice human assertion, then `/invoice-artifacts` to upload actual original PDF/PNG/JPEG bytes. The UI never trusts an invoice-printed bank account or contact as the registered vendor source.
+- In the authenticated PDF reviewer, use original PDF+PDF.js page text, enter all five labeled exact field values and their page/quote evidence, verify T2, and independently attest issuer T3 before proposing any frozen payment tuple.
+- CI has **actually exercised** the missing-origin scenario end-to-end: original PDF bytes -> persisted hash -> real Next page parser -> authenticated T2 field verification -> missing T3 -> ESCALATE; altered receiver -> 422; zero payout. Its “portal event” reference is a SIMULATED CI value and is NOT real external issuer evidence.
+- Next gates remain hosted dev reviewer UI, real GLM served policy check and a single authorized Sandbox Payouts proof. CI is not external payment evidence.
+
 ## 3. The single-environment validation path
 
 1. Keep code on `build/slice-3-invoice-intake` until frozen-lockfile CI, TypeScript, migration/seed replay, 3-case unit tests, production build and smoke checks are green. Do not treat the branch as deployed yet.
