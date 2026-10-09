@@ -4,7 +4,12 @@ export const GATE_H_DATABASE_HOST = "dpg-db4351rl550s73acup8g-a";
 export const GATE_H_DATABASE_USER = "mandategate_gate_h_staging_db_user";
 
 export function requireStagingDatabaseTarget(env: NodeJS.ProcessEnv): boolean {
-  if (env.MANDATEGATE_STAGING !== "1") return false;
+  if (env.MANDATEGATE_STAGING !== "1") {
+    if (env.BETTER_AUTH_URL === "https://mandategate-gate-h-staging.onrender.com" ||
+        env.RENDER_SERVICE_ID === "srv-db4367u0tbcc73cugar0")
+      throw new Error("STAGING_FLAG_REQUIRED");
+    return false;
+  }
   if (!env.DATABASE_URL) throw new Error("STAGING_DATABASE_URL_REQUIRED");
   let url: URL;
   try { url = new URL(env.DATABASE_URL); }
