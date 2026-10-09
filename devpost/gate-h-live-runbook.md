@@ -1,6 +1,6 @@
 # Gate H live staging and PayPal Sandbox verification runbook
 
-**State:** BLOCKED for execution pending a safely configured, independently verified staging service, real issuer origin, authenticated reviewer and live Experiential account evidence. The paid staging database is created and available, but not connected.
+**State:** BLOCKED for execution pending a securely connected staging service, real issuer origin, authenticated reviewer and live Experiential account evidence. The separate DB and web service have been provisioned, but no code is deployed or DB linked.
 **Current implementation checkpoint:** `6e0a5d82fe29168daf50110b676d07dbd7bc541e`, GitHub Actions `37856559061`, 24 test files / 160 tests PASS.
 **Release rule:** no PR #2 merge or stable deployment until Gate H live evidence and independent review pass.
 
@@ -13,11 +13,14 @@
 - **Billing:** Render lists $6/month compute for the 256 MB plan and includes the first GB of storage; compute prorates for short-lived instances. This paid database will **not** expire automatically. Delete it via the Render Dashboard when Gate H work is complete or abandoned; connector has no delete Postgres action.
 - **Credentials:** The connected API exposes no PostgreSQL connection string/password. A new isolated staging web service must receive the **internal** URL from the Render Dashboard via secrets. Configure separate Better Auth secret/base URL and reviewer credentials, distinct invoice/payment agent keys, Sandbox-only PayPal credentials, and Experiential credentials. Never place secrets in GitHub or chat. Auto-deploy must remain OFF.
 - **Before any migration:** independently inspect staging `DATABASE_URL` target metadata (expected DB `mandategate_gate_h_staging_db`), check it cannot reach the existing free/stable DB, verify effective runtime vars are scoped to staging, then run bounded migration/seed and health checks.
-- **No staging service or account-data access:** creating a database does not verify application isolation, active reviewer session, source origin, provider privacy or any PayPal operation.
+- **New staging web service:** `mandategate-gate-h-staging` (`srv-db4367u0tbcc73cugar0`), free web plan, Oregon, https://mandategate-gate-h-staging.onrender.com, branch `build/slice-3-invoice-intake`, **auto-deploy OFF**, latest service listing showed no deploy history.
+- **Nonsecret staging configuration:** `BETTER_AUTH_URL` set to the staging URL; `MANDATEGATE_STAGING=1`; `GATE_H_ISOLATED_DATABASE_CONFIRMED=0`; `GATE_H_LIVE_GLM_PROOF_ENABLED=0`; PayPal base URL pinned to Sandbox. No approval/grant set.
+- **Required manual secret wiring:** In Render Dashboard open the new database, use its `Internal Database URL` as `DATABASE_URL` **only for** the new staging web service. Generate independent `BETTER_AUTH_SECRET` (at least 32 characters), `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`, `DEMO_AGENT_API_KEY`, `DEMO_PAYMENT_AGENT_API_KEY` and relevant `PAYPAL_*` / `EXPLABS_API_KEY` for staging. Never paste any secret into GitHub/chat and never reuse existing stable keys. The connector cannot retrieve credentials.
+- **Before manual deploy:** independently verify the internal URL targets `mandategate_gate_h_staging_db` (not the old free DB); review secrets and role separation; leave live GLM and payout flags OFF; trigger one manual staging deploy after secrets are set. Creating the web skeleton does not verify application isolation, live reviewer session, provider privacy, or PayPal.
 
 ## 0. Authority and safety boundaries
 
-- Operate only in the explicitly confirmed Render workspace. Render has refused service inspection without user selection, even though it lists one candidate workspace. No services, databases or secrets were accessed in this run.
+- Operate only in the explicitly confirmed Render workspace `tea-d27bea6uk2gs73dv4up0`. Stage-specific DB and web service are created. Their credentials have not been fetched, so no database data was accessed.
 - Create **distinct staging**: separate Render service, separate PostgreSQL instance, Better Auth base URL/secret, admin password, invoice-only agent key, payment-only agent key and PayPal Sandbox credentials. **Do not** reuse a preview service pointed to the stable database.
 - `main` and the stable Slice 2 service remain untouched. Pin exactly one Git SHA across tests and staging. Check health, migration and seed replay.
 - Financial authority is **not** delegated to GLM or the operations agent. The complete invoice chain must reach an independently verified, issuer-attested, exact approved tuple.
