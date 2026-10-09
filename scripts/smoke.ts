@@ -173,6 +173,96 @@ if(proposed.proposal.outcome!=="ESCALATE" ||
    proposed.paymentAuthorized!==false ||proposed.paymentExecuted!==false)
   throw new Error("PDF source-only invoice could bypass issuer attestation");
 
+// Strictly synthetic CI authority-flow smoke. Human records are simulated and
+// MUST NOT be presented as a real vendor issuer callback or actual payment proof.
+const origin=await fetch(`${adminUploadPath}/${adminId}/origin-attestations`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    vendorId:"vendor_northstar",channelId:enrolled.channel.id,
+    expectedArtifactSha256:adminUploaded.artifact.sha256,
+    independentEvidenceReference:"portal-event:synthetic-ci-invoice-attestation-not-real",
+  }),
+});
+if(origin.status!==201)
+  throw new Error(`CI human-asserted origin attestation failed: ${origin.status} ${await origin.text()}`);
+const originResult=await origin.json() as {
+  attestation:{id:string;method:string;paymentAuthorized:boolean;independentEvidenceClaim:string};
+  externallyVerifiedBySoftware:boolean;
+};
+if(!originResult.attestation.id ||
+   originResult.externallyVerifiedBySoftware!==false ||
+   originResult.attestation.independentEvidenceClaim!=="HUMAN_ATTESTATION" ||
+   originResult.attestation.method!=="ADMIN_OUT_OF_BAND" ||
+   originResult.attestation.paymentAuthorized!==false)
+  throw new Error("CI human assertion was incorrectly presented as third-party verification");
+
+const sourceBound=await fetch(`${adminUploadPath}/${adminId}/proposals`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    claimSetId:reviewed.review.claimSetId,
+    attestationId:originResult.attestation.id,
+    expectedArtifactSha256:adminUploaded.artifact.sha256,
+  }),
+});
+if(sourceBound.status!==200)
+  throw new Error(`source-bound CI proposal failed: ${sourceBound.status} ${await sourceBound.text()}`);
+const bound=await sourceBound.json() as {proposal:{
+  outcome:string;reasonCodes:string[];bindingId:string|null;tupleSha256:string|null;
+},paymentAuthorized:boolean;paymentExecuted:boolean};
+if(bound.proposal.outcome!=="ESCALATE" ||
+   !bound.proposal.reasonCodes.includes("PENDING_EXACT_HUMAN_APPROVAL") ||
+   !bound.proposal.bindingId ||!bound.proposal.tupleSha256 ||
+   bound.paymentAuthorized!==false ||bound.paymentExecuted!==false)
+  throw new Error("CI source proposal bypassed mandatory frozen-tuple human approval");
+
+const reviewEndpoint=`${baseUrl}/api/admin/invoice-bindings/${bound.proposal.bindingId}`;
+const attemptedStale=await fetch(reviewEndpoint,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    action:"APPROVE",reason:"CI-only synthetic review with deliberately stale tuple",
+    expectedTupleSha256:"0".repeat(64),
+  }),
+});
+if(attemptedStale.status!==409)
+  throw new Error("stale exact-tuple approval was not rejected");
+
+const finalized=await fetch(reviewEndpoint,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    action:"APPROVE",
+    reason:"Synthetic CI-only admin assertion. Not a real supplier verification or payout.",
+    expectedTupleSha256:bound.proposal.tupleSha256,
+  }),
+});
+if(finalized.status!==200)
+  throw new Error(`CI exact-tuple review failed: ${finalized.status} ${await finalized.text()}`);
+const approved=await finalized.json() as {review:{
+  status:string;action:string;paymentExecuted:boolean;
+}};
+if(approved.review.status!=="AUTHORIZED" ||
+   approved.review.action!=="APPROVE" ||approved.review.paymentExecuted!==false)
+  throw new Error("synthetic human review incorrectly created a payment execution");
+
+const replayApproval=await fetch(reviewEndpoint,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    action:"APPROVE",reason:"Second identical authorization is not allowed",
+    expectedTupleSha256:bound.proposal.tupleSha256,
+  }),
+});
+if(replayApproval.status!==409)
+  throw new Error("approved authority tuple could be approved twice");
+
 const syntheticPdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n", "ascii");
 const deniedPayment = await fetch(`${baseUrl}/api/agent/payment-requests`, {
   method: "POST",
@@ -277,4 +367,4 @@ for (const [index, testCase] of cases.entries()) {
   }
 }
 
-console.log("smoke passed: admin enrollment + PDF upload + parser-backed T2 + injected-receiver rejection + issuer-missing ESCALATE + direct decisions, zero payouts");
+console.log("smoke passed: signed-in PDF upload, T2, receiver block, missing-issuer ESCALATE, synthetic T3/T4 exact approval, stale/replay denial, zero payouts");
