@@ -38,3 +38,12 @@
 3. Run three-case ALLOW/ESCALATE/DENY end-to-end, single-authorized Sandbox payout and verified webhook, then independent release review.
 
 **Next gate:** CI remains green; **CONTINUE** bounded dev integration. **BLOCK** payout until all external evidence.
+
+
+## Subsequent Gate F / T4 HTTP proof addendum (2026-10-08 PT)
+
+**Evidence:** `1f6712d0a33476b2319ec84e70f696fc293031e3`, [Actions run 37875399344](https://github.com/redasgard/mandategate/actions/runs/37875399344), 28 files / 172 tests, all migration/seed/type/build/smoke checks SUCCESS. The same Next.js production HTTP test now covers simulated source-channel enrollment **before** invoice ingestion, signed-in T2 proof, missing-T3 escalation, admin T3 attestation, freeze and T4 exact-tuple approval, stale digest and approval-replay denial. Zero PayPal executions.
+
+**Review finding:** This is a **synthetic demonstration of the internal human assertion mechanism**, not real issuer authentication; a forged reference could pass if an authenticated admin lies or is compromised, so an external record must be checked before claiming genuine authorization. The caller is a seeded CI admin, not an independent real operator. We do not turn the T4 simulation into a payout test merely because it generated an AUTHORIZED state.
+
+**Decision:** CONTINUE to single-existing-development-environment hosted proof; **BLOCK** external PayPal execution and PR merge pending real issuer, Experiential serving-ZDR, human validation and full three-case remote evidence.
