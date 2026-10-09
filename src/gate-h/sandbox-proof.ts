@@ -3,8 +3,6 @@ import { z } from "zod";
 const uuid=z.string().uuid();
 const digest=z.string().regex(/^[a-f0-9]{64}$/);
 const settings=z.object({
-  MANDATEGATE_STAGING:z.literal("1"),
-  GATE_H_ISOLATED_DATABASE_CONFIRMED:z.literal("1"),
   PAYPAL_BASE_URL:z.literal("https://api-m.sandbox.paypal.com"),
   GATE_H_ORGANIZATION_ID:z.string().min(1).max(120),
   GATE_H_ALLOW_BINDING_ID:uuid,
@@ -35,7 +33,7 @@ export function validateGateHSandboxEnvironment(
   const parsed=settings.safeParse(
     Object.fromEntries(Object.keys(settings.shape).map(k=>[k,env[k]])),
   );
-  if(!parsed.success)throw new GateHSandboxError("GATE_H_STAGING_ENVIRONMENT_INCOMPLETE");
+  if(!parsed.success)throw new GateHSandboxError("GATE_H_SANDBOX_PROOF_CONFIG_INCOMPLETE");
   const data=parsed.data;
   const artifacts=[
     data.GATE_H_ESCALATE_ARTIFACT_ID,

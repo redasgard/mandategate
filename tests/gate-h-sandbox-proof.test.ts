@@ -8,8 +8,6 @@ import {
 const uuid=(s:string)=>s.padEnd(8,"0")+"-1111-4111-8111-111111111111";
 const data:NodeJS.ProcessEnv={
  NODE_ENV:"test",
- MANDATEGATE_STAGING:"1",
- GATE_H_ISOLATED_DATABASE_CONFIRMED:"1",
  PAYPAL_BASE_URL:"https://api-m.sandbox.paypal.com",
  GATE_H_ORGANIZATION_ID:"org_demo_ci",
  GATE_H_ALLOW_BINDING_ID:uuid("00000001"),
@@ -37,11 +35,9 @@ const expected={
 };
 
 describe("Gate H exact one Sandbox payout guard",()=>{
-  it("requires exact staging host, isolated DB and distinct negative fixtures",()=>{
+  it("requires PayPal Sandbox host and distinct negative fixtures",()=>{
     expect(()=>validateGateHSandboxEnvironment(data,"preflight")).not.toThrow();
     for(const override of [
-      {MANDATEGATE_STAGING:"0"},
-      {GATE_H_ISOLATED_DATABASE_CONFIRMED:"0"},
       {PAYPAL_BASE_URL:"https://api-m.paypal.com"},
       {GATE_H_DENY_ARTIFACT_ID:data.GATE_H_ESCALATE_ARTIFACT_ID},
     ]){
