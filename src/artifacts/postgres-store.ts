@@ -25,6 +25,16 @@ function metadata(row: any): InvoiceArtifactMetadata {
 export const MAX_ORGANIZATION_ARTIFACT_BYTES = 128 * 1024 * 1024;
 export const MAX_ORGANIZATION_ARTIFACT_COUNT = 500;
 
+/** Admin upload denies inactive or foreign organization membership without disclosing org state. */
+export class ArtifactAdminAccessError extends Error {
+  readonly code = "ORGANIZATION_NOT_FOUND";
+  readonly httpStatus = 404;
+  constructor() {
+    super("ORGANIZATION_NOT_FOUND");
+    this.name="ArtifactAdminAccessError";
+  }
+}
+
 export class ArtifactQuotaError extends Error {
   readonly code = "INVOICE_ARTIFACT_ORGANIZATION_QUOTA_EXCEEDED";
   readonly httpStatus = 429;
@@ -55,11 +65,22 @@ export async function storeUntrustedInvoiceArtifact(input: {
   organizationId: string;
   contentType: string;
   content: Buffer;
+  /** Only for signed-in admin-assisted uploads; agent principals omit this. */
+  adminUserId?: string;
 }) {
   const verified = inspectInvoiceArtifact(input.content, input.contentType);
   const client = await pool.connect();
   try {
     await client.query("begin");
+    if (input.adminUserId !== undefined) {
+      // Hold the live admin membership against concurrent revocation until
+      // commit. An arbitrary user-supplied organization ID is never authority.
+      const membership=await client.query(
+        "select 1 from organization_admin_memberships where user_id=$1 and organization_id=$2 and role='ADMIN' and active=true for share",
+        [input.adminUserId,input.organizationId],
+      );
+      if (membership.rows.length!==1) throw new ArtifactAdminAccessError();
+    }
     // Lock the organization row so concurrent uploads cannot race past the
     // per-organization byte/count budget. No global cross-tenant lock.
     const owner = await client.query(
