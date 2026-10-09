@@ -51,7 +51,25 @@ export async function POST(request: Request,{params}:{params:Promise<{id:string}
   const {id}=await params;
   const authz=await authorize(request,id);
   if(authz.error)return authz.error;
-  if(request.body!==null)return Response.json({error:"PDF_PREPARE_BODY_NOT_ALLOWED"},{status:400});
+  // Framework fetch adapters may represent an empty POST as a readable
+  // but zero-byte stream. Reject data, not mere stream existence.
+  if(request.headers.get("content-length") &&
+     request.headers.get("content-length")!=="0")
+    return Response.json({error:"PDF_PREPARE_BODY_NOT_ALLOWED"},{status:400});
+  if(request.body){
+    const reader=request.body.getReader();
+    try{
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        if(value.byteLength>0)
+          return Response.json({error:"PDF_PREPARE_BODY_NOT_ALLOWED"},{status:400});
+      }
+    }finally{
+      await reader.cancel().catch(()=>undefined);
+      reader.releaseLock();
+    }
+  }
   try {
     const source=await prepareStoredPdfSourcePages(authz.artifact!.organizationId,id);
     if(!source)return Response.json({error:"NOT_FOUND"},{status:404});
