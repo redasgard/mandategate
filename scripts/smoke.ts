@@ -110,6 +110,69 @@ if(parsedPages.artifactSha256!==adminUploaded.artifact.sha256 ||
    parsedPages.issuerAuthenticated!==false ||parsedPages.paymentAuthorized!==false)
   throw new Error("admin PDF parser provenance or untrusted status failed");
 
+const verifiedFacts={
+  vendor_name:{value:"Northstar Components",sourceFragment:"Northstar Components",pageNumber:1},
+  invoice_number:{value:"NS-SMOKE-ADM-01",sourceFragment:"Invoice NS-SMOKE-ADM-01",pageNumber:1},
+  currency:{value:"USD",sourceFragment:"USD",pageNumber:1},
+  total_amount_decimal:{value:"1.01",sourceFragment:"Total 1.01",pageNumber:1},
+  invoice_payment_destination:{
+    value:"ap@northstar.example",sourceFragment:"ap@northstar.example",pageNumber:1,
+  },
+};
+const reviewBody={
+  artifactId:adminId,expectedArtifactSha256:adminUploaded.artifact.sha256,
+  reviewerReason:"Verified exact parser-backed PDF fields in synthetic CI reviewer journey",
+  facts:verifiedFacts,
+};
+const factsPath=`${adminUploadPath}/${adminId}/verify-pdf-facts`;
+const wrongReceiver=await fetch(factsPath,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({...reviewBody,facts:{
+    ...verifiedFacts,
+    invoice_payment_destination:{
+      value:"intruder@example.test",sourceFragment:"intruder@example.test",pageNumber:1,
+    },
+  }}),
+});
+if(wrongReceiver.status!==422)
+  throw new Error(`source verifier accepted injected receiver: ${wrongReceiver.status}`);
+const review=await fetch(factsPath,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify(reviewBody),
+});
+if(review.status!==201)
+  throw new Error(`signed-in T2 source review failed: ${review.status} ${await review.text()}`);
+const reviewed=await review.json() as {review:{
+  claimSetId:string;sourceVerified:boolean;issuerAuthenticated:boolean;paymentAuthorized:boolean;
+}};
+if(!reviewed.review.claimSetId ||reviewed.review.sourceVerified!==true ||
+   reviewed.review.issuerAuthenticated!==false ||reviewed.review.paymentAuthorized!==false)
+  throw new Error("source verifier incorrectly granted issuer or payment authority");
+const withoutIssuer=await fetch(`${adminUploadPath}/${adminId}/proposals`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    claimSetId:reviewed.review.claimSetId,
+    attestationId:"11111111-1111-4111-8111-111111111111",
+    expectedArtifactSha256:adminUploaded.artifact.sha256,
+  }),
+});
+if(withoutIssuer.status!==200)
+  throw new Error(`unverified issuer proposal failed: ${withoutIssuer.status} ${await withoutIssuer.text()}`);
+const proposed=await withoutIssuer.json() as {proposal:{
+  outcome:string;reasonCodes:string[];bindingId:string|null;
+},paymentAuthorized:boolean;paymentExecuted:boolean};
+if(proposed.proposal.outcome!=="ESCALATE" ||
+   proposed.proposal.bindingId!==null ||
+   !proposed.proposal.reasonCodes.includes("ISSUER_ORIGIN_UNVERIFIED_OR_EXPIRED") ||
+   proposed.paymentAuthorized!==false ||proposed.paymentExecuted!==false)
+  throw new Error("PDF source-only invoice could bypass issuer attestation");
+
 const syntheticPdf = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n", "ascii");
 const deniedPayment = await fetch(`${baseUrl}/api/agent/payment-requests`, {
   method: "POST",
@@ -214,4 +277,4 @@ for (const [index, testCase] of cases.entries()) {
   }
 }
 
-console.log("smoke passed: authenticated channel registration + admin raw PDF upload + parsed source + cross-org denial + direct ALLOW/ESCALATE/DENY, zero payouts executed");
+console.log("smoke passed: admin enrollment + PDF upload + parser-backed T2 + injected-receiver rejection + issuer-missing ESCALATE + direct decisions, zero payouts");
