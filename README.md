@@ -43,6 +43,12 @@ Nothing in P1/P2 is allowed to destabilize the P0 money-movement boundary.
 
 See `devpost/spec.md` for the authoritative technical design.
 
+## One development environment for the hackathon
+
+Use the existing Render development app and existing free PostgreSQL database with **PayPal Sandbox** and synthetic invoices. A separate paid staging environment is **not** a requirement. The former Gate H staging-only infrastructure plan is superseded; see `devpost/gate-h-live-runbook.md` for the single-environment acceptance test and manual deletion of the extra paid resources.
+
+Live Payouts stay sandbox-only. No model observation or invoice text is payment authority without verified source evidence, trusted issuer channel, an authenticated approval and a one-time explicit test grant.
+
 ## Local setup
 
 Prerequisites:

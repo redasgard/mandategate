@@ -6,6 +6,17 @@ mode: fast
 
 # Build State
 
+## Gate H infrastructure simplification: one development/demo environment (2026-10-08 PT)
+
+**Authoritative current decision (supersedes the historical staging entries below):** The extra Render staging environment was unnecessary for this hackathon and is being retired. Keep one existing development app `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), one existing free database `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`), the actual Experiential/GLM route and **PayPal Sandbox**. There are no production invoices, customer payments or production environment to protect in this demo.
+
+- Code simplification commit `df9b7608e5b1a7038a4318148eb979e2daa1217d`: removed hardcoded paid-staging database host/user/name checks from migration, seed and boot; deleted dedicated staging helper/tests; removed staging-only flags from one-shot Sandbox runner. The explicit single-POST grant, exact USD 1.01/receiver/claim/tuple assertions, verified issuer/human approval prerequisites, adverse-case zero-payment assertions, and Sandbox-only network restriction remain.
+- GLM synthetic-only observation stays disabled unless the operator sets `GATE_H_LIVE_GLM_PROOF_ENABLED=1`, configures the Sandbox host, and has an exact image SHA allowlist plus authenticated admin session. No real model inference was performed.
+- The two EXTRA Render services remain listed: `srv-db4367u0tbcc73cugar0` (two failed builds, no successful deploy) and **paid** `dpg-db4351rl550s73acup8g-a` (available). The connector supports no resource deletion. **MANUAL DELETION PENDING** to stop the paid DB's billing; service/deletion links and limited data-empty evidence are in `devpost/gate-h-live-runbook.md`.
+- Do not mistake old entries below for current requirements. In particular, the old paid-staging resource ID and hardcoded deployment flags are SUPERSEDED; do not resurrect them. The existing Render app remains on `build/slice-2-gated` and PR #2 remains draft.
+- No live issuer contact, app deployment, GLM model inference, PayPal payout or webhook proof has been performed for Slice 3. **Gate H BLOCKED.**
+- Security self-review: `devpost/reviews/slice-3a-single-development-environment-review.md`, with separate missing-resource-deletion and missing-live-proof findings.
+
 ## Gate H Render staging project move, build failure and fail-closed database guard (2026-10-08 PT)
 
 Status: **ISOLATED ENVIRONMENT ASSOCIATION VERIFIED**, Render staging build FAILED before application code, database connectivity/credential separation **UNVERIFIED**; Gate H **BLOCKED**.
