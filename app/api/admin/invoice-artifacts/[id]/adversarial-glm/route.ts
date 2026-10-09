@@ -12,14 +12,16 @@ const inputSchema = z.object({
   syntheticFixtureOnly:z.literal(true),
 }).strict();
 
-function stagingEnabled(){
-  return process.env.MANDATEGATE_STAGING==="1" &&
-    process.env.GATE_H_LIVE_GLM_PROOF_ENABLED==="1";
+function syntheticProofEnabled(){
+  // Explicit operator opt-in, Sandbox only. The synthetic exact-SHA allowlist,
+  // active admin session and same-origin checks remain mandatory below.
+  return process.env.GATE_H_LIVE_GLM_PROOF_ENABLED==="1" &&
+    process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com";
 }
 
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
-  // Fail closed for stable deployments and accidental production requests.
-  if(!stagingEnabled())return Response.json({error:"STAGING_PROOF_NOT_ENABLED"},{status:404});
+  // Disabled by default, including on the existing development service.
+  if(!syntheticProofEnabled())return Response.json({error:"GATE_H_SYNTHETIC_PROOF_DISABLED"},{status:404});
   if(!isTrustedMutationOrigin(request))
     return Response.json({error:"INVALID_ORIGIN"},{status:403});
   const session=await auth.api.getSession({headers:request.headers});
@@ -31,8 +33,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(artifact.mimeType!=="image/png" && artifact.mimeType!=="image/jpeg")
     return Response.json({error:"LIVE_GLM_IMAGE_REQUIRED"},{status:422});
 
-  // The allowlist is set separately on the staging service. The client may
-  // not introduce novel documents just by checking "synthetic".
+  // The allowlist is operator-controlled and exact-byte hashed. The client
+  // cannot introduce novel documents merely by checking "synthetic".
   const allowed=(process.env.GATE_H_SYNTHETIC_IMAGE_SHA256_ALLOWLIST??"")
     .split(",").map(x=>x.trim()).filter(x=>/^[a-f0-9]{64}$/.test(x));
   if(!allowed.includes(artifact.sha256))

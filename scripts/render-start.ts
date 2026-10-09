@@ -1,12 +1,4 @@
 import { spawn } from "node:child_process";
-import { requireStagingDatabaseTarget, verifyStagingDatabaseIdentity } from "../src/staging/database-guard";
-
-if (requireStagingDatabaseTarget(process.env)) {
-  const { pool } = await import("../src/db/pool");
-  try { await verifyStagingDatabaseIdentity(pool); }
-  finally { await pool.end(); }
-}
-
 async function runPnpmScript(script: string, label: string) {
   console.log(label);
   const child = spawn("pnpm", [script], {

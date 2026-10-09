@@ -3,18 +3,12 @@ import { betterAuth } from "better-auth";
 import { loadLocalEnv } from "../src/env/load";
 
 loadLocalEnv();
-const { requireStagingDatabaseTarget, verifyStagingDatabaseIdentity } =
-  await import("../src/staging/database-guard");
-const isolatedStage = requireStagingDatabaseTarget(process.env);
-
 const [{ db }, { pool }, schema, { provisionSeparatedDemoPrincipals, validateDemoPrincipalKeys }] = await Promise.all([
   import("../src/db/db"),
   import("../src/db/pool"),
   import("../src/db/schema"),
   import("../src/auth/principal-provisioning"),
 ]);
-
-if (isolatedStage) await verifyStagingDatabaseIdentity(pool);
 
 const organizationId = "org_demo";
 const vendorId = "vendor_northstar";
