@@ -24,6 +24,30 @@ if (!signIn.headers.get("set-cookie")) throw new Error("admin sign-in returned n
 
 const adminCookie=signIn.headers.get("set-cookie")!.split(";")[0];
 const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
+const enrollment=await fetch(`${baseUrl}/api/admin/vendor-origin-channels`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    organizationId:"org_demo",vendorId:"vendor_northstar",
+    kind:"TRUSTED_PORTAL",
+    // CI-only simulated independent record. This is not a real vendor event
+    // and is not evidence for the live Gate H payout.
+    independentEvidenceReference:"portal-event:synthetic-ci-source-not-real-issuer",
+    confirmedOutsideInvoice:true,
+  }),
+});
+if(![200,201].includes(enrollment.status))
+  throw new Error(`admin enrollment request failed: ${enrollment.status} ${await enrollment.text()}`);
+const enrolled=await enrollment.json() as {channel:{
+  id:string;kind:string;evidenceStatus:string;issuerAuthenticated:boolean;paymentAuthorized:boolean;
+}};
+if(!enrolled.channel.id || enrolled.channel.kind!=="TRUSTED_PORTAL" ||
+   enrolled.channel.evidenceStatus!=="ADMIN_ASSERTED_NOT_INDEPENDENTLY_VERIFIED" ||
+   enrolled.channel.issuerAuthenticated!==false ||
+   enrolled.channel.paymentAuthorized!==false)
+  throw new Error("admin enrollment was misrepresented as genuine issuer or payment authority");
+
 const adminPdf=createPdf([
   "Northstar Components Invoice NS-SMOKE-ADM-01 USD Total 1.01 ap@northstar.example",
 ]);
@@ -190,4 +214,4 @@ for (const [index, testCase] of cases.entries()) {
   }
 }
 
-console.log("smoke passed: admin raw PDF upload + actual page parsing + scoped auth + separate principals + ALLOW/ESCALATE/DENY, zero payouts executed");
+console.log("smoke passed: authenticated channel registration + admin raw PDF upload + parsed source + cross-org denial + direct ALLOW/ESCALATE/DENY, zero payouts executed");
