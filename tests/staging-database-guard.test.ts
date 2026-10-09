@@ -19,7 +19,13 @@ const valid:NodeJS.ProcessEnv={
 };
 describe("Render staging isolated DB check",()=>{
   it("leaves the existing stable service unaffected",()=>{
-    expect(requireStagingDatabaseTarget({...valid,MANDATEGATE_STAGING:"0"})).toBe(false);
+    expect(requireStagingDatabaseTarget({
+      ...valid,MANDATEGATE_STAGING:"0",
+      BETTER_AUTH_URL:"https://mandategate-web.onrender.com",
+    })).toBe(false);
+    expect(()=>requireStagingDatabaseTarget({
+      ...valid,MANDATEGATE_STAGING:"0",
+    })).toThrow("STAGING_FLAG_REQUIRED");
   });
   it("accepts only the dedicated database host, user and db name",()=>{
     expect(requireStagingDatabaseTarget(valid)).toBe(true);
