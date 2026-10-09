@@ -1,6 +1,6 @@
 # Gate H live staging and PayPal Sandbox verification runbook
 
-**State:** BLOCKED for execution pending a securely connected staging service, real issuer origin, authenticated reviewer and live Experiential account evidence. The separate DB and web service have been provisioned, but no code is deployed or DB linked.
+**State:** BLOCKED for execution pending a successful, securely verified staging build/database connection, real issuer origin, authenticated reviewer and live Experiential account evidence. Web and DB now share one Render staging environment; the user reports setting DATABASE_URL, but effective connectivity is unverified.
 **Current implementation checkpoint:** `6e0a5d82fe29168daf50110b676d07dbd7bc541e`, GitHub Actions `37856559061`, 24 test files / 160 tests PASS.
 **Release rule:** no PR #2 merge or stable deployment until Gate H live evidence and independent review pass.
 
@@ -17,6 +17,17 @@
 - **Nonsecret staging configuration:** `BETTER_AUTH_URL` set to the staging URL; `MANDATEGATE_STAGING=1`; `GATE_H_ISOLATED_DATABASE_CONFIRMED=0`; `GATE_H_LIVE_GLM_PROOF_ENABLED=0`; PayPal base URL pinned to Sandbox. No approval/grant set.
 - **Required manual secret wiring:** In Render Dashboard open the new database, use its `Internal Database URL` as `DATABASE_URL` **only for** the new staging web service. Generate independent `BETTER_AUTH_SECRET` (at least 32 characters), `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`, `DEMO_AGENT_API_KEY`, `DEMO_PAYMENT_AGENT_API_KEY` and relevant `PAYPAL_*` / `EXPLABS_API_KEY` for staging. Never paste any secret into GitHub/chat and never reuse existing stable keys. The connector cannot retrieve credentials.
 - **Before manual deploy:** independently verify the internal URL targets `mandategate_gate_h_staging_db` (not the old free DB); review secrets and role separation; leave live GLM and payout flags OFF; trigger one manual staging deploy after secrets are set. Creating the web skeleton does not verify application isolation, live reviewer session, provider privacy, or PayPal.
+
+## 0B. Render staging project move and failed build
+
+- Web service and paid database now both report Render environment `evm-db43agks728c739d60r0`. Project display name is user-reported; connector exposes environment ID but no project name.
+- User configured `DATABASE_URL` from the internal PostgreSQL connection URL. The Render connector cannot read it or prove its target. **Check the environment key is exactly uppercase `DATABASE_URL`.** Never copy the value into chat, GitHub or logs.
+- The existing Render build command is wrong: `corepack enable` fails with `EROFS: read-only file system, unlink '/usr/bin/pnpm'`. In the staging service's **Settings → Build & Deploy**, change **Build Command** to:
+  `corepack pnpm install --frozen-lockfile && corepack pnpm build`
+  This invokes Corepack's project-pinned pnpm directly, without modifying system shims. The Render connector has no update-build-command action.
+- Independently set staging-only `BETTER_AUTH_SECRET` (≥32 chars), `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` (≥12 chars), distinct ≥32-char `DEMO_AGENT_API_KEY` and `DEMO_PAYMENT_AGENT_API_KEY`, plus the previously set staging `BETTER_AUTH_URL`. The new fail-closed guard checks presence and consistency before migrations. Never reuse stable credentials.
+- Keep `GATE_H_ISOLATED_DATABASE_CONFIRMED=0` and `GATE_H_LIVE_GLM_PROOF_ENABLED=0`; no one-time payout grant. Once Build Command and secret variables are set, manually deploy staging only. Check startup logs for DB identity success and `/api/health`. Do not start any payment proof merely because the service boots.
+- The initial `build_failed` deploy `dep-db436bks728c739co9pg` did not run migrations or seed.
 
 ## 0. Authority and safety boundaries
 

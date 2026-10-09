@@ -6,6 +6,17 @@ mode: fast
 
 # Build State
 
+## Gate H Render staging project move, build failure and fail-closed database guard (2026-10-08 PT)
+
+Status: **ISOLATED ENVIRONMENT ASSOCIATION VERIFIED**, Render staging build FAILED before application code, database connectivity/credential separation **UNVERIFIED**; Gate H **BLOCKED**.
+
+- User moved the staging web `srv-db4367u0tbcc73cugar0` and paid PostgreSQL `dpg-db4351rl550s73acup8g-a` to the MandateGate project's staging environment. Render independently reports the **same environment ID** `evm-db43agks728c739d60r0` for both. The connector does not surface the human-readable project name.
+- User reports setting staging `DATABASE_URL` to the newly created DB's Render internal URL. The Render connector does not list environment values, so the exact uppercase key and effective connection target remain unverified until runtime.
+- A staging deploy attempt `dep-db436bks728c739co9pg` failed in BUILD phase because the original command used `corepack enable`, which attempted to unlink read-only `/usr/bin/pnpm` (`EROFS`); no migration or startup occurred. Manual Render Build Command repair is required: `corepack pnpm install --frozen-lockfile && corepack pnpm build`.
+- Code now uses `src/staging/database-guard.ts` before `scripts/migrate.ts` DDL, `scripts/seed.ts` writes and `scripts/render-start.ts` webhook recovery/web startup. The exact paid staging DB host/name/user and connected `current_database()` must match; staging Better Auth origin, independent secrets/agent keys and PayPal Sandbox-only host are checked; missing staging flag is rejected if service ID or auth URL identifies staging.
+- Unit test `tests/staging-database-guard.test.ts` includes wrong target, missing credentials, disabled flag, and read-only DB identity cases. Earlier checkpoint CI `37865450679`: 25 files / 164 tests PASS; latest strengthening commit `a46ef3d4ad56f0f16d6823f2c1f7991889f8e5f8` is awaiting final CI verification.
+- Existing stable service/main and prior free DB untouched. No live issuer contact, staged reviewer session, real Experiential request, or invoice-derived PayPal payout occurred.
+
 ## Gate H companion staging web service provisioned (2026-10-08 PT)
 
 Status: **STAGING SERVICE CREATED, AUTO-DEPLOY OFF**; no code deployed, no DB connectivity, no admin login or external proof. Gate H remains BLOCKED.
