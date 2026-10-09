@@ -9,7 +9,7 @@
 - Render failed deploy `dep-db436bks728c739co9pg`, source commit `05f216df1c3a80169baf02557d3c17add9455528`, failed before application build. Logs show `corepack enable` attempting to unlink `/usr/bin/pnpm` on a read-only filesystem (`EROFS`).
 - User reported assigning the new internal PostgreSQL URL to the staging variable `DATABASE_URL`. The connector does not expose env values, and no live DB query or schema migration is verified.
 - `src/staging/database-guard.ts`, `scripts/migrate.ts`, `scripts/seed.ts`, `scripts/render-start.ts`: explicit target, source, and DB session preconditions before DDL/seed/recovery.
-- `tests/staging-database-guard.test.ts`: stage flag, wrong target, missing secrets, distinct keys and mocked DB query negatives. GitHub Actions `37865450679` SUCCESS (25 files / 164 tests); follow-up missing-stage-flag guard CI still pending.
+- `tests/staging-database-guard.test.ts`: stage flag, wrong target, missing secrets, distinct keys and mocked DB query negatives. GitHub Actions `37865450679` SUCCESS (25 files / 164 tests); follow-up missing-stage-flag guard GitHub Actions `37865631906` and `37865628351` both SUCCESS.
 
 ## Findings
 1. **HIGH (environment):** Staging cannot build with the current Render command. Repair in Render Settings to run Corepack pnpm directly without `enable`; repeat only a bounded staging build.
