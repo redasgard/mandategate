@@ -16,11 +16,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // The source is original, potentially hostile content. Never render a PDF
   // inline under the privileged app origin. Images remain sandboxed and
   // read-only, while all other formats are forced downloads.
-  const png = artifact.mimeType === "image/png";
-  const ext = png ? "png" : artifact.mimeType === "image/jpeg" ? "jpg" : "pdf";
+  const image = artifact.mimeType === "image/png" || artifact.mimeType === "image/jpeg";
+  const ext = artifact.mimeType === "image/png" ? "png" : artifact.mimeType === "image/jpeg" ? "jpg" : "pdf";
   const headers = new Headers({
-    "Content-Type": png ? "image/png" : "application/octet-stream",
-    "Content-Disposition": `${png ? "inline" : "attachment"}; filename="invoice-${id}.${ext}"`,
+    "Content-Type": image ? artifact.mimeType : "application/octet-stream",
+    "Content-Disposition": `${image ? "inline" : "attachment"}; filename="invoice-${id}.${ext}"`,
     "Content-Length": String(artifact.content.byteLength),
     "X-Artifact-SHA256": artifact.sha256,
     "Cache-Control": "private, no-store, max-age=0",

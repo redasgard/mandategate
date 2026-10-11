@@ -38,9 +38,7 @@ export default async function InvoiceArtifactListPage(){
         <div className="table-wrap"><table>
           <thead><tr><th>Artifact</th><th>Media</th><th>Source SHA</th><th>Created</th></tr></thead>
           <tbody>{result.rows.map(row=><tr key={row.id}>
-            <td>{row.mime_type==="application/pdf"
-              ?<Link href={"/invoice-artifacts/"+encodeURIComponent(row.id)}>{row.id}</Link>
-              :row.id}</td>
+            <td><Link href={"/invoice-artifacts/"+encodeURIComponent(row.id)}>{row.id}</Link></td>
             <td>{row.mime_type}</td>
             <td className="mono">{String(row.sha256).slice(0,16)}…</td>
             <td>{(row.created_at as Date).toISOString()}</td>
