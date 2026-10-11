@@ -4,6 +4,9 @@ import { pool } from "../src/db/pool";
 import { prepareInvoicePaymentProposal } from "../src/authority/payment-proposal";
 import { consumeApprovedInvoiceBinding } from "../src/authority/consume-invoice-binding";
 import { PostgresExecutionStore } from "../src/payments/executor/postgres-store";
+import { importApHistory } from "../src/history/store";
+import { executeAuthorizedPayment } from "../src/payments/executor/service";
+import type { PaymentGateway } from "../src/payments/executor/types";
 import { reviewInvoiceBinding } from "../src/authority/admin-review";
 
 const org = "proposal_test_" + randomUUID();
@@ -27,6 +30,7 @@ async function makeFixture(name: string, opts: {
   expiredOrigin?: boolean;
   insufficientField?: boolean;
   annotation?: string;
+  amountDecimal?: string;
 } = {}): Promise<Fixture> {
   const artifactId = randomUUID();
   const fixturePdf = Buffer.from("%PDF-1.7\n% Invoice fixture " + name +
@@ -56,7 +60,7 @@ async function makeFixture(name: string, opts: {
     vendor_name: "Trusted Components",
     invoice_number: invoiceNumber,
     currency: "USD",
-    total_amount_decimal: "1.01",
+    total_amount_decimal: opts.amountDecimal ?? "1.01",
     invoice_payment_destination: opts.printedReceiver ?? trusted,
   };
   for(const [field,value] of Object.entries(fields)) {
@@ -438,5 +442,126 @@ describe("Gate E: fail-closed source-to-payment-proposal bridge",()=>{
       outcome:"DENY",bindingId:null,paymentAuthorized:false,
       reasonCodes:["SOURCE_ARTIFACT_NOT_OWNED"],
     });
+  });
+});
+
+/**
+ * A verified document is NOT exempt from historical AP risk. These tests
+ * exercise real PostgreSQL imported-paid rows through proposal, exact human
+ * approval, authorized binding consumption and executor pre-POST validation.
+ * The gateway is a synthetic spy only; no Sandbox request is ever made.
+ */
+async function paidImport(invoiceNumber:string, amount="1.01", organizationId=org) {
+  const csv=Buffer.from([
+    "vendor_name,invoice_number,invoice_date,amount_decimal,currency,status",
+    ["Trusted Components",invoiceNumber,"2026-09-01",amount,"USD","PAID"].join(","),
+  ].join("\r\n")+"\r\n");
+  return importApHistory({organizationId,actorUserId:admin,content:csv});
+}
+
+describe("verified invoice historical AP authority invariant",()=>{
+  it("blocks an imported PAID invoice before a binding can be proposed and exposes provenance",async()=>{
+    const invoice="INV-AP-PAID-REPLAY";
+    const history=await paidImport(invoice);
+    const f=await makeFixture("AP-PAID-REPLAY");
+    const result=await propose(f);
+    expect(result).toMatchObject({
+      outcome:"ESCALATE",bindingId:null,paymentAuthorized:false,
+      reasonCodes:["AP_INVOICE_NUMBER_REPLAY"],
+    });
+    expect(result.historyEvidence?.[0]).toMatchObject({
+      code:"AP_INVOICE_NUMBER_REPLAY",provenance:{importId:history.importId,sourceSha256:history.sourceSha256},
+    });
+    const count=await pool.query("select count(*)::int as n from payment_authority_bindings where artifact_id=$1",[f.artifactId]);
+    expect(count.rows[0].n).toBe(0);
+  });
+
+  it("holds a confusable paid-invoice variant, not merely an exact match",async()=>{
+    await paidImport("INV-AP-1001");
+    const f=await makeFixture("AP-1OO1");
+    const result=await propose(f);
+    expect(result.reasonCodes).toContain("AP_NEAR_DUPLICATE_INVOICE");
+    expect(result.bindingId).toBeNull();
+  });
+
+  it("blocks a newly imported PAID invoice before approval even if proposal was clean",async()=>{
+    const f=await makeFixture("AP-PRE-APPROVAL");
+    const proposal=await propose(f);
+    expect(proposal.bindingId).toBeTruthy();
+    await paidImport("INV-AP-PRE-APPROVAL");
+    await expect(reviewInvoiceBinding({
+      bindingId:proposal.bindingId!,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Reviewed invoice against independently attested source",
+    })).rejects.toMatchObject({code:"AP_HISTORY_REVIEW_REQUIRED"});
+    const status=await pool.query("select authorization_status from payment_authority_bindings where id=$1",[proposal.bindingId]);
+    expect(status.rows[0].authorization_status).toBe("PROPOSED");
+  });
+
+  it("blocks a PAID history imported after exact approval but before consumption",async()=>{
+    const f=await makeFixture("AP-PRE-CONSUME");
+    const proposal=await propose(f);
+    await reviewInvoiceBinding({
+      bindingId:proposal.bindingId!,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Independently confirmed vendor and approved exact payment tuple",
+    });
+    await paidImport("INV-AP-PRE-CONSUME");
+    await expect(consumeApprovedInvoiceBinding(proposal.bindingId!))
+      .rejects.toThrow("AP_HISTORY_REVIEW_REQUIRED");
+    const count=await pool.query("select count(*)::int as n from payment_requests where authority_binding_id=$1",[proposal.bindingId]);
+    expect(count.rows[0].n).toBe(0);
+  });
+
+  it("blocks a late import at pre-payout authority revalidation with zero gateway calls",async()=>{
+    const f=await makeFixture("AP-PRE-PAYOUT");
+    const proposal=await propose(f);
+    await reviewInvoiceBinding({
+      bindingId:proposal.bindingId!,reviewerId:admin,action:"APPROVE",
+      expectedTupleSha256:proposal.tupleSha256!,reason:"Independent checks passed for this frozen synthetic tuple",
+    });
+    const request=await consumeApprovedInvoiceBinding(proposal.bindingId!);
+    await paidImport("INV-AP-PRE-PAYOUT");
+    const store=new PostgresExecutionStore();
+    expect(await store.getAuthoritativePayment(request.requestId)).toBeNull();
+    let posts=0;
+    const gateway:PaymentGateway={
+      createSinglePayout:async()=>{posts++;return {payoutBatchId:"FORBIDDEN"};},
+      getBatchItem:async()=>{throw new Error("NOT_REACHABLE");},
+      getPayoutItem:async()=>{throw new Error("NOT_REACHABLE");},
+    };
+    await expect(executeAuthorizedPayment(request.requestId,{store,gateway}))
+      .rejects.toThrow("PAYMENT_REQUEST_NOT_FOUND");
+    expect(posts).toBe(0);
+  });
+
+  it("never borrows a foreign organization's imported PAID history",async()=>{
+    const foreignVendor="vendor_"+randomUUID();
+    await pool.query("insert into organization_admin_memberships(user_id,organization_id,role) values($1,$2,'ADMIN')",[admin,foreignOrg]);
+    await pool.query("insert into vendors(id,organization_id,name,normal_max_amount_cents) values($1,$2,'Trusted Components',10000)",[foreignVendor,foreignOrg]);
+    await paidImport("INV-AP-CROSS-TENANT","1.01",foreignOrg);
+    const f=await makeFixture("AP-CROSS-TENANT");
+    const proposal=await propose(f);
+    expect(proposal).toMatchObject({
+      outcome:"ESCALATE",reasonCodes:["PENDING_EXACT_HUMAN_APPROVAL"],
+      paymentAuthorized:false,
+    });
+    expect(proposal.bindingId).toBeTruthy();
+  });
+
+  it("flags history-only amount outliers before an approvable binding",async()=>{
+    await paidImport("INV-AP-LOW-A","1.00");
+    await paidImport("INV-AP-LOW-B","1.00");
+    await paidImport("INV-AP-LOW-C","1.00");
+    await pool.query("update vendors set normal_max_amount_cents=100000 where id=$1",[vendorId]);
+    await pool.query("update policies set auto_pay_max_amount_cents=100000 where id=$1",[policyId]);
+    try {
+      const f=await makeFixture("AP-OUTLIER",{amountDecimal:"500.00"});
+      const result=await propose(f);
+      expect(result.reasonCodes).toContain("AP_AMOUNT_OUTLIER");
+      expect(result.reasonCodes).not.toContain("AMOUNT_OUTSIDE_VENDOR_BASELINE");
+      expect(result.bindingId).toBeNull();
+    } finally {
+      await pool.query("update vendors set normal_max_amount_cents=10000 where id=$1",[vendorId]);
+      await pool.query("update policies set auto_pay_max_amount_cents=10000 where id=$1",[policyId]);
+    }
   });
 });

@@ -2,7 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { pool } from "../db/pool";
 import { invoiceDecimalToCents } from "../invoices/normalize";
 import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
-import { evaluatePayment } from "../policy/decision";
+import { evaluatePayment, type DecisionEvidence } from "../policy/decision";
+import { assessHistoricalPaymentRisk } from "../history/anomaly";
 import { hashPaymentAuthorityTuple } from "./contracts";
 
 const requiredFields = [
@@ -22,6 +23,7 @@ type ProposalResult = {
   tupleSha256: string | null;
   traceId: string;
   paymentAuthorized: false;
+  historyEvidence?: DecisionEvidence[];
 };
 
 const PROPOSAL_TTL_MS = 60 * 60 * 1000;
@@ -43,7 +45,7 @@ export async function prepareInvoicePaymentProposal(input: {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    const refuse = async (outcome: ProposalOutcome, reasonCodes: string[]): Promise<ProposalResult> => {
+    const refuse = async (outcome: ProposalOutcome, reasonCodes: string[], historyEvidence?: DecisionEvidence[]): Promise<ProposalResult> => {
       // Prove denied/held value flows even when there is no authorized binding.
       const fragment = sha(reasonCodes.join("|"));
       await client.query(
@@ -56,7 +58,8 @@ export async function prepareInvoicePaymentProposal(input: {
         ].join(" "),
         [traceId, input.organizationId, input.artifactId, outcome, fragment],
       );
-      return { outcome, reasonCodes, bindingId: null, tupleSha256: null, traceId, paymentAuthorized: false };
+      return { outcome, reasonCodes, bindingId: null, tupleSha256: null, traceId, paymentAuthorized: false,
+         ...(historyEvidence ? {historyEvidence} : {}) };
     };
 
     const artifact = await client.query(
@@ -238,6 +241,32 @@ export async function prepareInvoicePaymentProposal(input: {
     });
     if (decision.outcome !== "ALLOW") {
       const held = await refuse(decision.outcome,decision.reasonCodes);
+      await client.query("commit");
+      return held;
+    }
+
+    // Invoice-derived requests must pass the same imported PAID-history checks
+    // as direct agent requests BEFORE an approvable binding is created.
+    // A savepoint keeps the transaction able to record a fail-closed hold if
+    // the optional history read fails inside PostgreSQL.
+    let historicalRisk: Awaited<ReturnType<typeof assessHistoricalPaymentRisk>>;
+    await client.query("savepoint ap_history_preflight");
+    try {
+      historicalRisk = await assessHistoricalPaymentRisk({
+        organizationId:input.organizationId,vendorId:attested.vendor_id,
+        invoiceNumber:found.get("invoice_number")!,amountCents,currency,
+      },client);
+      await client.query("release savepoint ap_history_preflight");
+    } catch {
+      await client.query("rollback to savepoint ap_history_preflight");
+      const held=await refuse("ESCALATE",["AP_HISTORY_UNAVAILABLE"]);
+      await client.query("commit");
+      return held;
+    }
+    if(historicalRisk.reasonCodes.length) {
+      // Immutable import IDs and source digests are returned to the reviewer.
+      // Historical evidence never grants authority or silently downgrades risk.
+      const held=await refuse("ESCALATE",historicalRisk.reasonCodes,historicalRisk.evidence);
       await client.query("commit");
       return held;
     }

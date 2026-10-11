@@ -1,4 +1,5 @@
 import {pool} from "../db/pool";
+import type { PoolClient } from "pg";
 import type {DecisionEvidence} from "../policy/decision";
 
 export type ApPaidSample={
@@ -85,8 +86,10 @@ export function detectApHistoryRisk(
 
 /** The organization constraint is part of the SELECT itself. No CSV/LLM
  * content is allowed to supply SQL identifiers or the tenant binding. */
-export async function assessHistoricalPaymentRisk(input:ApRiskInput&{organizationId:string}):Promise<RiskResult> {
-  const result=await pool.query([
+export async function assessHistoricalPaymentRisk(
+  input:ApRiskInput&{organizationId:string},client?:PoolClient,
+):Promise<RiskResult> {
+  const result=await (client??pool).query([
     // Re-imported ERP exports can repeat older paid rows. Keep the newest
     // import's provenance for each normalized row, without double-counting
     // the same historic payment in median/cadence risk calculations.
@@ -100,13 +103,23 @@ export async function assessHistoricalPaymentRisk(input:ApRiskInput&{organizatio
     "join ap_imports i on i.id=h.import_id and i.organization_id=h.organization_id",
     "where h.organization_id=$1 and h.status='PAID' and h.currency=$2",
     "order by h.normalized_row_sha256,i.created_at desc,i.id desc",
-    ") s order by s.invoice_date desc,s.normalized_row_sha256 desc limit 2000",
+    ") s order by s.invoice_date desc,s.normalized_row_sha256 desc limit 2001",
   ].join(" "),[input.organizationId,input.currency]);
-  const samples:ApPaidSample[]=result.rows.map(r=>({
+  const samples:ApPaidSample[]=result.rows.slice(0,2000).map(r=>({
     vendorId:r.vendor_id,invoiceNumber:r.invoice_number,
     amountCents:Number(r.amount_cents),invoiceDate:r.invoice_date,
     importId:r.import_id,rowSha256:r.normalized_row_sha256,
     sourceSha256:r.source_sha256,
   }));
-  return detectApHistoryRisk(input,samples);
+  const assessed=detectApHistoryRisk(input,samples);
+  // If the import set exceeds the bounded sample window, never claim the
+  // older paid invoices were cleared by an incomplete query.
+  if(result.rows.length>2000) return {
+    reasonCodes:[...new Set([...assessed.reasonCodes,"AP_HISTORY_WINDOW_INCOMPLETE"])].sort(),
+    evidence:[...assessed.evidence,{
+      code:"AP_HISTORY_WINDOW_INCOMPLETE",source:"ap_history.paid_sample_window",
+      observed:"more than 2000 distinct paid rows",expected:"complete history",
+    }],
+  };
+  return assessed;
 }
