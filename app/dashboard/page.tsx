@@ -26,6 +26,7 @@ export default async function DashboardPage() {
           <h1>The firewall between AI agents and your money.</h1>
           <p className="muted"><Link href="/invoice-artifacts">Review source invoices</Link>
             {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
+            {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
             {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
         </div>
         <div className="identity">{session.user.email}</div>
