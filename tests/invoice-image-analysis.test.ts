@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
+import { createPdf } from "./helpers/pdf-fixture";
+import { PDF_RASTERIZER_VERSION } from "../src/invoices/pdf-raster";
 import { storeUntrustedInvoiceArtifact } from "../src/artifacts/postgres-store";
 import { ExperientialInvoiceVisionGateway } from "../src/ai/gateway/experiential-vision";
 import { analyzeStoredInvoiceImage, getInvoiceImageObservation } from "../src/invoices/image-analysis";
@@ -187,6 +189,42 @@ describe("tenant-scoped GLM invoice image observation", () => {
       code: "ARTIFACT_ANALYSIS_NOT_CLAIMABLE",
     });
     expect(postCount).toBe(before);
+  });
+
+  it("scanned single-page PDF reaches actual PNG vision but always escalates",async()=>{
+    const scan=createPdf([""]);
+    const stored=await storeUntrustedInvoiceArtifact({
+      organizationId:outsider,contentType:"application/pdf",content:scan,
+    });
+    const originalPostCount=postCount;
+    const result=await analyzeStoredInvoiceImage(outsider,stored.artifactId,mockedGateway());
+    expect(postCount-originalPostCount).toBe(1);
+    expect(result.status).toBe("ESCALATE");
+    expect(result.reasonCodes).toContain("SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED");
+    expect(result.paymentAuthorized).toBe(false);
+    const raster=result.evidence.sourceRasterization;
+    expect(raster?.pageNumber).toBe(1);
+    expect(raster?.pageCount).toBe(1);
+    expect(raster?.rasterizerVersion).toBe(PDF_RASTERIZER_VERSION);
+    expect(raster?.sourceSha256).toBe(stored.sha256);
+    expect(raster?.renderedPngSha256).toMatch(/^[a-f0-9]{64}$/);
+    const saved=await getInvoiceImageObservation(outsider,stored.artifactId);
+    expect(saved.rendered_input_sha256).toBe(raster?.renderedPngSha256);
+    expect(saved.input_sha256).toBe(stored.sha256);
+    expect(saved.rendered_page_number).toBe(1);
+    expect(saved.rasterizer_version).toBe(PDF_RASTERIZER_VERSION);
+  });
+  it("multi-page scanned PDF fails closed before contacting vision provider",async()=>{
+    const scan=createPdf(["",""]);
+    const stored=await storeUntrustedInvoiceArtifact({
+      organizationId:outsider,contentType:"application/pdf",content:scan,
+    });
+    const previous=postCount;
+    await expect(analyzeStoredInvoiceImage(outsider,stored.artifactId,mockedGateway()))
+      .rejects.toMatchObject({code:"PDF_MULTIPAGE_SCAN_REQUIRES_REVIEW",httpStatus:422});
+    expect(postCount).toBe(previous);
+    const status=await pool.query("select analysis_status from invoice_artifacts where id=$1",[stored.artifactId]);
+    expect(status.rows[0].analysis_status).toBe("STORED_UNTRUSTED");
   });
 
   it("permits only one concurrent inference claim for a fresh artifact", async () => {
