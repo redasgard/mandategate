@@ -83,7 +83,7 @@ export function InvoiceArtifactUpload({organizations}:{organizations:Organizatio
         {result.artifact.replayed?" Existing artifact reused.":""}</p>
       <p className="mono">SHA-256: {result.artifact.sha256}</p>
       {result.reviewPath?
-        <Link href={result.reviewPath}>Open PDF review</Link>:
+        <Link href={result.reviewPath}>Open document review</Link>:
         <p className="muted">Image retained as untrusted. It cannot directly authorize a payment.</p>}
     </div>:null}
     {error?<p role="alert" className="error">{error}</p>:null}

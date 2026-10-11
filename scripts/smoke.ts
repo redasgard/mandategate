@@ -95,6 +95,13 @@ if(source.status!==200 ||source.headers.get("x-artifact-sha256")!==adminUploaded
   throw new Error("admin source read lost artifact SHA provenance");
 const sourceBytes=Buffer.from(await source.arrayBuffer());
 if(!sourceBytes.equals(adminPdf))throw new Error("admin original PDF bytes changed");
+const signedInReviewer=await fetch(`${baseUrl}/invoice-artifacts/${adminId}`,{
+  headers:{cookie:adminCookie},
+});
+if(signedInReviewer.status!==200 ||
+   !(await signedInReviewer.text()).includes("Observe this stored document"))
+  throw new Error("signed-in document observation UI is inaccessible");
+
 const parse=await fetch(`${adminUploadPath}/${adminId}/pdf-pages`,{
   method:"POST",headers:{cookie:adminCookie,origin:baseUrl},
 });

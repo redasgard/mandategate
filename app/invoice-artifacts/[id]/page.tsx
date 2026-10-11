@@ -6,6 +6,7 @@ import { loadInvoiceArtifactForHumanReview } from "@/src/artifacts/postgres-stor
 import { loadStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactReview } from "./review-actions";
+import { InvoiceVisionObservation } from "./observation-actions";
 
 export default async function InvoiceArtifactReviewPage({
   params,
@@ -15,7 +16,26 @@ export default async function InvoiceArtifactReviewPage({
   const {id}=await params;
   if(!/^[a-f0-9-]{36}$/i.test(id))notFound();
   const artifact=await loadInvoiceArtifactForHumanReview(session.user.id,id);
-  if(!artifact || artifact.mimeType!=="application/pdf")notFound();
+  if(!artifact)notFound();
+  if(artifact.mimeType!=="application/pdf") {
+    return <main className="shell narrow">
+      <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
+      <section className="panel detail">
+        <p className="eyebrow">Untrusted image invoice / source review</p>
+        <h1>Inspect original image and advisory model observations</h1>
+        <p className="muted">Image evidence is not independently transcribed or authenticated.
+          A model response cannot authorize payments or change vendor destinations.</p>
+        <dl>
+          <div><dt>Media type</dt><dd>{artifact.mimeType}</dd></div>
+          <div><dt>Original SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
+          <div><dt>Source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"}
+            target="_blank" rel="noopener noreferrer">View original image</a></dd></div>
+          <div><dt>Trust state</dt><dd>Untrusted document</dd></div>
+        </dl>
+        <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
+      </section>
+    </main>;
+  }
   const [pages,channelRows,claimRows,attRows]=await Promise.all([
     loadStoredPdfSourcePages(artifact.organizationId,id),
     pool.query([
@@ -70,6 +90,7 @@ export default async function InvoiceArtifactReviewPage({
         <div><dt>Source artifact SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
         <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect original PDF (admin-only download)</a></dd></div>
       </dl>
+      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
       <InvoiceArtifactReview
         artifactId={id} artifactSha256={artifact.sha256}
         initialPages={pages?.pages ?? []}

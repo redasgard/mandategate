@@ -48,9 +48,7 @@ export async function POST(request: Request) {
     });
     return Response.json({
       artifact,
-      reviewPath:artifact.mimeType==="application/pdf"
-        ? "/invoice-artifacts/"+encodeURIComponent(artifact.artifactId)
-        : null,
+      reviewPath:"/invoice-artifacts/"+encodeURIComponent(artifact.artifactId),
       trustState:"STORED_UNTRUSTED",
       issuerAuthenticated:false,
       paymentAuthorized:false,
