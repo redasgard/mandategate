@@ -1,0 +1,26 @@
+name: csv-lock-resolution
+
+on:
+  push:
+    branches: [build/slice-3-invoice-intake]
+    paths: [.github/workflows/csv-lock-resolution.yml]
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+      - run: corepack enable
+      - run: corepack prepare pnpm@12.9.1 --activate
+      - name: Resolve exact csv-parse lock entry using pinned pnpm
+        run: |
+          pnpm add --save-exact csv-parse@7.0.3
+          echo "-- importer --"
+          sed -n '/^      csv-parse:/,+3p' pnpm-lock.yaml
+          echo "-- package --"
+          sed -n '/^  csv-parse@7.0.3:/,+4p' pnpm-lock.yaml
