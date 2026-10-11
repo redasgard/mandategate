@@ -128,7 +128,7 @@ export function InvoiceArtifactReview(props:{
           <div className="review-page-header">Page {p.pageNumber} / text SHA-256 {p.textSha256}</div>
           <pre>{p.text}</pre>
         </div>)}</div>}
-      <p className="muted">Parsed text is document evidence, not issuer identity. Compare it with the original PDF; hidden layers and clipping may still cause differences.</p>
+      <p className="muted">Parsed text is document evidence, not issuer identity. Compare it with the original PDF; hidden layers and clipping may still cause differences. For a scanned PDF without extractable text, the agent analysis API can render a bounded single page for untrusted GLM observation, but that image result always escalates and never satisfies independent T2 evidence. Multi-page scans require manual review.</p>
     </section>
     <section className="review-stage">
       <p className="eyebrow">2 / T2 source corroboration</p>

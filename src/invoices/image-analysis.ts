@@ -8,6 +8,8 @@ import {
 } from "../ai/gateway/experiential-vision";
 import { assessUntrustedInvoiceExtraction } from "./schema";
 import { validateInvoiceImageContainer, InvoiceImageIntegrityError } from "./image-integrity";
+import { rasterizeStoredPdfPage, PDF_RASTERIZER_VERSION, type RenderedPdfPage } from "./pdf-raster";
+import { PdfSourceError } from "./pdf-text";
 
 export class InvoiceImageAnalysisError extends Error {
   constructor(public readonly code: string, public readonly httpStatus: number) {
@@ -24,6 +26,7 @@ export async function getInvoiceImageObservation(
     [
       "select artifact_id, state, model, prompt_version, prompt_sha256,",
       "provider_name, gateway_request_id, input_sha256, gateway_zdr,",
+      "rendered_input_sha256, rendered_page_number, rasterizer_version,",
       "extraction, reason_codes, error_code, started_at, finished_at",
       "from invoice_image_observations",
       "where organization_id = $1 and artifact_id = $2 limit 1",
@@ -57,6 +60,7 @@ async function persistObservation(
     provider?: string;
     requestId?: string;
     gatewayZdr: boolean;
+    raster?: RenderedPdfPage | null;
     errorCode?: string;
   },
   startedAt: Date,
@@ -85,15 +89,19 @@ async function persistObservation(
         "insert into invoice_image_observations",
         "(artifact_id, organization_id, state, model, prompt_version,",
         "prompt_sha256, provider_name, gateway_request_id, input_sha256,",
-        "gateway_zdr, extraction, reason_codes, error_code, started_at, finished_at)",
-        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14, now())",
+        "gateway_zdr, extraction, reason_codes, error_code, started_at, finished_at,",
+        "rendered_input_sha256, rendered_page_number, rasterizer_version)",
+        "values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13, $14, now(), $15, $16, $17)",
         "on conflict (artifact_id) do update set",
         "state = excluded.state, model = excluded.model,",
         "prompt_version = excluded.prompt_version, prompt_sha256 = excluded.prompt_sha256,",
         "provider_name = excluded.provider_name, gateway_request_id = excluded.gateway_request_id,",
         "input_sha256 = excluded.input_sha256, gateway_zdr = excluded.gateway_zdr,",
         "extraction = excluded.extraction, reason_codes = excluded.reason_codes,",
-        "error_code = excluded.error_code, started_at = excluded.started_at, finished_at = now()",
+        "error_code = excluded.error_code, started_at = excluded.started_at, finished_at = now(),",
+        "rendered_input_sha256 = excluded.rendered_input_sha256,",
+        "rendered_page_number = excluded.rendered_page_number,",
+        "rasterizer_version = excluded.rasterizer_version",
       ].join(" "),
       [
         artifactId, organizationId, values.state, values.model,
@@ -102,6 +110,9 @@ async function persistObservation(
         values.inputSha256, values.gatewayZdr,
         JSON.stringify(values.extracted), JSON.stringify(values.reasonCodes),
         values.errorCode ?? null, startedAt,
+        values.raster?.renderedPngSha256 ?? null,
+        values.raster?.pageNumber ?? null,
+        values.raster?.rasterizerVersion ?? null,
       ],
     );
     await client.query("commit");
@@ -125,16 +136,39 @@ export async function analyzeStoredInvoiceImage(
 ) {
   const artifact = await loadInvoiceArtifactForAnalysis(organizationId, artifactId);
   if (!artifact) throw new InvoiceImageAnalysisError("ARTIFACT_NOT_FOUND", 404);
-  if (artifact.mimeType !== "image/jpeg" && artifact.mimeType !== "image/png") {
-    throw new InvoiceImageAnalysisError("PDF_PREPARATION_REQUIRED", 422);
+  const isPdf = artifact.mimeType === "application/pdf";
+  if (!isPdf && artifact.mimeType !== "image/jpeg" && artifact.mimeType !== "image/png") {
+    throw new InvoiceImageAnalysisError("INVOICE_IMAGE_OR_PDF_REQUIRED", 422);
   }
-  try {
-    validateInvoiceImageContainer(artifact.content, artifact.mimeType);
-  } catch (error) {
-    if (error instanceof InvoiceImageIntegrityError) {
-      throw new InvoiceImageAnalysisError(error.code, 422);
+  let raster: RenderedPdfPage | null = null;
+  if (isPdf) {
+    // Scanned PDFs never become independent textual evidence. Rasterization
+    // is a bounded local operation that happens BEFORE any AI request.
+    try {
+      raster = await rasterizeStoredPdfPage({
+        content: artifact.content,
+        expectedArtifactSha256: artifact.sha256,
+      });
+    } catch (error) {
+      if (error instanceof PdfSourceError) {
+        throw new InvoiceImageAnalysisError(error.code, 422);
+      }
+      throw error;
     }
-    throw error;
+    // One page can be observed safely. Multi-page scans require an explicit
+    // page-selection/multi-image review path, not a silent first-page summary.
+    if (raster.pageCount !== 1) {
+      throw new InvoiceImageAnalysisError("PDF_MULTIPAGE_SCAN_REQUIRES_REVIEW", 422);
+    }
+  } else {
+    try {
+      validateInvoiceImageContainer(artifact.content, artifact.mimeType);
+    } catch (error) {
+      if (error instanceof InvoiceImageIntegrityError) {
+        throw new InvoiceImageAnalysisError(error.code, 422);
+      }
+      throw error;
+    }
   }
   if (!["STORED_UNTRUSTED", "PENDING", "FAILED"].includes(artifact.analysisStatus)) {
     throw new InvoiceImageAnalysisError("ARTIFACT_ALREADY_ANALYZED_OR_CLAIMED", 409);
@@ -165,16 +199,32 @@ export async function analyzeStoredInvoiceImage(
   const startedAt: Date = claim.rows[0].analysis_claimed_at;
 
   try {
+    const sentMime = raster ? "image/png" as const : artifact.mimeType as "image/png"|"image/jpeg";
+    const sentBytes = raster ? raster.png : artifact.content;
+    const sentSha = raster ? raster.renderedPngSha256 : artifact.sha256;
     const { candidate, routeProof } = await gateway.observeImage({
       artifactId,
-      artifactSha256: artifact.sha256,
-      mimeType: artifact.mimeType,
-      content: artifact.content,
+      artifactSha256: sentSha,
+      mimeType: sentMime,
+      content: sentBytes,
     });
-    const assessment = assessUntrustedInvoiceExtraction(candidate, {
+    if (routeProof.inputArtifactSha256 !== sentSha) {
+      throw new InvoiceVisionGatewayError("INVOICE_VISION_INPUT_DIGEST_MISMATCH");
+    }
+    const assessed = assessUntrustedInvoiceExtraction(candidate, {
       artifactId,
       pages: [{ text: null }],
     });
+    // Even a confident, well-formed GLM result cannot authenticate
+    // rendered PDF pixels or the issuer's payment destination.
+    const assessment = raster ? {
+      ...assessed,
+      state: "ESCALATE" as const,
+      reasonCodes: [...new Set([
+        ...assessed.reasonCodes,
+        "SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED",
+      ])].sort(),
+    } : assessed;
     await persistObservation(
       organizationId, artifactId, claimId,
       {
@@ -189,6 +239,7 @@ export async function analyzeStoredInvoiceImage(
         provider: routeProof.provider,
         requestId: routeProof.requestId,
         gatewayZdr: routeProof.zdr,
+        raster,
       },
       startedAt,
     );
@@ -206,6 +257,13 @@ export async function analyzeStoredInvoiceImage(
         requestId: routeProof.requestId,
         artifactSha256: artifact.sha256,
         zdr: routeProof.zdr,
+        sourceRasterization: raster ? {
+          sourceSha256: raster.sourceArtifactSha256,
+          renderedPngSha256: raster.renderedPngSha256,
+          rasterizerVersion: PDF_RASTERIZER_VERSION,
+          pageNumber: raster.pageNumber,
+          pageCount: raster.pageCount,
+        } : null,
       },
       paymentAuthorized: false as const,
     };
@@ -222,6 +280,7 @@ export async function analyzeStoredInvoiceImage(
           state: "FAILED", status: "FAILED", inputSha256: artifact.sha256,
           extracted: null, reasonCodes: ["MODEL_GATEWAY_FAILURE"],
           model: INVOICE_VISION_MODEL, gatewayZdr: false, errorCode: code,
+          raster,
         },
         startedAt,
       );
