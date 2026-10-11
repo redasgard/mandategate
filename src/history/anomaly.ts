@@ -70,7 +70,13 @@ export function detectApHistoryRisk(
         code:"AP_AMOUNT_OUTLIER",
         source:"ap_history."+label+"_paid_median",
         observed:input.amountCents,expected:typical,
-        provenance:metadata(ref),
+        provenance:{
+          ...metadata(ref),
+          contributingImportIds:[...new Set(
+            (label==="vendor"?vendorSamples:samples).map(s=>s.importId),
+          )].sort(),
+          sampleCount:baseline.length,
+        },
       });
     }
   }
@@ -81,12 +87,20 @@ export function detectApHistoryRisk(
  * content is allowed to supply SQL identifiers or the tenant binding. */
 export async function assessHistoricalPaymentRisk(input:ApRiskInput&{organizationId:string}):Promise<RiskResult> {
   const result=await pool.query([
-    "select h.vendor_id,h.invoice_number,h.amount_cents,h.invoice_date,",
+    // Re-imported ERP exports can repeat older paid rows. Keep the newest
+    // import's provenance for each normalized row, without double-counting
+    // the same historic payment in median/cadence risk calculations.
+    "select s.vendor_id,s.invoice_number,s.amount_cents,s.invoice_date,",
+    "s.import_id,s.normalized_row_sha256,s.source_sha256",
+    "from (",
+    "select distinct on (h.normalized_row_sha256)",
+    "h.vendor_id,h.invoice_number,h.amount_cents,h.invoice_date,",
     "h.import_id,h.normalized_row_sha256,i.source_sha256",
     "from ap_history_rows h",
     "join ap_imports i on i.id=h.import_id and i.organization_id=h.organization_id",
     "where h.organization_id=$1 and h.status='PAID' and h.currency=$2",
-    "order by h.invoice_date desc,h.id desc limit 2000",
+    "order by h.normalized_row_sha256,i.created_at desc,i.id desc",
+    ") s order by s.invoice_date desc,s.normalized_row_sha256 desc limit 2000",
   ].join(" "),[input.organizationId,input.currency]);
   const samples:ApPaidSample[]=result.rows.map(r=>({
     vendorId:r.vendor_id,invoiceNumber:r.invoice_number,
