@@ -1,6 +1,9 @@
 import {randomUUID} from "node:crypto";
 import {beforeAll,afterAll,describe,expect,it} from "vitest";
 import {pool} from "../src/db/pool";
+import {postgresExecutionStore} from "../src/payments/executor/postgres-store";
+import {executeAuthorizedPayment} from "../src/payments/executor/service";
+import type {PayoutSubmission,PaymentGateway} from "../src/payments/executor/types";
 import {
   escalationSnapshotDigest,getEscalationSnapshot,recordPaymentEscalationReview,
 } from "../src/history/escalation-review";
@@ -67,4 +70,26 @@ describe("bound human escalation decisions",()=>{
     const stored=await pool.query("select reviewer_user_id,explanation,action from payment_escalation_reviews where payment_request_id=$1",[payDecline]);
     expect(stored.rows[0]).toMatchObject({reviewer_user_id:actor,action:"DECLINE"});
   });
+  it("maps only accepted reviews to execution authority and forbids declined payouts",async()=>{
+    const allowed=await postgresExecutionStore.getAuthoritativePayment(payAccept);
+    const blocked=await postgresExecutionStore.getAuthoritativePayment(payDecline);
+    expect(allowed?.decisionOutcome).toBe("APPROVED");
+    expect(blocked?.decisionOutcome).toBe("ESCALATE");
+    const posts:PayoutSubmission[]=[];
+    const gateway:PaymentGateway={
+      createSinglePayout:async input=>{posts.push(input);return{payoutBatchId:"CI-FAKE-BATCH-123"};},
+      getBatchItem:async batch=>({payoutItemId:"CI-FAKE-ITEM",payoutBatchId:batch,transactionStatus:"SUCCESS"}),
+      getPayoutItem:async item=>({payoutItemId:item,payoutBatchId:"CI-FAKE-BATCH-123",transactionStatus:"SUCCESS"}),
+    };
+    await expect(executeAuthorizedPayment(payDecline,{store:postgresExecutionStore,gateway}))
+      .rejects.toThrow("PAYMENT_NOT_AUTHORIZED");
+    expect(posts).toHaveLength(0);
+    const executed=await executeAuthorizedPayment(payAccept,{store:postgresExecutionStore,gateway});
+    expect(executed.status).toBe("PAID");
+    expect(posts).toHaveLength(1);
+    // An idempotent second local call cannot originate another external POST.
+    await executeAuthorizedPayment(payAccept,{store:postgresExecutionStore,gateway});
+    expect(posts).toHaveLength(1);
+  });
+
 });
