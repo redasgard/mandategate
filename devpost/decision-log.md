@@ -26,3 +26,9 @@
 - **Authority constraint:** model output cannot authorize payment; simulated out-of-band confirmation must remain labeled synthetic, as specified in the approved scope.
 - **Incomplete:** live GLM ZDR proof, genuine hosted reviewer verification, payable document end-to-end and real Sandbox payout/webhook. Slice 3 remains unchecked.
 - **Cost cleanup:** paid Gate H PostgreSQL deleted; the extra free-tier web resource remains. Neither is needed by the approved one-environment build.
+
+## 2026-10-11 — Deploy tested Slice 3 checkpoint on original Render app
+
+- **Action:** Manual deploy from existing `mandategate-web`, auto-deploy disabled, branch `build/slice-3-invoice-intake`, exact source SHA `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a`.
+- **Evidence:** Render `dep-db5ub9l9fdbs73e58mug` **LIVE**; startup applies 16 migrations, seeds existing admin and runs Next.js. Anonymous redirects and sign-in 200 observed. GitHub Actions `38168733595` SUCCESS, 180/180 tests.
+- **Limits:** No real GLM API key/serving ZDR verification, no authenticated hosted reviewer session, no invoice-derived PayPal Sandbox transfer. Startup did not invoke the one-shot Gate H payout test. Full Slice 3 remains open.

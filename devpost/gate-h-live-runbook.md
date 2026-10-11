@@ -34,7 +34,7 @@ The two extra web deployments both failed during their builds, before applicatio
 
 ## Slice 3 live vision checkpoint (2026-10-11)
 
-The bounded scanned-PDF/image reviewer is implemented, tested and linked from the signed-in document list. CI run `38168733595` passed 180 tests across 30 files, including actual local PDF.js rasterization, first-page PNG integrity, renderer-to-original dual hash binding, rejected multi-page scans, and logged-in HTTP reviewer smoke. Both worker environments are empty and the server bundle excludes native canvas.
+The bounded scanned-PDF/image reviewer is implemented, tested and linked from the signed-in document list. Existing Render development app deployed exact code SHA `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a` as **LIVE** via `dep-db5ub9l9fdbs73e58mug`; bootstrap logs confirm 16 migrations and demo seed, and provider request logs confirm login page 200 and anonymous redirects. Full authenticated reviewer navigation and live GLM remain unverified. CI run `38168733595` passed 180 tests across 30 files, including actual local PDF.js rasterization, first-page PNG integrity, renderer-to-original dual hash binding, rejected multi-page scans, and logged-in HTTP reviewer smoke. Both worker environments are empty and the server bundle excludes native canvas.
 
 A **live** GLM-5.3 Flash serving-route request (including ZDR response header and resolved model) is **not** proven. The external `EXPLABS_API_KEY` is not verified here. The document cannot be upgraded to payment authority merely because its model output is persuasive. This does not alter the need for explicit one-time Sandbox payout consent.
 

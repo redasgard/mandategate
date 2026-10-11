@@ -26,7 +26,7 @@
 1. **MEDIUM — Multi-page scanned PDF not observed.** Spec allows max 20 pages, but this advisory implementation intentionally rejects a multi-page scan instead of selecting an incomplete first-page payment representation. Required repair: add bounded selected-page multi-image processing or explicitly scope/verify a manual review fallback before Slice 3 sign-off.
 2. **MEDIUM — Native-worker isolation is incomplete by OS standards.** Empty environment and bounds reduce exposure, but native canvas memory is outside V8 resourceLimits and Node workers may access network. Required repair for sensitive production use: process/container isolation and resource/network caps. Hackathon synthetic documents only.
 3. **HIGH FOR SLICE RELEASE — Real external provider and complete payment proof unverified.** CI exercises a mocked provider and fake human portal evidence; an `EXPLABS_API_KEY` must be configured securely for actual ZDR serving proof. Gate H also requires explicit separately authorized Sandbox payout plus webhook, not synthetic fixture assertions presented as real supplier contact.
-4. **MEDIUM — Hosted browser and session not yet verified.** Development Render deploy was triggered, not confirmed live when this review was drafted. Verify exact Render commit, health, private routes/permissions and model route behavior before describing it as hosted working.
+4. **MEDIUM — Hosted browser and session not yet verified.** Render later confirmed exact SHA `2fbbdcd9...` LIVE, migrations/seed, Next.js readiness and anonymous redirect/login page responses. Authenticated Render reviewer journey, provider ZDR serving response and payment execution remain unverified. Do not promote boot evidence into functional completion.
 
 ### Requirement coverage
 - **VERIFIED:** bounded worker PDF raster to PNG, hash integrity and provenance, empty worker environments, native Next build, admin route denial and same-origin checks, zero-money result, deterministic migration/seed and HTTP smoke.
@@ -40,3 +40,9 @@
 4. Run the approved Sandbox-only 3-case proof with explicitly authorized physical Payouts call, then re-review Gate H and mark Slice 3 done only when verified.
 
 **Next gate:** hosted dev code verification, followed by the distinct live-provider and money-movement acceptance gates. No new staging or paid database.
+
+### Hosted deployment re-review (2026-10-11)
+
+- **Evidence:** Render deployment `dep-db5ub9l9fdbs73e58mug` status `live`, exact code commit `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a`. Render app logs contain `database migrated (16 application migrations)`, demo admin exists and Next.js ready. Provider request logs: `GET /sign-in` 200; unauthenticated `GET /` and `GET /dashboard` 307.
+- **Correction to prior finding:** hosted boot and unauthenticated session boundary are now VERIFIED. Signed-in reviewer actions remain UNVERIFIED on Render; only CI smoke verified those.
+- **Review decision:** CONTINUE bounded Slice 3 development. **BLOCK** Slice 3 acceptance, live model-proof claim and any unapproved Sandbox payment.
