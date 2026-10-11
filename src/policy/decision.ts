@@ -15,7 +15,11 @@ export type DecisionEvidence = {
   observed: string | number;
   expected?: string | number;
   // Pointers to an immutable AP import, not original invoice/customer text.
-  provenance?: {importId:string;rowSha256:string;sourceSha256:string};
+  provenance?: {
+    importId:string;rowSha256:string;sourceSha256:string;
+    contributingImportIds?:string[];
+    sampleCount?:number;
+  };
 };
 
 export type PaymentDecision = {
