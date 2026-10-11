@@ -2,8 +2,9 @@ import { parentPort, workerData } from "node:worker_threads";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createCanvas } from "@napi-rs/canvas";
 
-// No credentials, network or database are accessible in this disposable
-// PDF rasterization worker. All output is T1 untrusted observation material.
+// No application credentials or database handles are passed to this worker;
+// it receives only bounded bytes and a page number. This is NOT an OS-level
+// network sandbox. All output remains T1 untrusted observation material.
 const MAX_PAGES = 20;
 const MAX_RENDERED_EDGE = 4096;
 const MAX_RENDERED_PIXELS = 6_000_000;

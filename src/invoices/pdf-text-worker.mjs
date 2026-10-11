@@ -2,7 +2,8 @@ import { parentPort, workerData } from "node:worker_threads";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // Entire PDF parsing operation runs outside the payment server's main thread.
-// This worker has no database, app credentials, webhook or PayPal access.
+// This worker has no imported app/database/payment clients and receives an
+// empty environment; it is NOT an OS-level network sandbox.
 const MAX_PAGES = 20;
 const MAX_TEXT_ITEMS_PER_PAGE = 10000;
 const MAX_PAGE_CHARACTERS = 100000;
