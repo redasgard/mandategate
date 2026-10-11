@@ -9,6 +9,7 @@ import {
   vendors,
 } from "@/src/db/schema";
 import { evaluatePayment } from "@/src/policy/decision";
+import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
 
 export type CanonicalPaymentRequest = {
   organizationId: string;
@@ -74,7 +75,7 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
       const [policy] = await tx.select().from(policies).where(and(eq(policies.organizationId, input.organizationId), eq(policies.active, true))).limit(1);
       if (!policy) throw new Error("ACTIVE_POLICY_NOT_FOUND");
 
-      const decision = evaluatePayment({
+      const baseDecision = evaluatePayment({
         amountCents: input.amountCents,
         currency: input.currency,
         requestedDestination: input.paymentDestination,
@@ -82,6 +83,33 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
         vendorNormalMaxAmountCents: vendor.normalMaxAmountCents,
         policyAutoPayMaxAmountCents: policy.autoPayMaxAmountCents,
       });
+      // Imported AP history can only raise risk, never grant a destination,
+      // increase a policy threshold or change a DENY into an ALLOW.
+      let history: Awaited<ReturnType<typeof assessHistoricalPaymentRisk>>;
+      try {
+        history = await assessHistoricalPaymentRisk({
+          organizationId:input.organizationId,
+          vendorId:input.vendorId,
+          invoiceNumber:input.invoiceNumber,
+          amountCents:input.amountCents,
+          currency:input.currency,
+        });
+      } catch {
+        history = {
+          reasonCodes:["AP_HISTORY_UNAVAILABLE"],
+          evidence:[{code:"AP_HISTORY_UNAVAILABLE",source:"ap_history.provenance",
+            observed:"unavailable"}],
+        };
+      }
+      const historyReasons=history.reasonCodes;
+      const decision = historyReasons.length===0 ? baseDecision : {
+        outcome: baseDecision.outcome==="DENY" ? "DENY" as const : "ESCALATE" as const,
+        reasonCodes: [...new Set([
+          ...baseDecision.reasonCodes.filter(x=>x!=="WITHIN_TRUSTED_BASELINE"),
+          ...historyReasons,
+        ])],
+        evidence: [...baseDecision.evidence,...history.evidence],
+      };
 
       const requestId = randomUUID();
       const logicalPaymentId = randomUUID();
