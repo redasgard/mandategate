@@ -65,6 +65,7 @@ async function submitClaimed(
   store: ExecutionStore,
   gateway: PaymentGateway,
   now: Date,
+  beforeSubmit?: () => Promise<void>,
 ): Promise<ExecutionRecord> {
   const fresh = await store.getAuthoritativePayment(payment.requestId);
   try {
@@ -75,6 +76,7 @@ async function submitClaimed(
     if (fresh.amountCents !== payment.amountCents || fresh.currency !== payment.currency || fresh.requestedDestination !== payment.requestedDestination) {
       throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
     }
+    await beforeSubmit?.();
   } catch (error) {
     const code = error instanceof Error ? error.message : "PAYMENT_AUTHORITY_CHANGED";
     const blocked = await store.markBlocked(execution.logicalPaymentId, code, now);
@@ -128,6 +130,7 @@ async function recoverUnknown(
   store: ExecutionStore,
   gateway: PaymentGateway,
   now: Date,
+  beforeSubmit?: () => Promise<void>,
 ): Promise<ExecutionRecord> {
   if (execution.paypalPayoutBatchId || execution.paypalPayoutItemId) {
     try {
@@ -146,12 +149,12 @@ async function recoverUnknown(
 
   const claimed = await store.tryClaim(execution.logicalPaymentId, ["PAYMENT_UNKNOWN"]);
   if (!claimed) return store.getExecution(execution.logicalPaymentId);
-  return submitClaimed(payment, claimed, store, gateway, now);
+  return submitClaimed(payment, claimed, store, gateway, now, beforeSubmit);
 }
 
 export async function executeAuthorizedPayment(
   requestId: string,
-  deps: { store: ExecutionStore; gateway: PaymentGateway; now?: () => Date },
+  deps: { store: ExecutionStore; gateway: PaymentGateway; now?: () => Date; beforeSubmit?: () => Promise<void> },
 ): Promise<ExecutionRecord> {
   const now = deps.now?.() ?? new Date();
   const payment = await deps.store.getAuthoritativePayment(requestId);
@@ -161,14 +164,14 @@ export async function executeAuthorizedPayment(
   let execution = await deps.store.getOrCreateExecution(payment);
   if (isTerminalExecutionStatus(execution.status)) return execution;
   if (execution.status === "PAYMENT_UNKNOWN") {
-    return recoverUnknown(payment, execution, deps.store, deps.gateway, now);
+    return recoverUnknown(payment, execution, deps.store, deps.gateway, now, deps.beforeSubmit);
   }
   if (execution.status === "SUBMITTING" && !execution.paypalPayoutBatchId && !execution.paypalPayoutItemId) {
     const claimAge = execution.claimedAt ? now.getTime() - execution.claimedAt.getTime() : Number.POSITIVE_INFINITY;
     if (claimAge >= CLAIM_LEASE_MS) {
       execution = await deps.store.markUnknown(execution.logicalPaymentId, now);
       await deps.store.appendEvent(execution.logicalPaymentId, "PAYPAL_STALE_CLAIM_RECOVERED");
-      return recoverUnknown(payment, execution, deps.store, deps.gateway, now);
+      return recoverUnknown(payment, execution, deps.store, deps.gateway, now, deps.beforeSubmit);
     }
     return execution;
   }
@@ -183,7 +186,7 @@ export async function executeAuthorizedPayment(
   const claimed = await deps.store.tryClaim(execution.logicalPaymentId, ["READY"]);
   if (!claimed) return deps.store.getExecution(execution.logicalPaymentId);
   execution = claimed;
-  return submitClaimed(payment, execution, deps.store, deps.gateway, now);
+  return submitClaimed(payment, execution, deps.store, deps.gateway, now, deps.beforeSubmit);
 }
 
 export async function reconcileExecution(
