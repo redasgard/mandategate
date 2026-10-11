@@ -42,8 +42,9 @@ describe("actual imported AP history influences deterministic payment kernel",()
     expect(decision.decision.outcome).toBe("ESCALATE");
     expect(decision.decision.reasonCodes).toContain("AP_INVOICE_NUMBER_REPLAY");
     const match=decision.decision.evidence.find(x=>x.code==="AP_INVOICE_NUMBER_REPLAY");
-    expect(match?.provenance?.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(match?.provenance?.importId).toBeTruthy();
+    const provenance=match?.provenance as undefined|{sourceSha256:string;importId:string};
+    expect(provenance?.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(provenance?.importId).toBeTruthy();
     const execution=await pool.query("select count(*)::int as n from payment_executions where payment_request_id=$1",[decision.requestId]);
     expect(execution.rows[0].n).toBe(0);
   });
