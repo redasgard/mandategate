@@ -45,6 +45,12 @@ export class PostgresExecutionStore implements ExecutionStore {
               pr.vendor_id,
               pr.organization_id,
               pd.outcome,
+              case when pr.status='APPROVED' and pd.outcome='ESCALATE'
+                and exists (
+                  select 1 from payment_escalation_reviews rev
+                  where rev.payment_request_id=pr.id and rev.action='ACCEPT'
+                )
+                then 'APPROVED' else pd.outcome end as effective_outcome,
               vd.destination as current_trusted_destination
          from payment_requests pr
          join payment_decisions pd on pd.payment_request_id = pr.id
@@ -97,7 +103,7 @@ export class PostgresExecutionStore implements ExecutionStore {
       currency: row.currency,
       requestedDestination: row.requested_destination,
       currentTrustedDestination: row.current_trusted_destination,
-      decisionOutcome: row.outcome,
+      decisionOutcome: row.effective_outcome,
       invoiceNumber: row.invoice_number,
     };
   }
