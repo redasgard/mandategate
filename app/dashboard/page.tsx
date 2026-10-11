@@ -11,7 +11,7 @@ function money(cents: number, currency: string) {
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
-  const rows = await listRecentDecisions();
+  const rows = await listRecentDecisions(session.user.id);
 
   const counts = rows.reduce(
     (acc, row) => ({ ...acc, [row.outcome]: (acc[row.outcome] ?? 0) + 1 }),

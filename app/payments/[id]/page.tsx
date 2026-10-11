@@ -9,7 +9,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   const { id } = await params;
-  const row = await getDecisionDetail(id);
+  const row = await getDecisionDetail(id, session.user.id);
   if (!row) notFound();
   const terminal = ["PAID", "PAYMENT_FAILED", "PAYMENT_BLOCKED", "PAYMENT_RETURNED", "PAYMENT_REFUNDED", "PAYMENT_REVERSED", "PAYMENT_UNKNOWN_MANUAL_RECONCILIATION"].includes(row.executionStatus ?? "");
 
