@@ -14,7 +14,8 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
   const [notice,setNotice]=useState<string|null>(null);
 
   async function handle(action:"ACCEPT"|"DECLINE"){
-    if(busy || explanation.trim().length<16 || !trustedDestinationCurrent)return;
+    if(busy || explanation.trim().length<16 ||
+       (action==="ACCEPT" && !trustedDestinationCurrent))return;
     const question=action==="ACCEPT"
       ?"Accept this exact payment request and immediately attempt the PayPal Sandbox payout?"
       :"Decline this payment request permanently without issuing a payout?";
@@ -83,7 +84,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         onChange={e=>setEvidence(e.target.files?.[0]??null)}/>
     </label>
     <div className="chips">
-      <button type="button" disabled={busy||!trustedDestinationCurrent||explanation.trim().length<16}
+      <button type="button" disabled={busy||explanation.trim().length<16}
         onClick={()=>void handle("DECLINE")}>
         {busy?"Reviewing…":"Decline without payout"}
       </button>
