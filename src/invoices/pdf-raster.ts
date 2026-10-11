@@ -47,6 +47,7 @@ export async function rasterizeStoredPdfPage(input: {
     try {
       worker = new Worker(join(process.cwd(), "src", "invoices", "pdf-raster-worker.mjs"), {
         workerData: {data: Uint8Array.from(input.content), pageNumber},
+        env: {},
         resourceLimits: {maxOldGenerationSizeMb:192, maxYoungGenerationSizeMb:32, stackSizeMb:4},
       });
     } catch {

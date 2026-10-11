@@ -54,6 +54,7 @@ export async function parseIndependentPdfSource(input: {
     try {
       worker = new Worker(join(process.cwd(), "src", "invoices", "pdf-text-worker.mjs"), {
         workerData: { data: Uint8Array.from(input.content) },
+        env: {},
         resourceLimits: {
           maxOldGenerationSizeMb: 192,
           maxYoungGenerationSizeMb: 32,
