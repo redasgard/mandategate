@@ -1,4 +1,5 @@
-import {randomUUID} from "node:crypto";
+import {randomUUID,createHash} from "node:crypto";
+import {createPdf} from "./helpers/pdf-fixture";
 import {beforeAll,afterAll,describe,expect,it} from "vitest";
 import {pool} from "../src/db/pool";
 import {postgresExecutionStore} from "../src/payments/executor/postgres-store";
@@ -61,14 +62,25 @@ describe("bound human escalation decisions",()=>{
       requestId:payDecline,reviewerId:actor,action:"DECLINE",
       expectedSnapshotSha256:snap!.snapshotSha256,explanation:"short",
     })).rejects.toMatchObject({code:"ESCALATION_REVIEW_INVALID"});
+    const evidence=createPdf(["Synthetic duplicate invoice evidence, not external supplier proof"]);
     const row=await recordPaymentEscalationReview({
       requestId:payDecline,reviewerId:actor,action:"DECLINE",
       expectedSnapshotSha256:snap!.snapshotSha256,
       explanation:"Declined duplicate invoice pending vendor clarification",
+      evidence:{mimeType:"application/pdf",bytes:evidence},
     });
     expect(row).toMatchObject({status:"DECLINED",approvedForExecution:false});
-    const stored=await pool.query("select reviewer_user_id,explanation,action from payment_escalation_reviews where payment_request_id=$1",[payDecline]);
+    const stored=await pool.query(
+      "select id,reviewer_user_id,explanation,action,evidence_sha256,evidence_bytes from payment_escalation_reviews where payment_request_id=$1",
+      [payDecline],
+    );
     expect(stored.rows[0]).toMatchObject({reviewer_user_id:actor,action:"DECLINE"});
+    expect(stored.rows[0].evidence_sha256).toBe(createHash("sha256").update(evidence).digest("hex"));
+    expect(stored.rows[0].evidence_bytes.equals(evidence)).toBe(true);
+    await expect(pool.query(
+      "update payment_escalation_reviews set explanation='tampered evidence' where id=$1",
+      [stored.rows[0].id],
+    )).rejects.toThrow(/AUTHORITY_PROVENANCE_IMMUTABLE/);
   });
   it("maps only accepted reviews to execution authority and forbids declined payouts",async()=>{
     const allowed=await postgresExecutionStore.getAuthoritativePayment(payAccept);
