@@ -468,10 +468,15 @@ const secondReview=await fetch(historicalReviewPath,{
     expectedSnapshotSha256:snap.snapshot.snapshotSha256}),
 });
 if(secondReview.status!==409)throw Error("historical review allowed duplicate terminal action");
+const trustPage=await fetch(`${baseUrl}/vendors`,{headers:{cookie:adminCookie}});
+if(trustPage.status!==200 ||
+   !(await trustPage.text()).includes("Trusted vendors and payment re-verification"))
+  throw Error("signed-in vendor trust case dashboard unavailable");
+
 const activityPage=await fetch(`${baseUrl}/activity`,{headers:{cookie:adminCookie}});
 if(activityPage.status!==200 ||
    !(await activityPage.text()).includes("Activity and consequential decisions"))
   throw Error("signed-in activity and evidence view unavailable");
 
-console.log("smoke passed: signed-in PDF T2-T4 synthetic authority, historical CSV import, imported replay ESCALATE, stale/repeat review denial, admin DECLINE, activity view, zero payouts");
+console.log("smoke passed: signed-in PDF T2-T4 synthetic authority, historical CSV import, imported replay ESCALATE, stale/repeat review denial, admin DECLINE, vendor trust alerts, activity view, zero payouts");
 
