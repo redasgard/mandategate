@@ -8,7 +8,7 @@ import {
   escalationSnapshotDigest,getEscalationSnapshot,recordPaymentEscalationReview,
 } from "../src/history/escalation-review";
 const org="escal_review_"+randomUUID(),vendor="v_"+randomUUID(),dest="d_"+randomUUID();
-const policy="p_"+randomUUID(),payAccept=randomUUID(),payDecline=randomUUID();
+const policy="p_"+randomUUID(),payAccept=randomUUID(),payDecline=randomUUID(),payRevoke=randomUUID();
 let actor="";
 beforeAll(async()=>{
   const u=await pool.query('select id from "user" where email=$1',[process.env.DEMO_ADMIN_EMAIL]);
@@ -19,7 +19,7 @@ beforeAll(async()=>{
   await pool.query("insert into vendors(id,organization_id,name,normal_max_amount_cents) values($1,$2,'Review vendor',1000)",[vendor,org]);
   await pool.query("insert into vendor_destinations(id,vendor_id,destination,trusted) values($1,$2,'ap@review.test',true)",[dest,vendor]);
   await pool.query("insert into policies(id,organization_id,name,auto_pay_max_amount_cents,active) values($1,$2,'Policy',1000,true)",[policy,org]);
-  for(const id of [payAccept,payDecline]){
+  for(const id of [payAccept,payDecline,payRevoke]){
     await pool.query([
       "insert into payment_requests(id,logical_payment_id,organization_id,vendor_id,invoice_number,amount_cents,currency,requested_destination,status,source)",
       "values($1,$2,$3,$4,$5,9999,'USD','ap@review.test','ESCALATED','demo_fixture')",
@@ -90,6 +90,20 @@ describe("bound human escalation decisions",()=>{
     // An idempotent second local call cannot originate another external POST.
     await executeAuthorizedPayment(payAccept,{store:postgresExecutionStore,gateway});
     expect(posts).toHaveLength(1);
+  });
+
+
+  it("can safely decline an escalation after vendor destination is revoked",async()=>{
+    await pool.query("update vendor_destinations set trusted=false where id=$1",[dest]);
+    const snap=await getEscalationSnapshot(payRevoke,actor);
+    expect(snap?.trustedDestinationCurrent).toBe(false);
+    const recorded=await recordPaymentEscalationReview({
+      requestId:payRevoke,reviewerId:actor,action:"DECLINE",
+      expectedSnapshotSha256:snap!.snapshotSha256,
+      explanation:"Declined because the vendor destination trust was revoked",
+    });
+    expect(recorded.status).toBe("DECLINED");
+    expect((await pool.query("select count(*)::int as n from payment_executions where payment_request_id=$1",[payRevoke])).rows[0].n).toBe(0);
   });
 
 });
