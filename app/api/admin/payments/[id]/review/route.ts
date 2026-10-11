@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {auth} from "@/src/auth/auth";
 import {isTrustedMutationOrigin} from "@/src/auth/same-origin";
-import {recordPaymentEscalationReview,EscalationReviewError} from "@/src/history/escalation-review";
+import {recordPaymentEscalationReview,getEscalationSnapshot,EscalationReviewError} from "@/src/history/escalation-review";
 export const runtime="nodejs";
 const MAX_BYTES=1_700_000;
 const payloadSchema=z.object({
@@ -15,6 +15,16 @@ const payloadSchema=z.object({
     ctx.addIssue({code:"custom",message:"EVIDENCE_FIELDS_MUST_BE_PAIRED"});
 });
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){
+  const session=await auth.api.getSession({headers:request.headers});
+  if(!session)return Response.json({error:"UNAUTHORIZED"},{status:401});
+  const {id}=await params;
+  if(!uuid.test(id))return Response.json({error:"NOT_FOUND"},{status:404});
+  const snapshot=await getEscalationSnapshot(id,session.user.id);
+  if(!snapshot)return Response.json({error:"NOT_FOUND"},{status:404});
+  return Response.json({snapshot},{headers:{"Cache-Control":"private, no-store"}});
+}
+
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
   if(!isTrustedMutationOrigin(request))
     return Response.json({error:"INVALID_ORIGIN"},{status:403});
