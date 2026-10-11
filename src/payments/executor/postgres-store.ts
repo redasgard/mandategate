@@ -3,6 +3,7 @@ import { pool } from "../../db/pool";
 import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
 import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
+import { escalationSnapshotDigest } from "../../history/escalation-review";
 import type {
   AuthoritativePayment,
   ExecutionRecord,
@@ -40,6 +41,7 @@ export class PostgresExecutionStore implements ExecutionStore {
               pr.currency,
               pr.requested_destination,
               pr.invoice_number,
+              pr.status,
               pr.source,
               pr.authority_binding_id,
               pr.vendor_id,
@@ -67,6 +69,36 @@ export class PostgresExecutionStore implements ExecutionStore {
     );
     const row = result.rows[0];
     if (!row) return null;
+    if (row.outcome==="ESCALATE" && row.effective_outcome==="APPROVED") {
+      // Original human approval was bound to a frozen request/policy/vendor
+      // state before the request entered APPROVED. Reconstruct that exact
+      // pre-review snapshot against the CURRENT policy and receiver at
+      // execution time. Replacing/revoking a policy or editing any payment
+      // field cannot inherit an old approval.
+      const [policy,review]=await Promise.all([
+        pool.query([
+          "select id,auto_pay_max_amount_cents from policies",
+          "where organization_id=$1 and active=true",
+          "order by created_at desc,id desc limit 1",
+        ].join(" "),[row.organization_id]),
+        pool.query([
+          "select request_snapshot_sha256 from payment_escalation_reviews",
+          "where payment_request_id=$1 and action='ACCEPT' limit 1",
+        ].join(" "),[row.request_id]),
+      ]);
+      if(!policy.rows[0] || !review.rows[0]) return null;
+      const latest=policy.rows[0];
+      const snapshot=escalationSnapshotDigest({
+        organizationId:row.organization_id,requestId:row.request_id,
+        vendorId:row.vendor_id,invoiceNumber:row.invoice_number,
+        amountCents:row.amount_cents,currency:row.currency,
+        requestedDestination:row.requested_destination,
+        policyId:latest.id,policyLimitCents:Number(latest.auto_pay_max_amount_cents),
+        trustedDestination:row.current_trusted_destination,
+        outcome:"ESCALATE",status:"ESCALATED",
+      });
+      if(snapshot!==review.rows[0].request_snapshot_sha256)return null;
+    }
     if (row.source === "verified_invoice") {
       if (!row.authority_binding_id) return null;
       const client = await pool.connect();
