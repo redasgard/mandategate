@@ -4,10 +4,11 @@ import {redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
 import {pool} from "@/src/db/pool";
 import {ApHistoryImport} from "./import-form";
+import {loadAdminApBaselines} from "@/src/history/baselines";
 export default async function ApHistoryPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
-  const [orgs,imports]=await Promise.all([
+  const [orgs,imports,baselines]=await Promise.all([
     pool.query([
       "select o.id,o.name from organizations o",
       "join organization_admin_memberships m on m.organization_id=o.id",
@@ -22,6 +23,7 @@ export default async function ApHistoryPage(){
       "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
       "order by i.created_at desc limit 30",
     ].join(" "),[session.user.id]),
+    loadAdminApBaselines(session.user.id),
   ]);
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
@@ -34,6 +36,31 @@ export default async function ApHistoryPage(){
         A historical CSV can never re-enroll a vendor's payment destination.
       </p>
       <ApHistoryImport organizations={orgs.rows.map(r=>({id:r.id as string,name:r.name as string}))}/>
+      <section className="review-stage">
+        <p className="eyebrow">Deterministic imported history / read only</p>
+        <h2>Vendor amount and payment cadence baselines</h2>
+        <p className="muted">
+          Only accepted, previously paid records count. Repeated import versions
+          do not double-count invoice evidence. Historic payment destinations
+          are intentionally excluded from trusted vendor authority.
+        </p>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Organization / vendor</th><th>Paid invoices</th>
+            <th>Typical paid amount</th><th>Typical interval</th><th>Import versions</th>
+          </tr></thead><tbody>
+            {baselines.map(b=><tr key={b.organizationId+":"+b.vendorId}>
+              <td>{b.organizationName} / {b.vendorName}</td>
+              <td>{b.paidInvoiceCount}</td>
+              <td>{b.medianAmountCents===null?"Insufficient data":
+                new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(b.medianAmountCents/100)}</td>
+              <td>{b.medianInvoiceCadenceDays===null?"Insufficient history":
+                b.medianInvoiceCadenceDays+" days"}</td>
+              <td>{b.historicalImportIds.length}</td>
+            </tr>)}
+          </tbody></table>
+          {baselines.length===0?<p className="muted">No accepted paid history yet.</p>:null}
+        </div>
+      </section>
       <section className="review-stage">
         <p className="eyebrow">Verified import records</p>
         <h2>Versioned evidence sources</h2>
