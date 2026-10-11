@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { randomUUID,createHash } from "node:crypto";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db/db";
 import {
   paymentDecisions,
@@ -129,6 +129,17 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
         source: input.source,
       });
       await tx.insert(paymentDecisions).values({ id: randomUUID(), paymentRequestId: requestId, outcome: decision.outcome, reasonCodes: decision.reasonCodes, evidence: decision.evidence });
+      if(decision.reasonCodes.includes("DESTINATION_MISMATCH")){
+        // Destination mismatch is never a general approvable anomaly.
+        // Create a separate vendor re-verification case in the SAME
+        // database transaction as the immutable DENY decision.
+        const observedSha=createHash("sha256").update(input.paymentDestination).digest("hex");
+        await tx.execute(sql`
+          insert into vendor_reverification_cases
+            (organization_id,vendor_id,payment_request_id,observed_destination_sha256)
+          values(${input.organizationId},${input.vendorId},${requestId},${observedSha})
+        `);
+      }
 
       return { requestId, logicalPaymentId, status, decision, paymentExecuted: false, replayed: false };
     });
