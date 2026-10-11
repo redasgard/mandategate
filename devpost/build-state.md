@@ -6,6 +6,18 @@ mode: fast
 
 # Build State
 
+## Slice 3: bounded scanned-PDF and signed-in advisory GLM path (2026-10-11)
+
+**Code proof:** `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a` on `build/slice-3-invoice-intake`. GitHub Actions `38168733595` **SUCCESS**: 30 test files / **180 tests**, frozen lockfile, 16 SQL migrations applied twice, seed idempotence, TypeScript, Next production build and signed-in HTTP smoke. Review: `devpost/reviews/slice-3b-invoice-vision-review.md`.
+
+- Corrected the missing scanned-PDF processing path. A disposable PDF.js worker with the existing pinned native canvas dependency renders bounded page images, validates the generated PNG and hashes the original PDF and the rendered PNG separately. Both PDF workers now receive `env: {}` instead of inherited service credentials; this limits credential exposure but is **not** an OS/network sandbox.
+- An image-only **single-page** PDF can enter the existing GLM-5.3 Flash advisory observation pipeline. Its result **always ESCALATES** with `SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED`, even if the model produces convincing fields. Multi-page scanned PDFs currently fail closed with `PDF_MULTIPAGE_SCAN_REQUIRES_REVIEW`, not a pretend partial success.
+- Signed-in /invoice-artifacts reviewer now supports **PDF, PNG and JPEG**; original file retrieval remains organization-admin scoped, the new `/observe` endpoint enforces Same Origin and admin membership, and real model inference can only proceed after provider ZDR/no-training metadata checks. The image extraction cannot create a verified invoice claim, trusted destination, or payment request.
+- Fixed Next.js native PDF.js/canvas server bundling by externalizing native dependencies. Prompt Skill file loading was narrowed to two static committed paths, avoiding whole-repository filesystem tracing.
+- **LIVE GAPS:** no account key for Experiential has been verified in this session and no real serving-route GLM request occurred; no claimed real supplier verification; no invoice-derived PayPal Sandbox payout. CI proves simulated/isolated implementation, not external payment. Do not check Slice 3 until the approved mechanical acceptance and Gate H evidence are met.
+- **Deployment:** triggered existing free Render `mandategate-web` only, at exact SHA `2fbbdcd9...`, deploy `dep-db5ub9l9fdbs73e58mug`. Status was BUILD_IN_PROGRESS at dispatch; verify separately before claiming live.
+- **Source alignment:** `devpost/scope.md > Hackathon Release Boundary` explicitly cuts live vendor verification providers and allows simulated out-of-band re-verification. Later Gate H prose that demands contacting a real supplier as a prerequisite to a *synthetic* demo overshoots approved scope; preserve truthful simulation labeling and financial safety, do not silently claim a real callback.
+
 ## Slice 3 signed-in T2 → simulated T3 → T4 authorization smoke (2026-10-08 PT)
 
 **Implementation checkpoint:** `1f6712d0a33476b2319ec84e70f696fc293031e3`, GitHub Actions `37875399344` **SUCCESS** (28 test files, 172 tests; migrations and seed twice, typecheck, Next build, real Better Auth HTTP smoke).

@@ -17,3 +17,12 @@
 - **Evidence:** `b52ca996b64b3f7bd9a404f7edaaa71fbc837342`, GitHub Actions `37874974336` (SUCCESS, 28 files/172 tests; prod HTTP smoke).
 - **Critical distinction:** Human enrollment and synthetic portal-event references are not external issuer verification; PDF T2 verifies document text, not authenticity. Nothing authorizes payment without T3+T4.
 - **Unverified:** Hosted user journey, live GLM model serving/ZDR and invoice-originated Sandbox payout/webhook. Gate H BLOCKED.
+
+## 2026-10-11 — Restore scanned PDF and image reviewer path without changing payment authority
+
+- **Approval basis:** Original `scope.md`, `prd.md` and `spec.md` approved. Resume Slice 3 in fast mode.
+- **Implementation:** PDF.js/native canvas render in a bounded empty-environment worker, one-page scanned PDF to model-observation-only path, separate source/raster hashes, fail-closed multi-page scan handling, and signed-in PDF/PNG/JPEG UI.
+- **Test evidence:** code `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a`, GitHub Actions `38168733595` PASS, 180 tests/30 files, migrations/seed/typecheck/build/smoke. Existing Render dev deploy initiated; live validation is separate.
+- **Authority constraint:** model output cannot authorize payment; simulated out-of-band confirmation must remain labeled synthetic, as specified in the approved scope.
+- **Incomplete:** live GLM ZDR proof, genuine hosted reviewer verification, payable document end-to-end and real Sandbox payout/webhook. Slice 3 remains unchecked.
+- **Cost cleanup:** paid Gate H PostgreSQL deleted; the extra free-tier web resource remains. Neither is needed by the approved one-environment build.

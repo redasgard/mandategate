@@ -21,7 +21,7 @@ These two **extra** resources are approved for retirement, and must not be confu
 
 The two extra web deployments both failed during their builds, before application startup. No HTTP requests were recorded for this web service. It is therefore reasonable to expect **no app-generated staging data**, but the DB could not be queried due to no external connection allowlist; manual connections are not ruled out. Confirm any manually created data is unneeded before deletion.
 
-**Deletion status:** NOT DONE. The connected Render app has no delete-service/delete-Postgres action. An operator must delete both extra resources in Render Dashboard (Settings -> Delete) and verify their IDs disappear from the Render resource lists. Delete the **paid database** to stop its continued billing. No account/database cleanup is automatic.
+**Deletion status (verified 2026-10-11):** The paid PostgreSQL resource `dpg-db4351rl550s73acup8g-a` is absent from Render's current resource listing and has been deleted. The extra free-tier web service `srv-db4367u0tbcc73cugar0` still exists; its deletion is optional cleanup. Neither service is needed by the Slice 3 code. The original free database and development web remain present. The connected Render app has no delete-service action.
 
 ## Latest source-to-review CI checkpoint (2026-10-08)
 
@@ -31,6 +31,14 @@ The two extra web deployments both failed during their builds, before applicatio
 - **Follow-up signed-in positive authority simulation:** `1f6712d0a33476b2319ec84e70f696fc293031e3` / GitHub Actions `37875399344` SUCCESS. Using a clearly fake CI vendor portal record, the authentic admin session records T3 as a human assertion, creates a server-owned frozen binding, proves stale tuple digest rejection, approves the exact tuple (T4), and rejects second approval. **Zero payments are executed.** This does not replace independently verified external supplier evidence, a live served GLM receipt, an approved Sandbox grant or a reconciled PayPal payout.
 - CI has **actually exercised** the missing-origin scenario end-to-end: original PDF bytes -> persisted hash -> real Next page parser -> authenticated T2 field verification -> missing T3 -> ESCALATE; altered receiver -> 422; zero payout. Its “portal event” reference is a SIMULATED CI value and is NOT real external issuer evidence.
 - Next gates remain hosted dev reviewer UI, real GLM served policy check and a single authorized Sandbox Payouts proof. CI is not external payment evidence.
+
+## Slice 3 live vision checkpoint (2026-10-11)
+
+The bounded scanned-PDF/image reviewer is implemented, tested and linked from the signed-in document list. CI run `38168733595` passed 180 tests across 30 files, including actual local PDF.js rasterization, first-page PNG integrity, renderer-to-original dual hash binding, rejected multi-page scans, and logged-in HTTP reviewer smoke. Both worker environments are empty and the server bundle excludes native canvas.
+
+A **live** GLM-5.3 Flash serving-route request (including ZDR response header and resolved model) is **not** proven. The external `EXPLABS_API_KEY` is not verified here. The document cannot be upgraded to payment authority merely because its model output is persuasive. This does not alter the need for explicit one-time Sandbox payout consent.
+
+The approved `scope.md > Hackathon Release Boundary` allows a clearly labeled **simulated** vendor re-verification for the demo and explicitly cuts a live external vendor verification provider. Do not present the simulated portal event as a real supplier callback. The existing Gate H evidence-review requirement must be evaluated against this approved scope rather than silently redefining the product.
 
 ## 3. The single-environment validation path
 
