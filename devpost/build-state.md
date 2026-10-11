@@ -1,10 +1,23 @@
 ---
 doc: build-state
-updated: 2026-10-08
+updated: 2026-10-11
 mode: fast
 ---
 
 # Build State
+
+## Slice 4: verified-invoice imported AP risk parity repair (2026-10-11 UTC)
+
+**Status:** bounded development-only security fix, **CI VERIFIED** at code commit `ff7b586a2a3ec3520385b7ebda06fbc4945a6566`. **NOT full Slice 4 completion**. Review artifact: `devpost/reviews/slice-4-verified-invoice-ap-history-guard-review.md` (self-review, bounded CONTINUE, 8.6/10; integrated Gate H remains BLOCK).
+
+- First repair commit `d16a8230cd6260aac0d49b2ccf5aaed3e07fb3a0`; final test-only follow-up `ff7b586a2a3ec3520385b7ebda06fbc4945a6566`. Both remain on draft PR #2 / `build/slice-3-invoice-intake`; **no PR merge**.
+- GitHub Actions push run `38179569412` and PR run `38179572404`, **SUCCESS** at `ff7b586a`. Job `114589063108` proved **43 test files / 230 tests**, migration and demo seed idempotence (19 SQL migrations twice), TypeScript, production build, signed-in PDF/T2-T4, historical AP fixture smoke, and **zero payouts**. Prior code-commit runs `38179421094` / `38179424842` also succeeded (42 files / 228 tests).
+- Root finding: direct `agent_api` submissions had paid-history replay/outlier checks, but separately attested PDF invoice proposals and consumed bindings could omit imported paid-history evidence from the reviewer and executor.
+- Patch: before a verified-invoice proposal becomes approvable, evaluate imported paid-history for exact replay, confusable near-duplicate, and amount outlier; propagate immutable import/source/row SHA pointers to proposal review and signed-in UI; catch unavailable risk DB and incomplete >2000-row window as explicit fail-closed holds. Re-evaluate at T4 human approval, authorized binding consumption, and final executor authority read before PayPal. A new history import after an earlier approval must not inherit the prior approval.
+- DB-backed synthetic regressions cover paid replay, confusable invoice, late imports before approval / before consumption / before payout, outlier and foreign-tenant isolation; separate synthetic injected-client tests cover outage and row-window overflow. Neither test suite invoked real PayPal or any Sandbox Payouts API.
+- **Limitations:** no dedicated concurrency proof spanning final DB check and outbound network call; no full evidence-bound human override for historical anomalies; all issuer checks in CI remain explicitly synthetic. Do not claim complete Slice 4; preserve all existing checklist statuses.
+- Original free Render `mandategate-web` (`srv-db39vmm7bikc73c55nh0`) and environment `evm-db39hoks728c73bpnqd0` untouched; auto-deploy off; latest LIVE deployment `dep-db5ub9l9fdbs73e58mug` remains at older `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a`. No deployment, merge, payout, resource creation or secret modification.
+- **Remaining BLOCK:** live Experiential GLM-5.3 Flash ZDR/no-training evidence, independent issuer/source verification, separately authorized PayPal Sandbox invoice-payout proof and full Gate H adversarial acceptance. Slice 3 and Slice 4 stay **unchecked** and draft PR #2 remains BLOCKED for release. Next run should prioritize dependency-independent approved tasks rather than credentials.
 
 ## Slice 3: bounded scanned-PDF and signed-in advisory GLM path (2026-10-11)
 
