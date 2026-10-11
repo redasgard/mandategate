@@ -28,10 +28,10 @@ const query=[
   "vd.destination as trusted_destination",
   "from payment_requests pr",
   "join payment_decisions pd on pd.payment_request_id=pr.id",
-  "join lateral (select id,auto_pay_max_amount_cents from policies",
+  "left join lateral (select id,auto_pay_max_amount_cents from policies",
   "where organization_id=pr.organization_id and active=true",
   "order by created_at desc,id desc limit 1) p on true",
-  "join lateral (select destination from vendor_destinations",
+  "left join lateral (select destination from vendor_destinations",
   "where vendor_id=pr.vendor_id and trusted=true",
   "order by created_at desc,id desc limit 1) vd on true",
   "where pr.id=$1",
@@ -41,8 +41,8 @@ const rowToSnapshot=(r:Record<string,unknown>):Snapshot=>({
   vendorId:String(r.vendor_id),invoiceNumber:String(r.invoice_number),
   amountCents:Number(r.amount_cents),currency:String(r.currency),
   requestedDestination:String(r.requested_destination),
-  policyId:String(r.policy_id),policyLimitCents:Number(r.policy_limit),
-  trustedDestination:String(r.trusted_destination),
+  policyId:String(r.policy_id??"NONE"),policyLimitCents:Number(r.policy_limit??0),
+  trustedDestination:String(r.trusted_destination??"NONE"),
   outcome:String(r.outcome),status:String(r.status),
 });
 
@@ -99,7 +99,10 @@ export async function recordPaymentEscalationReview(input:{
     if(membership.rows.length!==1)reject("REVIEWER_ORGANIZATION_NOT_FOUND",404);
     if(row.outcome!=="ESCALATE"||row.status!=="ESCALATED")
       reject("ESCALATION_NOT_PENDING");
-    if(row.trustedDestination!==row.requestedDestination)
+    // Decline must still work after a vendor is revoked or a policy is
+    // disabled; only ACCEPT requires current valid payment authority.
+    if(input.action==="ACCEPT" &&
+       (row.trustedDestination!==row.requestedDestination || row.policyId==="NONE"))
       reject("TRUSTED_PAYMENT_DESTINATION_CHANGED");
     const currentSha=escalationSnapshotDigest(row);
     if(currentSha!==input.expectedSnapshotSha256)
