@@ -25,7 +25,8 @@ export default async function DashboardPage() {
           <p className="eyebrow">MandateGate / authority console</p>
           <h1>The firewall between AI agents and your money.</h1>
           <p className="muted"><Link href="/invoice-artifacts">Review source invoices</Link>
-            {" · "}<Link href="/ap-history">Import historical AP evidence</Link></p>
+            {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
+            {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
         </div>
         <div className="identity">{session.user.email}</div>
       </header>
