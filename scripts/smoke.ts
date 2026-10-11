@@ -374,4 +374,104 @@ for (const [index, testCase] of cases.entries()) {
   }
 }
 
-console.log("smoke passed: signed-in PDF upload, T2, receiver block, missing-issuer ESCALATE, synthetic T3/T4 exact approval, stale/replay denial, zero payouts");
+// Signed-in, production Next HTTP exercise of the approved AP-history journey.
+// The CSV and every invoice are synthetic. No PayPal route is invoked.
+const historyCSV=Buffer.from([
+  "vendor_name,invoice_number,invoice_date,amount_decimal,currency,status,payment_destination",
+  "Northstar Components,NS-SMOKE-HIST-101,2026-09-01,100.00,USD,PAID,older@example.test",
+  "Northstar Components,NS-SMOKE-HIST-102,2026-09-02,110.00,USD,PAID,older@example.test",
+  "Northstar Components,NS-SMOKE-HIST-103,2026-09-03,120.00,USD,PAID,older@example.test",
+].join("\r\n")+"\r\n");
+const history=await fetch(`${baseUrl}/api/admin/ap-history`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,
+    "content-type":"text/csv","x-mandategate-organization-id":"org_demo",
+  },body:new Uint8Array(historyCSV),
+});
+if(![200,201].includes(history.status))
+  throw Error(`signed-in historical CSV upload failed: ${history.status} ${await history.text()}`);
+const storedHistory=await history.json() as {import:{
+  accepted:number;quarantined:number;paymentExecuted:boolean;sourceSha256:string;
+}};
+if(storedHistory.import.accepted!==3 ||storedHistory.import.quarantined!==0 ||
+   storedHistory.import.paymentExecuted!==false ||
+   !/^[0-9a-f]{64}$/.test(storedHistory.import.sourceSha256))
+  throw Error("historical import lost provenance or gained payment authority");
+const historyPage=await fetch(`${baseUrl}/ap-history`,{headers:{cookie:adminCookie}});
+if(historyPage.status!==200 ||!(await historyPage.text()).includes("AP baselines"))
+  throw Error("signed-in AP history UI inaccessible");
+
+const replayHistorical=await fetch(`${baseUrl}/api/agent/payment-requests`,{
+  method:"POST",headers:{
+    authorization:`Bearer ${paymentKey}`,
+    "content-type":"application/json","idempotency-key":"smoke-ap-history-replay-v1",
+  },body:JSON.stringify({
+    vendorId:"vendor_northstar",
+    invoiceNumber:"NS-SMOKE-HIST-101",amountCents:10000,currency:"USD",
+    paymentDestination:trustedDestination,
+  }),
+});
+if(![200,201].includes(replayHistorical.status))
+  throw Error(`historical replay proposal request failed: ${replayHistorical.status} ${await replayHistorical.text()}`);
+const historicalDecision=await replayHistorical.json() as {
+  requestId:string;paymentExecuted:boolean;decision:{outcome:string;reasonCodes:string[]};
+};
+if(historicalDecision.decision.outcome!=="ESCALATE" ||
+   !historicalDecision.decision.reasonCodes.includes("AP_INVOICE_NUMBER_REPLAY")||
+   historicalDecision.paymentExecuted!==false)
+  throw Error("imported paid invoice replay did not deterministically escalate without payout");
+const historicalReviewPath=`${baseUrl}/api/admin/payments/${historicalDecision.requestId}/review`;
+const unsignedReview=await fetch(historicalReviewPath);
+if(unsignedReview.status!==401)throw Error("anonymous reviewer could read financial decision snapshot");
+const beforeDecline=await fetch(historicalReviewPath,{headers:{cookie:adminCookie}});
+if(beforeDecline.status!==200)
+  throw Error(`admin could not read exact escalation tuple: ${beforeDecline.status}`);
+const snap=await beforeDecline.json() as {snapshot:{
+  snapshotSha256:string;outcome:string;status:string;trustedDestinationCurrent:boolean;
+}};
+if(!/^[0-9a-f]{64}$/.test(snap.snapshot.snapshotSha256) ||
+   snap.snapshot.outcome!=="ESCALATE"||snap.snapshot.status!=="ESCALATED" ||
+   snap.snapshot.trustedDestinationCurrent!==true)
+  throw Error("admin escalation tuple integrity failure");
+const staleReview=await fetch(historicalReviewPath,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },body:JSON.stringify({
+    action:"DECLINE",explanation:"Synthetic historical invoice rejected by human reviewer",
+    expectedSnapshotSha256:"0".repeat(64),
+  }),
+});
+if(staleReview.status!==409)throw Error("stale historical review digest incorrectly accepted");
+const declinedHistory=await fetch(historicalReviewPath,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },body:JSON.stringify({
+    action:"DECLINE",
+    explanation:"This invoice number was already paid in synthetic imported history.",
+    expectedSnapshotSha256:snap.snapshot.snapshotSha256,
+  }),
+});
+if(declinedHistory.status!==201)
+  throw Error(`recorded decline HTTP failed: ${declinedHistory.status} ${await declinedHistory.text()}`);
+const recordedDecline=await declinedHistory.json() as {review:{
+  action:string;status:string;executed:boolean;approvedForExecution:boolean;
+}};
+if(recordedDecline.review.action!=="DECLINE" ||
+   recordedDecline.review.status!=="DECLINED" ||
+   recordedDecline.review.executed!==false ||
+   recordedDecline.review.approvedForExecution!==false)
+  throw Error("historical decline changed payment authority");
+const secondReview=await fetch(historicalReviewPath,{
+  method:"POST",headers:{cookie:adminCookie,origin:baseUrl,"content-type":"application/json"},
+  body:JSON.stringify({action:"ACCEPT",
+    explanation:"A second review must not rewrite the first terminal action.",
+    expectedSnapshotSha256:snap.snapshot.snapshotSha256}),
+});
+if(secondReview.status!==409)throw Error("historical review allowed duplicate terminal action");
+const activityPage=await fetch(`${baseUrl}/activity`,{headers:{cookie:adminCookie}});
+if(activityPage.status!==200 ||
+   !(await activityPage.text()).includes("Activity and consequential decisions"))
+  throw Error("signed-in activity and evidence view unavailable");
+
+console.log("smoke passed: signed-in PDF T2-T4 synthetic authority, historical CSV import, imported replay ESCALATE, stale/repeat review denial, admin DECLINE, activity view, zero payouts");
+
