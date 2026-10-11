@@ -4,6 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { getDecisionDetail } from "@/src/db/views";
 import { ExecutePaymentButton } from "./execute-button";
+import { EscalationReview } from "./escalation-review";
+import { getEscalationSnapshot } from "@/src/history/escalation-review";
+import { pool } from "@/src/db/pool";
 
 export default async function PaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -11,6 +14,12 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const row = await getDecisionDetail(id, session.user.id);
   if (!row) notFound();
+  const snapshot = row.outcome==="ESCALATE"
+    ? await getEscalationSnapshot(id,session.user.id):null;
+  const recordedReview = row.outcome==="ESCALATE" ? await pool.query([
+    "select action,explanation,created_at,evidence_sha256",
+    "from payment_escalation_reviews where payment_request_id=$1 limit 1",
+  ].join(" "),[id]):null;
   const terminal = ["PAID", "PAYMENT_FAILED", "PAYMENT_BLOCKED", "PAYMENT_RETURNED", "PAYMENT_REFUNDED", "PAYMENT_REVERSED", "PAYMENT_UNKNOWN_MANUAL_RECONCILIATION"].includes(row.executionStatus ?? "");
 
   return (
@@ -29,7 +38,22 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           <div><dt>PayPal item ID</dt><dd className="mono">{row.paypalPayoutItemId ?? "—"}</dd></div>
           <div><dt>PayPal status</dt><dd>{row.rawPaypalStatus ?? "—"}</dd></div>
         </dl>
-        {row.outcome === "ALLOW" ? <ExecutePaymentButton requestId={row.requestId} disabled={terminal} /> : null}
+        {row.outcome==="ESCALATE" && row.status==="ESCALATED" && snapshot
+          ? <EscalationReview requestId={row.requestId}
+              snapshotSha256={snapshot.snapshotSha256}
+              trustedDestinationCurrent={snapshot.trustedDestinationCurrent}/>
+          : null}
+        {row.outcome==="ESCALATE" && recordedReview?.rows[0]
+          ? <section className="review-stage">
+              <p className="eyebrow">Recorded human decision</p>
+              <h2>{recordedReview.rows[0].action}</h2>
+              <p>{recordedReview.rows[0].explanation}</p>
+              <p className="muted">Recorded: {(recordedReview.rows[0].created_at as Date).toISOString()}
+                 / evidence digest: {recordedReview.rows[0].evidence_sha256??"none"}</p>
+            </section>:null}
+        {row.outcome === "ALLOW" || (row.outcome==="ESCALATE" && row.status==="APPROVED")
+          ? <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />
+          : null}
         <h2>Reason codes</h2>
         <div className="chips">{row.reasonCodes.map((reason) => <span key={reason}>{reason}</span>)}</div>
         <h2>Evidence</h2>
