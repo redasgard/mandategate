@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
+import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
 import { InvoiceReviewActions } from "./review-actions";
 
 export default async function InvoiceBindingReviewPage({params}:{params:Promise<{id:string}>}) {
@@ -11,7 +12,7 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
   const {id}=await params;
   if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
   const result=await pool.query(
-    ["select b.id,b.authorization_status,b.tuple_sha256,b.expires_at,b.invoice_number,",
+    ["select b.id,b.organization_id,b.vendor_id,b.authorization_status,b.tuple_sha256,b.expires_at,b.invoice_number,",
      "b.amount_cents,b.currency,b.artifact_id,b.artifact_sha256,b.verified_claim_set_id,",
      "b.proposed_reason_codes,b.proposed_outcome,vd.destination as trusted_destination,",
      "v.name as vendor_name,c.verification_status,c.source_kind,a.method as origin_method,",
@@ -35,6 +36,20 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
     [binding.verified_claim_set_id],
   );
   const amount=Number(binding.amount_cents);
+  // The read-side risk signal is informational; the server authorization
+  // guard independently rechecks inside the approval transaction.
+  let historicalRisk: Awaited<ReturnType<typeof assessHistoricalPaymentRisk>>;
+  try {
+    historicalRisk=await assessHistoricalPaymentRisk({
+      organizationId:binding.organization_id,vendorId:binding.vendor_id,
+      invoiceNumber:binding.invoice_number,amountCents:amount,currency:binding.currency,
+    });
+  } catch {
+    historicalRisk={reasonCodes:["AP_HISTORY_UNAVAILABLE"],evidence:[{
+      code:"AP_HISTORY_UNAVAILABLE",source:"ap_history.read",observed:"unavailable",
+    }]};
+  }
+  const historyBlocked=historicalRisk.reasonCodes.length>0;
   return <main className="shell narrow">
     <Link href="/dashboard" className="back">← Dashboard</Link>
     <section className="panel detail">
@@ -61,8 +76,12 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
       </span>)}</div>
       <h2>Policy findings</h2>
       <pre>{JSON.stringify(binding.proposed_reason_codes,null,2)}</pre>
+      <h2>Imported paid-history findings (current)</h2>
+      {historyBlocked?<p role="alert">Historical AP risk or unavailable history prevents approval. Reject or investigate the original paid import before starting a new review.</p>
+        :<p>No replay, confusable duplicate, or amount anomaly found in the evaluated paid-history window.</p>}
+      <pre>{JSON.stringify({reasonCodes:historicalRisk.reasonCodes,evidence:historicalRisk.evidence},null,2)}</pre>
       {binding.authorization_status==="PROPOSED"
-        ? <InvoiceReviewActions id={id} expectedTupleSha256={binding.tuple_sha256} />
+        ? <InvoiceReviewActions id={id} expectedTupleSha256={binding.tuple_sha256} approvalBlocked={historyBlocked} />
         : <p>This binding cannot be reviewed again. Its existing authorization is immutable.</p>}
     </section>
   </main>;

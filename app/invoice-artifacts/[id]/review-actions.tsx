@@ -41,6 +41,8 @@ export function InvoiceArtifactReview(props:{
   const [outOfBandConfirmed,setOutOfBandConfirmed]=useState(false);
   const [proposal,setProposal]=useState<{
     outcome:string;reasonCodes:string[];bindingId:string|null;tupleSha256:string|null;
+    historyEvidence?:Array<{code:string;source:string;observed:string|number;expected?:string|number;
+      provenance?:{importId:string;rowSha256:string;sourceSha256:string}}>; 
   }|null>(null);
   const [busy,setBusy]=useState<string|null>(null);
   const [error,setError]=useState<string|null>(null);
@@ -208,6 +210,11 @@ export function InvoiceArtifactReview(props:{
       {proposal?<div>
         <p>Decision: <strong>{proposal.outcome}</strong></p>
         <p className="mono">Reasons: {proposal.reasonCodes.join(", ")}</p>
+        {proposal.historyEvidence?.length?<section role="alert">
+          <h3>Imported paid-invoice history requires investigation</h3>
+          <p>The following immutable import references are risk evidence, not payment authority.</p>
+          <pre>{JSON.stringify(proposal.historyEvidence,null,2)}</pre>
+        </section>:null}
         {proposal.bindingId?<div>
           <p>Frozen tuple SHA-256: <span className="mono">{proposal.tupleSha256}</span></p>
           <Link href={"/invoice-bindings/"+encodeURIComponent(proposal.bindingId)}>

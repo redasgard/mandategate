@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function InvoiceReviewActions({id,expectedTupleSha256}:{id:string;expectedTupleSha256:string}) {
+export function InvoiceReviewActions({id,expectedTupleSha256,approvalBlocked}:{id:string;expectedTupleSha256:string;approvalBlocked:boolean}) {
   const [reason,setReason]=useState("");
   const [confirmed,setConfirmed]=useState(false);
   const [busy,setBusy]=useState(false);
@@ -11,6 +11,7 @@ export function InvoiceReviewActions({id,expectedTupleSha256}:{id:string;expecte
   const router=useRouter();
   const submit=async(action:"APPROVE"|"REJECT")=>{
     if(busy)return;
+    if(action==="APPROVE"&&approvalBlocked){setError("Historical AP risk prevents approval; refresh and investigate.");return;}
     if(reason.trim().length<12){setError("A specific review reason of at least 12 characters is required.");return;}
     if(action==="APPROVE"&&!confirmed){setError("Explicit independent-source confirmation is required.");return;}
     setBusy(true);setError(null);
@@ -37,7 +38,7 @@ export function InvoiceReviewActions({id,expectedTupleSha256}:{id:string;expecte
     </label>
     {error?<p role="alert">{error}</p>:null}
     <div style={{display:"flex",gap:"1rem",marginTop:"1rem"}}>
-      <button disabled={busy||!confirmed||reason.trim().length<12} onClick={()=>void submit("APPROVE")}>
+      <button disabled={busy||approvalBlocked||!confirmed||reason.trim().length<12} onClick={()=>void submit("APPROVE")}>
         Approve this exact tuple
       </button>
       <button disabled={busy||reason.trim().length<12} onClick={()=>void submit("REJECT")}>

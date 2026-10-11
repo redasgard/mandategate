@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { invoiceDecimalToCents } from "../invoices/normalize";
 import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
+import { assessHistoricalPaymentRisk } from "../history/anomaly";
 import { hashPaymentAuthorityTuple } from "./contracts";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -148,6 +149,19 @@ export async function inspectCurrentAuthorityBinding(
     amount>b.normal_max_amount_cents ||
     amount>b.auto_pay_max_amount_cents) {
     refuse("BOUND_PAYMENT_PARAMETERS_CHANGED");
+  }
+
+  // This check is repeated at approval, consumption, and payout revalidation.
+  // Imports arriving after an earlier review cannot inherit clean authority.
+  try {
+    const history=await assessHistoricalPaymentRisk({
+      organizationId:b.organization_id,vendorId:b.vendor_id,
+      invoiceNumber,amountCents:amount,currency,
+    },client);
+    if(history.reasonCodes.length)refuse("AP_HISTORY_REVIEW_REQUIRED");
+  } catch(error) {
+    if(error instanceof AuthorityBindingRejected)throw error;
+    refuse("AP_HISTORY_UNAVAILABLE");
   }
 
   const policyHash=sha([
