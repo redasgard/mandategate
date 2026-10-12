@@ -253,38 +253,66 @@ describe("PostgreSQL dashboard financial data authorization", () => {
     expect(await listRecentDecisions(attacker, 100)).toEqual([]);
   });
 
-  it("kills four targeted dashboard SQL authorization mutants against real PostgreSQL", async () => {
-    const baseline = await readDashboardSummary(actorId);
-    expect(baseline.pendingReview).toBe(1);
+  it("kills four executable SQL authorization mutants against real PostgreSQL", async () => {
     const originalQuery = pool.query.bind(pool) as unknown as
       (statement: string, parameters?: unknown[]) => Promise<{rows: unknown[]}>;
     const mutants = [
       {name:"organization correlation",needle:"m.organization_id=pr.organization_id",
-        substitute:"m.organization_id=m.organization_id"},
-      {name:"actor binding",needle:"m.user_id=$1",substitute:"m.user_id=m.user_id"},
-      {name:"ADMIN role",needle:"m.role='ADMIN'",substitute:"m.role=m.role"},
-      {name:"active membership",needle:"m.active=true",substitute:"m.active=m.active"},
-    ];
+        substitute:"m.organization_id=m.organization_id",membership:"ADMIN"},
+      {name:"actor binding",needle:"m.user_id=$1",
+        substitute:"m.user_id=m.user_id and $1 is not null",membership:"ADMIN"},
+      {name:"ADMIN role",needle:"m.role='ADMIN'",
+        substitute:"m.role=m.role",membership:"REVIEWER"},
+      {name:"active membership",needle:"m.active=true",
+        substitute:"m.active=m.active",membership:"INACTIVE"},
+    ] as const;
     for (const mutant of mutants) {
-      let changed = 0;
-      const spy = vi.spyOn(pool, "query").mockImplementation(
-        ((statement:string,parameters?:unknown[]) => {
-          if (typeof statement !== "string" || !statement.includes("organization_admin_memberships"))
-            return originalQuery(statement,parameters);
-          if (!statement.includes(mutant.needle))
-            throw Error("MUTATION_ANCHOR_NOT_IN_SQL: "+mutant.name);
-          changed++;
-          return originalQuery(statement.replace(mutant.needle,mutant.substitute),parameters);
-        }) as typeof pool.query,
-      );
+      if(mutant.membership==="REVIEWER") {
+        await pool.query(
+          "update organization_admin_memberships set role='REVIEWER' where user_id=$1 and organization_id=$2",
+          [actorId,ownOrg],
+        );
+      }
+      if(mutant.membership==="INACTIVE") {
+        await pool.query(
+          "update organization_admin_memberships set active=false where user_id=$1 and organization_id=$2",
+          [actorId,ownOrg],
+        );
+      }
       try {
-        const result = await readDashboardSummary(actorId);
-        expect(changed, mutant.name+" mutated queries").toBe(3);
-        // The exact same dashboard equality assertion would fail under this
-        // weakened SQL. No production source file is altered.
-        expect(result, mutant.name+" must be caught").not.toEqual(baseline);
+        const baseline=await readDashboardSummary(actorId);
+        expect(baseline.pendingReview).toBe(mutant.membership==="ADMIN"?1:0);
+        let changed = 0;
+        const spy = vi.spyOn(pool, "query").mockImplementation(
+          ((statement:string,parameters?:unknown[]) => {
+            if (typeof statement !== "string" || !statement.includes("organization_admin_memberships"))
+              return originalQuery(statement,parameters);
+            if (!statement.includes(mutant.needle))
+              throw Error("MUTATION_ANCHOR_NOT_IN_SQL: "+mutant.name);
+            changed++;
+            return originalQuery(statement.replace(mutant.needle,mutant.substitute),parameters);
+          }) as typeof pool.query,
+        );
+        try {
+          const result=await readDashboardSummary(actorId);
+          expect(changed,mutant.name+" mutated queries").toBe(3);
+          expect(result,mutant.name+" is a surviving SQL mutant").not.toEqual(baseline);
+        } finally {
+          spy.mockRestore();
+        }
       } finally {
-        spy.mockRestore();
+        if(mutant.membership==="REVIEWER") {
+          await pool.query(
+            "update organization_admin_memberships set role='ADMIN' where user_id=$1 and organization_id=$2",
+            [actorId,ownOrg],
+          );
+        }
+        if(mutant.membership==="INACTIVE") {
+          await pool.query(
+            "update organization_admin_memberships set active=true where user_id=$1 and organization_id=$2",
+            [actorId,ownOrg],
+          );
+        }
       }
     }
   });
