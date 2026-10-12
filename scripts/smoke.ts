@@ -530,7 +530,7 @@ if (process.env.CI === "true") {
       if(markup.includes(historicalDecision.requestId) ||
          !markup.includes("No requests yet.") ||
          !markup.includes("No escalations currently awaiting review.")) {
-        throw Error("revoked but authenticated session retained financial dashboard records");
+        throw Error("revoked dashboard invariant failed: " + JSON.stringify({idVisible:markup.includes(historicalDecision.requestId),noRequests:markup.includes("No requests yet."),noEscalations:markup.includes("No escalations currently awaiting review."),htmlLength:markup.length}));
       }
     } finally {
       await pool.query(
