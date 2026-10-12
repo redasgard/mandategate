@@ -28,7 +28,7 @@ const adminCookie=signIn.headers.get("set-cookie")!.split(";")[0];
 for (const options of [
   { label: "anonymous", headers: {} },
   { label: "invalid-session", headers: { cookie: adminCookie.split("=")[0] + "=invalid-synthetic-session" } },
-]) {
+] satisfies Array<{label: string; headers: Record<string,string>}>) {
   const denied=await fetch(`${baseUrl}/dashboard`,{headers:options.headers,redirect:"manual"});
   const destination=denied.headers.get("location")??"";
   if (![302,303,307,308].includes(denied.status) ||
