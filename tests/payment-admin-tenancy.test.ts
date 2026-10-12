@@ -280,8 +280,9 @@ describe("PostgreSQL dashboard financial data authorization", () => {
         );
       }
       try {
-        const baseline=await readDashboardSummary(actorId);
-        expect(baseline.pendingReview).toBe(mutant.membership==="ADMIN"?1:0);
+        const queriedActor=mutant.name==="actor binding" ? "no-member-"+randomUUID() : actorId;
+        const baseline=await readDashboardSummary(queriedActor);
+        expect(baseline.pendingReview).toBe(mutant.name==="actor binding" ? 0 : mutant.membership==="ADMIN" ? 1 : 0);
         let changed = 0;
         const spy = vi.spyOn(pool, "query").mockImplementation(
           ((statement:string,parameters?:unknown[]) => {
@@ -294,7 +295,7 @@ describe("PostgreSQL dashboard financial data authorization", () => {
           }) as typeof pool.query,
         );
         try {
-          const result=await readDashboardSummary(actorId);
+          const result=await readDashboardSummary(queriedActor);
           expect(changed,mutant.name+" mutated queries").toBe(3);
           expect(result,mutant.name+" is a surviving SQL mutant").not.toEqual(baseline);
         } finally {
