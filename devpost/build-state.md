@@ -6,6 +6,16 @@ mode: fast
 
 # Build State
 
+## Slice 7: targeted SQL mutation and two-session cross-organization HTTP validation (2026-10-12 UTC)
+
+**Status:** bounded, CI-verified security tests at code commit `3783a9f9951a982220cc8f9f9533ecea7bbb765c`. Review: `devpost/reviews/slice-7-mutation-cross-org-http-review.md`. This is not a complete dashboard, independently reviewed security audit, or release gate.
+
+- Four deliberate runtime SQL mutants replace one predicate each: organization correlation, actor identity, ADMIN role, and active membership. Each mutant must change the actual PostgreSQL dashboard result from its authorized baseline; valid SQL and suitable nonmember/REVIEWER/inactive fixtures are used. These are targeted query mutants, not comprehensive source-level mutation testing.
+- A separate synthetic HTTP suite uses two real authenticated sessions and two segregated organizations. It verifies per-tenant row visibility and exact pending/denied/unknown metrics through the Next.js server route, REVIEWER and ADMIN transitions, revocation/restoration on the same session, and foreign payment detail 404. Test cleanup runs on failure; CI-only environment constraints prevent execution on hosted services.
+- Push CI `38322251184` and PR CI `38322252691` **SUCCESS** on exact code SHA `3783a9f9`. Push job reported **44 passing files / 237 tests**, migrations/seed idempotence, typecheck, build and signed-in smoke with zero payouts. Earlier failed runs exposed invalid mutant parameter binding and a surviving actor-binding mutant under an already-authorized fixture; they were corrected before this verified result.
+- **Limitations:** Four selected mutations do not establish a 100% mutation score across the authorization surface; no independent review, hosted browser/visual QA or PayPal model/provider verification has occurred. Do not claim full 9.8/10 or release readiness. PR #2 remains draft, Gate H BLOCKED, Render auto-deploy off.
+
+
 ## Slice 7: multi-organization authorization adversarial extension (2026-10-12 UTC)
 
 **Status:** bounded security-test increment **CI VERIFIED** at `6ff63b89dbe7b31036515e9cd100acfa16d8f1c0`, not full Slice 7 completion. Self-review in `devpost/reviews/slice-7-multi-org-adversarial-review.md`.
