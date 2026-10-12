@@ -1,10 +1,21 @@
 ---
 doc: build-state
-updated: 2026-10-11
+updated: 2026-10-12
 mode: fast
 ---
 
 # Build State
+
+## Slice 7: multi-organization authorization adversarial extension (2026-10-12 UTC)
+
+**Status:** bounded security-test increment **CI VERIFIED** at `6ff63b89dbe7b31036515e9cd100acfa16d8f1c0`, not full Slice 7 completion. Self-review in `devpost/reviews/slice-7-multi-org-adversarial-review.md`.
+
+- Added real PostgreSQL multi-organization permission transition: REVIEWER for a second organization remains unauthorized; promotion to active ADMIN reveals both organizations' precise pending/denied/unknown and EUR/USD totals; revocation hides the second organization's data again, preserving access to the first. Existing seven-foreign-invoice top-six adversarial fixture covers row limit behavior.
+- Added injection-shaped actor ID regression across summary, decision list and detail reads; SQL binds caller identity rather than interpolating it.
+- GitHub Actions push `38294415283` and PR `38294421290` both succeeded on `6ff63b89`; push CI job `114961949884` ran PostgreSQL tests (**44 files / 236 passed**), migration/seed idempotence, TypeScript, Next build and authenticated synthetic smoke with **zero payouts**.
+- Earlier 8.6/10 score covered the previous bounded increment only. This additional evidence strengthens tests but does **not** justify claiming 9.8/10, independent verification, release readiness, hosted browser coverage or complete PayPal/GLM functionality.
+- PR #2 stays draft, Gate H BLOCKED, auto-deploy off. No merge, deploy, external model requests, sandbox payout or automation restart.
+
 
 ## Slice 7: dashboard tenant and membership regression rework (2026-10-12 UTC)
 
