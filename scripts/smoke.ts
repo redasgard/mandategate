@@ -23,6 +23,24 @@ if (!signIn.ok) throw new Error(`admin sign-in failed: ${signIn.status} ${await 
 if (!signIn.headers.get("set-cookie")) throw new Error("admin sign-in returned no session cookie");
 
 const adminCookie=signIn.headers.get("set-cookie")!.split(";")[0];
+// Route-level HTTP checks: an anonymous/invalid session must be redirected,
+// while a valid admin session sees the real server-rendered dashboard.
+for (const options of [
+  { label: "anonymous", headers: {} },
+  { label: "invalid-session", headers: { cookie: adminCookie.split("=")[0] + "=invalid-synthetic-session" } },
+]) {
+  const denied=await fetch(`${baseUrl}/dashboard`,{headers:options.headers,redirect:"manual"});
+  const destination=denied.headers.get("location")??"";
+  if (![302,303,307,308].includes(denied.status) ||
+      !new URL(destination,baseUrl).pathname.startsWith("/sign-in")) {
+    throw Error(`dashboard accepted ${options.label}: ${denied.status} ${destination}`);
+  }
+}
+const signedDashboard=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
+if(signedDashboard.status!==200 ||
+   !(await signedDashboard.text()).includes("Current payment risk")) {
+  throw Error("signed-in dashboard risk view failed to render");
+}
 const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
 const enrollment=await fetch(`${baseUrl}/api/admin/vendor-origin-channels`,{
   method:"POST",headers:{
@@ -478,5 +496,55 @@ if(activityPage.status!==200 ||
    !(await activityPage.text()).includes("Activity and consequential decisions"))
   throw Error("signed-in activity and evidence view unavailable");
 
+// An active session must lose payment visibility as soon as its ADMIN
+// membership is revoked. CI-only: never alter membership on hosted services.
+if (process.env.CI === "true") {
+  const dbHost = new URL(process.env.DATABASE_URL??"postgres://invalid").hostname;
+  if (baseUrl !== "http://127.0.0.1:3000" ||
+      dbHost !== "127.0.0.1" ||
+      adminEmail !== "admin@mandategate.local") {
+    throw Error("dashboard revocation smoke requires isolated localhost CI and synthetic admin");
+  }
+  const {pool}=await import("../src/db/pool");
+  try {
+    const users=await pool.query('select id from "user" where email=$1',[adminEmail]);
+    if(users.rows.length!==1)throw Error("synthetic reviewer identity not unique");
+    const actorId=users.rows[0].id as string;
+    const member=await pool.query(
+      "select role,active from organization_admin_memberships where user_id=$1 and organization_id='org_demo'",
+      [actorId],
+    );
+    if(member.rows.length!==1 || member.rows[0].role!=="ADMIN" || member.rows[0].active!==true)
+      throw Error("synthetic demo reviewer must start as active ADMIN");
+    const current=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
+    if(current.status!==200 || !(await current.text()).includes(historicalDecision.requestId))
+      throw Error("signed-in dashboard must show synthetic historical payment before revocation");
+    await pool.query(
+      "update organization_admin_memberships set active=false where user_id=$1 and organization_id='org_demo'",
+      [actorId],
+    );
+    try {
+      const revoked=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
+      if(revoked.status!==200)throw Error("revoked session dashboard response failed");
+      const markup=await revoked.text();
+      if(markup.includes(historicalDecision.requestId) ||
+         !markup.includes("No requests yet.") ||
+         !markup.includes("No escalations currently awaiting review.")) {
+        throw Error("revoked but authenticated session retained financial dashboard records");
+      }
+    } finally {
+      await pool.query(
+        "update organization_admin_memberships set active=true where user_id=$1 and organization_id='org_demo'",
+        [actorId],
+      );
+    }
+    const restored=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
+    if(restored.status!==200 || !(await restored.text()).includes(historicalDecision.requestId))
+      throw Error("dashboard membership restoration was not reflected");
+    console.log("dashboard auth smoke passed: anonymous denied, invalid cookie denied, active admin allowed, revoked member zero data, restored admin allowed");
+  } finally {
+    await pool.end();
+  }
+}
 console.log("smoke passed: signed-in PDF T2-T4 synthetic authority, historical CSV import, imported replay ESCALATE, stale/repeat review denial, admin DECLINE, vendor trust alerts, activity view, zero payouts");
 
