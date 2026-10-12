@@ -6,6 +6,18 @@ mode: fast
 
 # Build State
 
+## Slice 7: dashboard tenant and membership regression rework (2026-10-12 UTC)
+
+**Status:** bounded dashboard authorization regression repaired, **CI VERIFIED** at code commit `de6eb0b00146a96f30b851c3594091c8bd43516f`; **not full Slice 7 or Gate H completion**. Self-review: `devpost/reviews/slice-7-dashboard-tenant-rework-review.md`.
+
+- PostgreSQL-backed isolation suite now uses a dedicated synthetic Better Auth user, two organizations, seven foreign recent escalations ahead of the owned case, exact pending/denied/unknown totals and EUR/USD paid aggregates, prior-month exclusions, REVIEWER downgrade, revocation, restoration, and isolated cleanup.
+- Signed-in `GET /dashboard` CI smoke verifies anonymous/invalid sessions cannot access the console, an active admin can view a synthetic payment, and revocation removes that organization's invoice from the same authenticated dashboard session; the admin may still legitimately see other organizations. CI smoke uses localhost, local PostgreSQL, synthetic demo identity and always restores the membership.
+- Validation: GitHub Actions push run `38280509493` and PR run `38280512499` **SUCCESS** on exact SHA `de6eb0b`. Push job `114916376045` reports 44 test files / **234 tests**, migrations and seed twice, typecheck, production build and authenticated synthetic HTTP smoke with **zero PayPal payouts**.
+- First rework candidate failed typechecking, then the strict whole-dashboard-empty assertion was disproved by the multi-organization fixture context. Those failures were not hidden or called successes; the final smoke assertion binds to the revoked organization's known invoice.
+- Residual scope: hosted browser/render visual review, external PayPal balance, upcoming/overdue schedule, AG Grid integration, real GLM ZDR proof and actual invoice-derived Sandbox payout remain unverified. PR #2 stays draft; Slice 3, Slice 4, and Slice 7 remain unchecked; Gate H remains BLOCKED.
+- No deployment, PR merge, PayPal transfer, resource provisioning, credential mutation, or unattended automation restart.
+
+
 ## Slice 4: verified-invoice imported AP risk parity repair (2026-10-11 UTC)
 
 **Status:** bounded development-only security fix, **CI VERIFIED** at code commit `ff7b586a2a3ec3520385b7ebda06fbc4945a6566`. **NOT full Slice 4 completion**. Review artifact: `devpost/reviews/slice-4-verified-invoice-ap-history-guard-review.md` (self-review, bounded CONTINUE, 8.6/10; integrated Gate H remains BLOCK).

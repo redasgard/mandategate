@@ -542,7 +542,7 @@ if (process.env.CI === "true") {
     const restored=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
     if(restored.status!==200 || !(await restored.text()).includes(historicalDecision.requestId))
       throw Error("dashboard membership restoration was not reflected");
-    console.log("dashboard auth smoke passed: anonymous denied, invalid cookie denied, active admin allowed, revoked member zero data, restored admin allowed");
+    console.log("dashboard auth smoke passed: anonymous denied, invalid cookie denied, active admin allowed, revoked organization invoice hidden, restored admin allowed");
   } finally {
     await pool.end();
   }
