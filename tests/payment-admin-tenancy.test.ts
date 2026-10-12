@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pool } from "../src/db/pool";
 import { listRecentDecisions, getDecisionDetail } from "../src/db/views";
 import { readDashboardSummary } from "../src/db/dashboard-overview";
@@ -251,6 +251,42 @@ describe("PostgreSQL dashboard financial data authorization", () => {
     expect(await readDashboardSummary(attacker)).toEqual(emptyDashboard);
     expect(await getDecisionDetail(foreignPendingIds[0], attacker)).toBeNull();
     expect(await listRecentDecisions(attacker, 100)).toEqual([]);
+  });
+
+  it("kills four targeted dashboard SQL authorization mutants against real PostgreSQL", async () => {
+    const baseline = await readDashboardSummary(actorId);
+    expect(baseline.pendingReview).toBe(1);
+    const originalQuery = pool.query.bind(pool) as unknown as
+      (statement: string, parameters?: unknown[]) => Promise<{rows: unknown[]}>;
+    const mutants = [
+      {name:"organization correlation",needle:"m.organization_id=pr.organization_id",
+        substitute:"m.organization_id=m.organization_id"},
+      {name:"actor binding",needle:"m.user_id=$1",substitute:"m.user_id=m.user_id"},
+      {name:"ADMIN role",needle:"m.role='ADMIN'",substitute:"m.role=m.role"},
+      {name:"active membership",needle:"m.active=true",substitute:"m.active=m.active"},
+    ];
+    for (const mutant of mutants) {
+      let changed = 0;
+      const spy = vi.spyOn(pool, "query").mockImplementation(
+        ((statement:string,parameters?:unknown[]) => {
+          if (typeof statement !== "string" || !statement.includes("organization_admin_memberships"))
+            return originalQuery(statement,parameters);
+          if (!statement.includes(mutant.needle))
+            throw Error("MUTATION_ANCHOR_NOT_IN_SQL: "+mutant.name);
+          changed++;
+          return originalQuery(statement.replace(mutant.needle,mutant.substitute),parameters);
+        }) as typeof pool.query,
+      );
+      try {
+        const result = await readDashboardSummary(actorId);
+        expect(changed, mutant.name+" mutated queries").toBe(3);
+        // The exact same dashboard equality assertion would fail under this
+        // weakened SQL. No production source file is altered.
+        expect(result, mutant.name+" must be caught").not.toEqual(baseline);
+      } finally {
+        spy.mockRestore();
+      }
+    }
   });
 
   it("removes every aggregate and invoice from an already authenticated user after revocation", async () => {
