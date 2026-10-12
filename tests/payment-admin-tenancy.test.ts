@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
 import { listRecentDecisions, getDecisionDetail } from "../src/db/views";
+import { readDashboardSummary } from "../src/db/dashboard-overview";
 
 const goodOrg = "read_good_" + randomUUID(), otherOrg = "read_other_" + randomUUID();
 const goodVendor = "vendor_" + randomUUID(), otherVendor = "vendor_" + randomUUID();
@@ -16,10 +17,11 @@ beforeAll(async () => {
   await pool.query("insert into vendors (id,organization_id,name,normal_max_amount_cents) values ($1,$2,'Yours',999999),($3,$4,'Foreign',999999)", [goodVendor,goodOrg,otherVendor,otherOrg]);
   await pool.query([
     "insert into payment_requests(id,logical_payment_id,organization_id,vendor_id,invoice_number,amount_cents,currency,requested_destination,status,source)",
-    "values($1,$2,$3,$4,'YOUR-INV',101,'USD','owned@example.test','ALLOWED','demo_fixture'),",
-    "($5,$6,$7,$8,'OTHER-INV',101,'USD','foreign@example.test','ALLOWED','demo_fixture')",
+    "values($1,$2,$3,$4,'YOUR-INV',101,'USD','owned@example.test','ESCALATED','demo_fixture'),",
+    "($5,$6,$7,$8,'OTHER-INV',101,'USD','foreign@example.test','ESCALATED','demo_fixture')",
   ].join(" "), [ownId,randomUUID(),goodOrg,goodVendor,otherId,randomUUID(),otherOrg,otherVendor]);
-  await pool.query("insert into payment_decisions(id,payment_request_id,outcome,reason_codes,evidence) values($1,$2,'ALLOW','[]','[]'),($3,$4,'ALLOW','[]','[]')",
+  await pool.query("update payment_requests set created_at=now()+interval '1 day' where id=$1",[ownId]);
+  await pool.query("insert into payment_decisions(id,payment_request_id,outcome,reason_codes,evidence) values($1,$2,'ESCALATE','[]','[]'),($3,$4,'ESCALATE','[]','[]')",
     [randomUUID(),ownId,randomUUID(),otherId]);
 });
 afterAll(async () => {
@@ -38,9 +40,19 @@ describe("tenant-isolated financial dashboard and details",()=>{
     expect(await getDecisionDetail(ownId,adminId)).toMatchObject({requestId:ownId});
     expect(await getDecisionDetail(otherId,adminId)).toBeNull();
   });
+  it("projects only active-admin tenant's pending risk into the dashboard",async()=>{
+    const risk=await readDashboardSummary(adminId);
+    expect(risk.pendingInvoices).toContainEqual(expect.objectContaining({
+      id:ownId,invoice:"YOUR-INV",currency:"USD",cents:101,
+    }));
+    expect(risk.pendingInvoices.some(x=>x.id===otherId)).toBe(false);
+    expect(risk.pendingReview).toBeGreaterThanOrEqual(1);
+  });
   it("honors revocation at query time",async()=>{
     await pool.query("update organization_admin_memberships set active=false where organization_id=$1 and user_id=$2",[goodOrg,adminId]);
     expect((await listRecentDecisions(adminId,100)).some(x=>x.requestId===ownId)).toBe(false);
     expect(await getDecisionDetail(ownId,adminId)).toBeNull();
+    const revoked=await readDashboardSummary(adminId);
+    expect(revoked.pendingInvoices.some(x=>x.id===ownId)).toBe(false);
   });
 });
