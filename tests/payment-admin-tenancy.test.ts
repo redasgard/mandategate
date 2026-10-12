@@ -198,6 +198,61 @@ describe("PostgreSQL dashboard financial data authorization", () => {
     }
   });
 
+  it("updates all projections when second-organization privileges change", async () => {
+    const baseline = await readDashboardSummary(actorId);
+    expect(baseline.pendingReview).toBe(1);
+    expect(baseline.denied).toBe(1);
+    expect(baseline.payoutUnknown).toBe(1);
+
+    await pool.query(
+      "insert into organization_admin_memberships(user_id,organization_id,role,active) " +
+      "values($1,$2,'REVIEWER',true)",
+      [actorId, foreignOrg],
+    );
+    try {
+      // Having a membership is not enough. Only current, active ADMIN works.
+      expect(await readDashboardSummary(actorId)).toEqual(baseline);
+      expect(await getDecisionDetail(foreignPendingIds[0], actorId)).toBeNull();
+      await pool.query(
+        "update organization_admin_memberships set role='ADMIN' " +
+        "where user_id=$1 and organization_id=$2",
+        [actorId, foreignOrg],
+      );
+      const both = await readDashboardSummary(actorId);
+      expect(both.pendingReview).toBe(8);
+      expect(both.denied).toBe(2);
+      expect(both.payoutUnknown).toBe(2);
+      expect(both.paidThisMonth).toEqual([
+        { currency: "EUR", cents: "903408", count: 2 },
+        { currency: "USD", cents: "901202", count: 2 },
+      ]);
+      expect(both.pendingInvoices).toHaveLength(6);
+      expect(both.pendingInvoices.every(x => foreignPendingIds.includes(x.id))).toBe(true);
+      expect(await getDecisionDetail(foreignPendingIds[0], actorId))
+        .toMatchObject({requestId: foreignPendingIds[0]});
+
+      await pool.query(
+        "update organization_admin_memberships set active=false " +
+        "where user_id=$1 and organization_id=$2",
+        [actorId, foreignOrg],
+      );
+      expect(await readDashboardSummary(actorId)).toEqual(baseline);
+      expect(await getDecisionDetail(foreignPendingIds[0], actorId)).toBeNull();
+    } finally {
+      await pool.query(
+        "delete from organization_admin_memberships where user_id=$1 and organization_id=$2",
+        [actorId, foreignOrg],
+      );
+    }
+  });
+
+  it("treats injection-shaped actor identity only as a bound value", async () => {
+    const attacker = actorId + "' OR m.active=true OR 'x'='x";
+    expect(await readDashboardSummary(attacker)).toEqual(emptyDashboard);
+    expect(await getDecisionDetail(foreignPendingIds[0], attacker)).toBeNull();
+    expect(await listRecentDecisions(attacker, 100)).toEqual([]);
+  });
+
   it("removes every aggregate and invoice from an already authenticated user after revocation", async () => {
     expect((await readDashboardSummary(actorId)).pendingReview).toBe(1);
     await pool.query(
