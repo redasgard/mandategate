@@ -530,7 +530,7 @@ if (process.env.CI === "true") {
       if(markup.includes(historicalDecision.requestId) ||
          !markup.includes("No requests yet.") ||
          !markup.includes("No escalations currently awaiting review.")) {
-        throw Error("revoked dashboard invariant failed: " + JSON.stringify({idVisible:markup.includes(historicalDecision.requestId),noRequests:markup.includes("No requests yet."),noEscalations:markup.includes("No escalations currently awaiting review."),htmlLength:markup.length}));
+        throw Error("revoked dashboard invariant failed: " + JSON.stringify({idVisible:markup.includes(historicalDecision.requestId),noRequests:markup.includes("No requests yet."),noEscalations:markup.includes("No escalations currently awaiting review."),htmlLength:markup.length,isRiskPage:markup.includes("Current payment risk"),isLogin:markup.includes("Sign in")||markup.includes("Sign In"),isError:markup.includes("Application error")||markup.includes("Internal Server Error"),heading:(markup.match(/<h1[^>]*>[^<]{0,150}/)||[])[0]??null}));
       }
     } finally {
       await pool.query(
