@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { loadInvoiceVisionPrompt, invoiceImageUserInstruction } from "../../invoices/prompts";
 import { INVOICE_VISION_RESPONSE_FORMAT } from "../../invoices/vision-json-schema";
 import type { InvoiceArtifactMime } from "../../artifacts/admission";
+import { isSyntheticNonZdrSourceAllowlisted } from "./non-zdr-test-policy";
 
 export const INVOICE_VISION_MODEL = "glm-5.3-flash" as const;
 export const EXPERIENTIAL_VISION_ORIGIN = "https://api.experientiallabs.ai";
@@ -27,7 +28,8 @@ type RouteProof = {
   requestId: string;
   model: typeof INVOICE_VISION_MODEL;
   provider: string;
-  zdr: true;
+  zdr: boolean;
+  syntheticNonZdrTest: boolean;
   promptVersion: string;
   promptSha256: string;
   inputArtifactSha256: string;
@@ -45,11 +47,12 @@ export type PrivacyPreflightReceipt = {
   checkedAt: string;
   accountOrgId: string;
   targetModel: typeof INVOICE_VISION_MODEL;
-  accountZdr: true;
-  providerRequiresZdr: true;
+  accountZdr: boolean;
+  providerRequiresZdr: boolean;
   providerRequiresNoTraining: true;
   promptCaptureDisabled: true;
-  targetModelHasZdrCapability: true;
+  targetModelHasZdrCapability: boolean;
+  syntheticNonZdrTest: boolean;
   documentBytesSubmitted: false;
   servingRouteVerified: false;
 };
@@ -119,7 +122,14 @@ export class ExperientialInvoiceVisionGateway {
     return readBoundedJson(response, 4 * 1024 * 1024);
   }
 
-  async verifyPrivacyAndModel(): Promise<PrivacyPreflightReceipt> {
+  async verifyPrivacyAndModel(options: {
+    syntheticNonZdrSourceSha256?: string;
+  } = {}): Promise<PrivacyPreflightReceipt> {
+    const syntheticTest = options.syntheticNonZdrSourceSha256 !== undefined;
+    if (syntheticTest &&
+        !isSyntheticNonZdrSourceAllowlisted(options.syntheticNonZdrSourceSha256!)) {
+      refused("SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED");
+    }
     if (!this.apiKey) refused("EXPERIENTIAL_API_KEY_REQUIRED");
 
     // No image bytes are sent in any of these preflight requests.
@@ -139,13 +149,20 @@ export class ExperientialInvoiceVisionGateway {
 
     // The account switch atomically enforces provider ZDR, no training,
     // and disabled content capture. Reject partial/drifted configurations.
-    if (zdr?.enabled !== true) {
+    if (!syntheticTest && zdr?.enabled !== true) {
       refused("EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED");
     }
-    if (zdr?.partial === true) {
+    if (!syntheticTest && zdr?.partial === true) {
       refused("EXPERIENTIAL_ACCOUNT_ZDR_PARTIAL");
     }
-    if (policy?.require_zdr !== true || policy?.require_no_training !== true) {
+    // Only the synthetic test may omit ZDR. Training and content capture
+    // restrictions remain mandatory for both routes.
+    if (policy?.require_no_training !== true) {
+      refused(syntheticTest
+        ? "EXPERIENTIAL_TEST_NO_TRAINING_REQUIRED"
+        : "EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
+    }
+    if (!syntheticTest && policy?.require_zdr !== true) {
       refused("EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
     }
     if (telemetry?.capture_prompt_content !== false) {
@@ -155,21 +172,21 @@ export class ExperientialInvoiceVisionGateway {
       ? models.data.find((item: any) => item?.id === INVOICE_VISION_MODEL)
       : null;
     if (!model || model.uncensored === true) refused("EXPERIENTIAL_FLASH_MODEL_UNAVAILABLE");
-    if (
-      model.data_policy?.zdr !== true &&
-      model.data_policy?.zdr_on_request !== true
-    ) {
+    const modelSupportsZdr = model.data_policy?.zdr === true ||
+      model.data_policy?.zdr_on_request === true;
+    if (!syntheticTest && !modelSupportsZdr) {
       refused("EXPERIENTIAL_FLASH_ZDR_ROUTE_UNAVAILABLE");
     }
     return {
       checkedAt: new Date().toISOString(),
       accountOrgId: orgId,
       targetModel: INVOICE_VISION_MODEL,
-      accountZdr: true,
-      providerRequiresZdr: true,
+      accountZdr: zdr?.enabled === true && zdr?.partial !== true,
+      providerRequiresZdr: policy?.require_zdr === true,
       providerRequiresNoTraining: true,
       promptCaptureDisabled: true,
-      targetModelHasZdrCapability: true,
+      targetModelHasZdrCapability: modelSupportsZdr,
+      syntheticNonZdrTest: syntheticTest,
       documentBytesSubmitted: false,
       servingRouteVerified: false,
     };
@@ -180,6 +197,8 @@ export class ExperientialInvoiceVisionGateway {
     artifactSha256: string;
     mimeType: InvoiceArtifactMime;
     content: Buffer;
+    /** Original stored source hash, not a PDF raster hash. Test mode only. */
+    syntheticNonZdrSourceSha256?: string;
   }): Promise<InvoiceVisionResponse> {
     if (input.mimeType !== "image/png" && input.mimeType !== "image/jpeg") {
       refused("INVOICE_VISION_IMAGES_ONLY");
@@ -189,14 +208,19 @@ export class ExperientialInvoiceVisionGateway {
       createHash("sha256").update(input.content).digest("hex") !== input.artifactSha256) {
       refused("INVOICE_IMAGE_INPUT_INVALID");
     }
-    await this.verifyPrivacyAndModel();
+    const syntheticTest = input.syntheticNonZdrSourceSha256 !== undefined;
+    await this.verifyPrivacyAndModel(syntheticTest
+      ? { syntheticNonZdrSourceSha256: input.syntheticNonZdrSourceSha256 }
+      : {});
     const prompt = await loadInvoiceVisionPrompt();
 
     const requestBody = {
       model: INVOICE_VISION_MODEL,
       stream: false,
       max_tokens: 8192,
-      provider: { zdr: true },
+      // A synthetic non-ZDR test cannot request a ZDR guarantee it lacks.
+      // Provider-side policy may still refuse this request, which is safe.
+      ...(syntheticTest ? {} : { provider: { zdr: true } }),
       response_format: INVOICE_VISION_RESPONSE_FORMAT,
       messages: [
         { role: "system", content: prompt.systemPrompt },
@@ -235,7 +259,8 @@ export class ExperientialInvoiceVisionGateway {
     if (!response.ok) refused("EXPERIENTIAL_VISION_REFUSED");
     const body = await readBoundedJson(response);
 
-    if (response.headers.get("x-gateway-zdr") !== "true") {
+    const servedZdr = response.headers.get("x-gateway-zdr") === "true";
+    if (!syntheticTest && !servedZdr) {
       refused("EXPERIENTIAL_SERVING_ROUTE_NOT_ZDR");
     }
     const canonical = response.headers.get("x-gateway-canonical-model");
@@ -269,7 +294,8 @@ export class ExperientialInvoiceVisionGateway {
         requestId,
         model: INVOICE_VISION_MODEL,
         provider,
-        zdr: true,
+        zdr: servedZdr,
+        syntheticNonZdrTest: syntheticTest,
         promptVersion: prompt.version,
         promptSha256: prompt.sha256,
         inputArtifactSha256: input.artifactSha256,

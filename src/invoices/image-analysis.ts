@@ -10,6 +10,7 @@ import { assessUntrustedInvoiceExtraction } from "./schema";
 import { validateInvoiceImageContainer, InvoiceImageIntegrityError } from "./image-integrity";
 import { rasterizeStoredPdfPage, PDF_RASTERIZER_VERSION, type RenderedPdfPage } from "./pdf-raster";
 import { PdfSourceError } from "./pdf-text";
+import { isSyntheticNonZdrSourceAllowlisted } from "../ai/gateway/non-zdr-test-policy";
 
 export class InvoiceImageAnalysisError extends Error {
   constructor(public readonly code: string, public readonly httpStatus: number) {
@@ -133,9 +134,15 @@ export async function analyzeStoredInvoiceImage(
   organizationId: string,
   artifactId: string,
   gateway = new ExperientialInvoiceVisionGateway(),
+  options: { syntheticNonZdrTest?: boolean } = {},
 ) {
   const artifact = await loadInvoiceArtifactForAnalysis(organizationId, artifactId);
   if (!artifact) throw new InvoiceImageAnalysisError("ARTIFACT_NOT_FOUND", 404);
+  const syntheticTest = options.syntheticNonZdrTest === true;
+  // Fail before rasterization, database claims, or external metadata/inference.
+  if (syntheticTest && !isSyntheticNonZdrSourceAllowlisted(artifact.sha256)) {
+    throw new InvoiceImageAnalysisError("SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED", 403);
+  }
   const isPdf = artifact.mimeType === "application/pdf";
   if (!isPdf && artifact.mimeType !== "image/jpeg" && artifact.mimeType !== "image/png") {
     throw new InvoiceImageAnalysisError("INVOICE_IMAGE_OR_PDF_REQUIRED", 422);
@@ -174,8 +181,11 @@ export async function analyzeStoredInvoiceImage(
     throw new InvoiceImageAnalysisError("ARTIFACT_ALREADY_ANALYZED_OR_CLAIMED", 409);
   }
 
-  // No image bytes leave the server before external privacy checks pass.
-  await gateway.verifyPrivacyAndModel();
+  // No image bytes leave the server before strict privacy checks, or before
+  // a separate, SHA-bound synthetic-only policy check for the demo.
+  await gateway.verifyPrivacyAndModel(syntheticTest
+    ? { syntheticNonZdrSourceSha256: artifact.sha256 }
+    : {});
 
   const claimId = randomUUID();
   const staleBefore = new Date(Date.now() - ANALYSIS_LEASE_MS);
@@ -207,7 +217,11 @@ export async function analyzeStoredInvoiceImage(
       artifactSha256: sentSha,
       mimeType: sentMime,
       content: sentBytes,
+      ...(syntheticTest ? { syntheticNonZdrSourceSha256: artifact.sha256 } : {}),
     });
+    if (routeProof.syntheticNonZdrTest !== syntheticTest) {
+      throw new InvoiceVisionGatewayError("INVOICE_VISION_PRIVACY_MODE_MISMATCH");
+    }
     if (routeProof.inputArtifactSha256 !== sentSha) {
       throw new InvoiceVisionGatewayError("INVOICE_VISION_INPUT_DIGEST_MISMATCH");
     }
@@ -217,13 +231,14 @@ export async function analyzeStoredInvoiceImage(
     });
     // Even a confident, well-formed GLM result cannot authenticate
     // rendered PDF pixels or the issuer's payment destination.
-    const assessment = raster ? {
+    const enforcedReasons = [
+      ...(raster ? ["SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED"] : []),
+      ...(syntheticTest ? ["SYNTHETIC_NON_ZDR_TEST_ONLY"] : []),
+    ];
+    const assessment = enforcedReasons.length ? {
       ...assessed,
       state: "ESCALATE" as const,
-      reasonCodes: [...new Set([
-        ...assessed.reasonCodes,
-        "SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED",
-      ])].sort(),
+      reasonCodes: [...new Set([...assessed.reasonCodes, ...enforcedReasons])].sort(),
     } : assessed;
     await persistObservation(
       organizationId, artifactId, claimId,
@@ -257,6 +272,7 @@ export async function analyzeStoredInvoiceImage(
         requestId: routeProof.requestId,
         artifactSha256: artifact.sha256,
         zdr: routeProof.zdr,
+        syntheticNonZdrTest: syntheticTest,
         sourceRasterization: raster ? {
           sourceSha256: raster.sourceArtifactSha256,
           renderedPngSha256: raster.renderedPngSha256,
