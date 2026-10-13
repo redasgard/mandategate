@@ -42,13 +42,13 @@ export default async function DashboardPage() {
         <article className="metric danger"><span>UNKNOWN PAYOUT OUTCOME</span><strong>{summary.payoutUnknown}</strong></article>
       </section>
 
-      <div style={{display:"grid",gap:18}}>
+      <div className="dashboard-panels">
         <section className="panel">
           <div className="panel-head">
             <div><p className="eyebrow">Payment reporting</p><h2>Observed state, not invented balances</h2></div>
             <span className="badge">Sandbox / live PostgreSQL</span>
           </div>
-          <div style={{padding:22}}>
+          <div className="panel-body">
             <p><strong>Available balance:</strong> Unavailable. Authenticated PayPal balance reporting is not connected.</p>
             <p><strong>Upcoming / overdue:</strong> Not tracked. No verified due-date or scheduling ledger yet.</p>
             <p><strong>Confirmed payouts submitted this UTC month:</strong>{" "}
@@ -66,11 +66,11 @@ export default async function DashboardPage() {
             <span className="badge">{summary.pendingReview} pending across your organizations</span>
           </div>
           {summary.pendingInvoices.length ? <div className="table-wrap">
-            <table><thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Risk evidence</th></tr></thead>
+            <table className="dashboard-table" aria-label="Escalations awaiting review"><thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Risk evidence</th></tr></thead>
               <tbody>{summary.pendingInvoices.map(p => <tr key={p.id}>
-                <td><Link href={"/payments/" + encodeURIComponent(p.id)}>{p.invoice}</Link></td>
-                <td>{p.vendor}</td><td>{money(p.cents,p.currency)}</td>
-                <td>{p.reasons.join(", ")}</td>
+                <td data-label="Invoice"><Link href={"/payments/" + encodeURIComponent(p.id)}>{p.invoice}</Link></td>
+                <td data-label="Vendor">{p.vendor}</td><td data-label="Amount">{money(p.cents,p.currency)}</td>
+                <td data-label="Risk evidence">{p.reasons.join(", ")}</td>
               </tr>)}</tbody>
             </table>
           </div> : <div className="empty">No escalations currently awaiting review.</div>}
@@ -85,14 +85,14 @@ export default async function DashboardPage() {
             <div className="empty"><p>No requests yet.</p><code>POST /api/agent/payment-requests</code></div>
           ) : (
             <div className="table-wrap">
-              <table>
+              <table className="dashboard-table" aria-label="Recent authority decisions">
                 <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead>
                 <tbody>{rows.map(row => <tr key={row.requestId}>
-                  <td><Link href={"/payments/" + encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
-                  <td>{row.vendorName}</td>
-                  <td>{money(row.amountCents,row.currency)}</td>
-                  <td><span className={"decision " + row.outcome.toLowerCase()}>{row.outcome}</span></td>
-                  <td>{row.reasonCodes.join(", ")}</td>
+                  <td data-label="Invoice"><Link href={"/payments/" + encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
+                  <td data-label="Vendor">{row.vendorName}</td>
+                  <td data-label="Amount">{money(row.amountCents,row.currency)}</td>
+                  <td data-label="Decision"><span className={"decision " + row.outcome.toLowerCase()}>{row.outcome}</span></td>
+                  <td data-label="Reason">{row.reasonCodes.join(", ")}</td>
                 </tr>)}</tbody>
               </table>
             </div>
