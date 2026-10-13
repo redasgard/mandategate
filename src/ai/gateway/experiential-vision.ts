@@ -155,12 +155,10 @@ export class ExperientialInvoiceVisionGateway {
     if (!syntheticTest && zdr?.partial === true) {
       refused("EXPERIENTIAL_ACCOUNT_ZDR_PARTIAL");
     }
-    // Only the synthetic test may omit ZDR. Training and content capture
-    // restrictions remain mandatory for both routes.
+    // Paid privacy controls remain mandatory for the strict route.
+    // The exact-fixture synthetic demo records their actual states instead.
     if (!syntheticTest && policy?.require_no_training !== true) {
-      refused(syntheticTest
-        ? "EXPERIENTIAL_TEST_NO_TRAINING_REQUIRED"
-        : "EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
+      refused("EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
     }
     if (!syntheticTest && policy?.require_zdr !== true) {
       refused("EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
