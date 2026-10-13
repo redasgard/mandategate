@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { auth } from "@/src/auth/auth";
+import { pool } from "@/src/db/pool";
 import { isTrustedMutationOrigin } from "@/src/auth/same-origin";
 import { loadInvoiceArtifactForHumanReview } from "@/src/artifacts/postgres-store";
 import { syntheticNonZdrTestEnvironmentEnabled, isSyntheticNonZdrSourceAllowlisted } from "@/src/ai/gateway/non-zdr-test-policy";
@@ -75,12 +76,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (parsed.data.expectedArtifactSha256 !== artifact.sha256) {
     return Response.json({ error: "SYNTHETIC_TEST_SOURCE_MISMATCH" }, { status: 409 });
   }
+  // A consent event must be durable before sending a single byte to the
+  // external provider. Recheck the active ADMIN membership inside the insert.
+  const consent = await pool.query(
+    [
+      "insert into invoice_synthetic_non_zdr_test_consents",
+      "(organization_id,artifact_id,actor_user_id,source_sha256)",
+      "select a.organization_id,a.id,$2,a.sha256 from invoice_artifacts a",
+      "join organization_admin_memberships m",
+      "on m.organization_id=a.organization_id and m.user_id=$2",
+      "and m.role='ADMIN' and m.active=true",
+      "where a.id=$1 and a.sha256=$3 returning id",
+    ].join(" "),
+    [id, session.user.id, artifact.sha256],
+  );
+  if (!consent.rows[0]) {
+    return Response.json({ error: "SYNTHETIC_TEST_ADMIN_ACCESS_REVOKED" }, {
+      status: 403, headers: { "Cache-Control": "private, no-store" },
+    });
+  }
   try {
     const observation = await analyzeStoredInvoiceImage(
       artifact.organizationId, id, undefined, { syntheticNonZdrTest: true },
     );
     return Response.json({
       observation,
+      consentId: consent.rows[0].id,
       privacyMode: "SYNTHETIC_NON_ZDR_TEST",
       sourceTrust: "MODEL_OBSERVATION_UNTRUSTED",
       issuerAuthenticated: false,

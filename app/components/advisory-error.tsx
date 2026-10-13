@@ -26,6 +26,12 @@ const failures:Record<string,AdvisoryFailure>={
     resolution:"Review the non-ZDR test warning and explicitly confirm before running the test.",
     preflightBlocked:true,
   },
+  SYNTHETIC_TEST_ADMIN_ACCESS_REVOKED:{
+    title:"Your administrator access changed",
+    explanation:"The server could not confirm active administrator access when recording the synthetic-test consent. No AI request was made.",
+    resolution:"Sign in again and confirm you still have administrator access to this invoice's organization.",
+    preflightBlocked:true,
+  },
   SYNTHETIC_TEST_SOURCE_MISMATCH:{
     title:"The synthetic source document changed",
     explanation:"The submitted original document hash does not match the server-stored invoice. No AI request was authorized.",
