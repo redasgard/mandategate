@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { createHash, randomUUID } from "node:crypto";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { pool } from "../src/db/pool";
 import { createPdf } from "./helpers/pdf-fixture";
 import { PDF_RASTERIZER_VERSION } from "../src/invoices/pdf-raster";
@@ -12,6 +12,7 @@ const outsider = "vision_test_" + randomUUID();
 const recovered = "vision_test_" + randomUUID();
 const exhausted = "vision_test_" + randomUUID();
 const concurrent = "vision_test_" + randomUUID();
+const synthetic = "vision_test_" + randomUUID();
 const extraArtifacts: Record<string, string> = {};
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
@@ -20,7 +21,7 @@ const png = Buffer.from(
 let artifactId = "";
 let postCount = 0;
 
-function mockedGateway(zdrEnabled = true) {
+function mockedGateway(zdrEnabled = true, servedZdr = true) {
   const fakeFetch: typeof fetch = async (input: any, init: any = {}) => {
     const url = String(input);
     const json = (data: unknown, headers: Record<string, string> = {}) =>
@@ -61,7 +62,7 @@ function mockedGateway(zdrEnabled = true) {
         model: "glm-5.3-flash",
         choices: [{ finish_reason: "stop", message: { content: JSON.stringify(output) } }],
       }, {
-        "x-gateway-zdr": "true",
+        "x-gateway-zdr": String(servedZdr),
         "x-gateway-provider": "zai",
         "x-gateway-canonical-model": "glm-5.3-flash",
         "x-request-id": "req-vision-test",
@@ -73,7 +74,7 @@ function mockedGateway(zdrEnabled = true) {
 }
 
 beforeAll(async () => {
-  for (const id of [owner, outsider, recovered, exhausted, concurrent]) {
+  for (const id of [owner, outsider, recovered, exhausted, concurrent, synthetic]) {
     await pool.query("insert into organizations(id, name) values ($1, 'Image test org')", [id]);
   }
   const artifact = await storeUntrustedInvoiceArtifact({
@@ -82,13 +83,16 @@ beforeAll(async () => {
     content: png,
   });
   artifactId = artifact.artifactId;
-  for (const organizationId of [recovered, exhausted, concurrent]) {
+  for (const organizationId of [recovered, exhausted, concurrent, synthetic]) {
     const extra = await storeUntrustedInvoiceArtifact({ organizationId, contentType: "image/png", content: png });
     extraArtifacts[organizationId] = extra.artifactId;
   }
 });
 
 afterAll(async () => {
+  await pool.query("delete from invoice_image_observations where organization_id=$1", [synthetic]);
+  await pool.query("delete from invoice_artifacts where organization_id=$1", [synthetic]);
+  await pool.query("delete from organizations where id=$1", [synthetic]);
   await pool.query("delete from invoice_image_observations where organization_id = any($1::text[])", [[owner, outsider, recovered, exhausted, concurrent]]);
   await pool.query("delete from invoice_artifacts where organization_id = any($1::text[])", [[owner, outsider]]);
   await pool.query("delete from organizations where id = any($1::text[])", [[owner, outsider]]);
@@ -225,6 +229,35 @@ describe("tenant-scoped GLM invoice image observation", () => {
     expect(postCount).toBe(previous);
     const status=await pool.query("select analysis_status from invoice_artifacts where id=$1",[stored.artifactId]);
     expect(status.rows[0].analysis_status).toBe("STORED_UNTRUSTED");
+  });
+
+
+  it("persists non-ZDR synthetic observations as escalated and never as payment authority", async () => {
+    const digest = createHash("sha256").update(png).digest("hex");
+    vi.stubEnv("MANDATEGATE_DEPLOYMENT_ROLE", "demo");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_TEST", "1");
+    vi.stubEnv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com");
+    vi.stubEnv("BETTER_AUTH_URL", "http://127.0.0.1:3000");
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("RENDER_SERVICE_ID", "");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST", digest);
+    try {
+      const before = postCount;
+      const result = await analyzeStoredInvoiceImage(
+        synthetic, extraArtifacts[synthetic], mockedGateway(false, false),
+        { syntheticNonZdrTest: true },
+      );
+      expect(postCount - before).toBe(1);
+      expect(result.paymentAuthorized).toBe(false);
+      expect(result.status).toBe("ESCALATE");
+      expect(result.reasonCodes).toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
+      expect(result.evidence).toMatchObject({ zdr: false, syntheticNonZdrTest: true });
+      const stored = await getInvoiceImageObservation(synthetic, extraArtifacts[synthetic]);
+      expect(stored).toMatchObject({ state: "ESCALATE", gateway_zdr: false });
+      expect(stored.reason_codes).toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("permits only one concurrent inference claim for a fresh artifact", async () => {
