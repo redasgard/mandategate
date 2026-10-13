@@ -32,3 +32,11 @@
 - **Action:** Manual deploy from existing `mandategate-web`, auto-deploy disabled, branch `build/slice-3-invoice-intake`, exact source SHA `2fbbdcd9ef8a284449c6035eae3dae41afe94f8a`.
 - **Evidence:** Render `dep-db5ub9l9fdbs73e58mug` **LIVE**; startup applies 16 migrations, seeds existing admin and runs Next.js. Anonymous redirects and sign-in 200 observed. GitHub Actions `38168733595` SUCCESS, 180/180 tests.
 - **Limits:** No real GLM API key/serving ZDR verification, no authenticated hosted reviewer session, no invoice-derived PayPal Sandbox transfer. Startup did not invoke the one-shot Gate H payout test. Full Slice 3 remains open.
+
+## 2026-10-13 — Bound synthetic non-ZDR invoice observation to demo only
+
+- **Decision:** An authenticated demo administrator may explicitly opt into GLM-5.3 Flash observation without ZDR for *exactly allowlisted synthetic fixture bytes*; normal/production invoice analysis retains mandatory ZDR. This implements the user's requested hackathon testing exception, not a production privacy-policy change.
+- **Reason:** The Experiential account's strict ZDR preflight blocked the optional AI demonstration. Verified that the user's 3,483-byte test PDF is byte-identical to `04_changed_receiver.pdf` in the synthetic test ZIP, SHA-256 `892d7889152b6d6e6d20310f3b7a59cf25e7c3b73ea5882d9c30de781c3ce181`.
+- **Controls:** Opt-in flag plus `MANDATEGATE_DEPLOYMENT_ROLE=demo`, bound Render service ID, PayPal Sandbox host, explicit original-source SHA allowlist, active admin membership, same-origin POST, exact hash and acknowledgement. No-training and disabled prompt capture still required. Actual served ZDR state is recorded; synthetic results force ESCALATE, with no payment authority.
+- **Rejected:** Global ZDR bypass, client-side-only test toggle, accepting an arbitrary admin-uploaded PDF merely because a checkbox says 'synthetic', and treating a non-ZDR model response as release-grade privacy evidence.
+- **Implementation:** Separate feature branch `build/synthetic-non-zdr-admin-test`; requires CI, security review, dev-branch integration and Render environment opt-in before live availability. The existing Gate H invoice-to-payment release remains BLOCKED.

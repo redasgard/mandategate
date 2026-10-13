@@ -241,14 +241,14 @@ Every model call records task, requested model, actual route/provider, validatio
 
 Experiential data controls are part of the security boundary, not an optional dashboard preference:
 - platform prompt/response capture must be disabled: `capture_prompt_content=false`
-- provider policy must require zero data retention: `require_zdr=true`
+- standard/production provider policy must require zero data retention: `require_zdr=true`
 - provider policy must require no training: `require_no_training=true`
-- every request also sends the per-request constraint `provider: { "zdr": true }`
+- every standard/production request also sends the per-request constraint `provider: { "zdr": true }`; an explicitly allowlisted synthetic-only test request omits this claim
 - if the account/plan cannot enforce ZDR, MandateGate must not send real/sensitive invoice data through that route; only synthetic fixtures may be used until compliant routing is available
-- if no compliant route survives, the model call fails closed instead of silently weakening policy
+- if no compliant route survives, the standard model call fails closed instead of silently weakening policy; only the separate admin-approved synthetic-only demo exception can test without ZDR
 - provider allowlisting is used only if the selected Experiential plan supports it; lack of allowlisting must not weaken the ZDR/no-training requirements
 
-Before enabling a model route, MandateGate verifies its current Experiential data-policy metadata and disables the route if no compliant ZDR/no-training lane exists.
+Before enabling a standard model route, MandateGate verifies its current Experiential data-policy metadata and disables the route if no compliant ZDR/no-training lane exists. The synthetic-only test path requires no-training and disabled prompt capture but may lack ZDR, with explicit admin consent and exact source SHA-256 allowlisting.
 
 For every served response, capture and trail the gateway metadata:
 - `x-request-id`
@@ -258,7 +258,7 @@ For every served response, capture and trail the gateway metadata:
 - requested model slug
 - actual model/provider when exposed
 
-A response missing or contradicting the required ZDR verdict is treated as a failed AI call, not as valid evidence.
+For standard/production inference, a response missing or contradicting the required ZDR verdict is treated as a failed AI call, not as valid evidence. Synthetic test responses record the actual ZDR header value (including false), remain untrusted, and always escalate.
 
 For Jev, use the current `jev-latest` alias during exploration and pin the exact model identifier returned by `GET /v1/models` before the build is frozen.
 
@@ -906,7 +906,7 @@ Dependencies at the current baseline:
 - GLM-5.3 Flash through Experiential for the primary text/image interpretation path
 - For image inputs, hard-pin the exact Experiential model slug `glm-5.3-flash`. Regular `glm-5.3` accepts text only and must NEVER be selected as an image fallback.
 - No custom model training, fine-tuning, or model-controlled payment tooling. Use repository-owned, versioned invoice observer/evidence Skills plus strict prompting; hash the actual runtime system instructions for audit.
-- Prior to sending image bytes, require an enabled, non-partial account-wide Experiential ZDR state, `require_zdr=true`, `require_no_training=true`, `capture_prompt_content=false`, and a Flash model route flagged ZDR-capable. Send `provider: {zdr: true}` on inference and verify `x-gateway-zdr: true`, exact resolved Flash identity, and no dropped/ignored required fields. Refuse or escalate on any drift.
+- For standard/production observation, prior to sending image bytes require an enabled, non-partial account-wide Experiential ZDR state, `require_zdr=true`, `require_no_training=true`, `capture_prompt_content=false`, and a Flash model route flagged ZDR-capable. Send `provider: {zdr: true}` and verify `x-gateway-zdr: true`, exact resolved Flash identity, and no dropped/ignored required fields. Refuse or escalate on any drift. The separately approved synthetic-only admin demo exception may omit ZDR, but still requires no-training, disabled prompt capture, exact original-file SHA allowlisting, explicit risk acknowledgement, demo-service binding and PayPal Sandbox. Its outputs always escalate and cannot authorize payments.
 - The current JPEG/PNG image observer is advisory only. Because visually quoted text is not independently validated, mark its evidence unverified and escalate rather than using model confidence to authorize payment. PDF/image preparation and independent evidence checks remain mandatory before broader Slice 3 acceptance.
 
 File admission:

@@ -62,3 +62,30 @@ The synthetic demo can show the issuer-authentication control operating with a *
 - Keep adversarial GLM inference disabled by default; clear temporary image hash allowlists after the test.
 - Do not create another paid environment or another real PayPal Business account for this hackathon.
 - Preserve immutable test evidence and identify precisely which external requests and reviewer actions happened. A passing isolated CI run is not proof a payout occurred.
+
+## 5. Synthetic non-ZDR demo observation (separate from Gate H proof)
+
+This mode is **not** proof of ZDR compliance or Gate H completion. It is for the existing Render development/demo web service and byte-identical fictional fixtures only. It never changes the standard `/observe` route. Real invoice/customer content remains prohibited.
+
+**Server-side opt-in (all required):**
+
+- `MANDATEGATE_DEPLOYMENT_ROLE=demo`
+- `MANDATEGATE_SYNTHETIC_NON_ZDR_TEST=1`
+- `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` (already the required Sandbox host)
+- `RENDER_SERVICE_ID=srv-db39vmm7bikc73c55nh0` from Render's service metadata (or local development at `http://127.0.0.1:3000` with a non-production Node environment)
+- `MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST` set to comma-separated, *exact original-file* SHA-256 values for the approved synthetic pack. Never allowlist arbitrary customer uploads.
+
+**Verified synthetic test PDF allowlist** (SHA-256 computed from `MandateGate_Synthetic_Test_Pack.zip`, `MandateGate_Test_Pack/`):
+
+| Fixture | SHA-256 |
+| --- | --- |
+| `01_regular_invoice.pdf` | `588932f4953178492e10f50b6eb4dcacada6617307c9a1e99779fe8a95fc6cb4` |
+| `02_paid_invoice_replay.pdf` | `4aed9d7799617dbb0e951f5b05c73b9b5570782cdb9f361201dfce865274dcf3` |
+| `03_unusual_amount.pdf` | `ea4d793c5e9fa592a64a964d624532aa6ff2410eeb074b3c82115b9fb5290636` |
+| `04_changed_receiver.pdf` | `892d7889152b6d6e6d20310f3b7a59cf25e7c3b73ea5882d9c30de781c3ce181` |
+
+**Admin journey:** Sign in, open an uploaded allowlisted PDF's reviewer, read the retention warning, explicitly tick the consent checkbox, then click **Run synthetic test without ZDR**. The server independently checks membership, exact original bytes, SHA, configured demo identity, Sandbox host and live provider no-training/prompt-capture metadata before sending an image. The response must say `SYNTHETIC_NON_ZDR_TEST`, `paymentAuthorized:false`, `paymentExecuted:false`, and observation `ESCALATE` with reason `SYNTHETIC_NON_ZDR_TEST_ONLY`. An image already analyzed is not silently re-run.
+
+**Security regression:** Standard `/observe` and `/api/admin/experiential-privacy` remain strict ZDR-only. The synthetic path still rejects a mismatched model, ignored strict-schema fields, no-training disabled, content capture enabled, unallowlisted SHA, unauthenticated/foreign-origin calls, missing consent and non-demo/production deployments. A provider may still refuse inference because its own account policy requires ZDR; this exception cannot override provider-side enforcement.
+
+**Release state:** No inference, payment, or provider compliance is implied by code CI. Confirm live deployment SHA, non-ZDR route reachability, and a real authenticated synthetic observation separately. Disable the opt-in flag and remove the allowlist after the demo.
