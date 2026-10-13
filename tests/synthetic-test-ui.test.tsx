@@ -25,7 +25,8 @@ describe("synthetic invoice test control visibility", () => {
     const html = renderToStaticMarkup(createElement(InvoiceVisionObservation, {
       ...base, syntheticTestEnvironmentEnabled: true, syntheticTestAllowlisted: true,
     }));
-    expect(html).toContain("provider may retain its contents");
+    expect(html).toContain("provider may retain");
+    expect(html).toContain("including for training");
     expect(html).toContain("approved synthetic test document");
     expect(html).toContain("type=\"checkbox\"");
     expect(html).toContain("Run synthetic test without ZDR");
