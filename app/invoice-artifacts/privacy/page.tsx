@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AdvisoryErrorDetails } from "@/app/components/advisory-error";
 
 type Receipt={
   checkedAt:string;
@@ -53,7 +54,7 @@ export default function PrivacyPreflightPage(){
         </dl>
         <p className="muted">Do not interpret a metadata PASS as proof that a particular model response used a ZDR serving route.</p>
       </div>:null}
-      {error?<p role="alert" className="error">Account policy check blocked: {error}</p>:null}
+      {error?<AdvisoryErrorDetails code={error} metadataOnly/>:null}
     </section>
   </main>;
 }

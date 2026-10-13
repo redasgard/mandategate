@@ -139,8 +139,11 @@ export class ExperientialInvoiceVisionGateway {
 
     // The account switch atomically enforces provider ZDR, no training,
     // and disabled content capture. Reject partial/drifted configurations.
-    if (zdr?.enabled !== true || zdr?.partial === true) {
+    if (zdr?.enabled !== true) {
       refused("EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED");
+    }
+    if (zdr?.partial === true) {
+      refused("EXPERIENTIAL_ACCOUNT_ZDR_PARTIAL");
     }
     if (policy?.require_zdr !== true || policy?.require_no_training !== true) {
       refused("EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
