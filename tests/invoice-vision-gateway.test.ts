@@ -159,15 +159,39 @@ describe("GLM-5.3 Flash image gateway", () => {
     expect(calls).toHaveLength(0);
   });
 
-  it("keeps no-training and prompt-capture protections mandatory for synthetic tests", async () => {
+  it("allows absent paid provider privacy controls only for synthetic fixtures, preserving actual metadata", async () => {
     allowExactSyntheticImage();
-    for (const config of [{ requireNoTraining: false }, { captureEnabled: true }]) {
-      const { gateway, calls } = mockGateway({ ...config, zdrEnabled: false });
-      await expect(gateway.observeImage({
-        ...request, syntheticNonZdrSourceSha256: sha256,
-      })).rejects.toThrow();
-      expect(calls.some(c => c.url.endsWith("/v1/chat/completions"))).toBe(false);
-    }
+    const config = {
+      zdrEnabled: false, requireZdr: false, modelZdr: false,
+      requireNoTraining: false, captureEnabled: true,
+      servedResponse: successResponse({ "x-gateway-zdr": "false" }),
+    };
+    const { gateway, calls } = mockGateway(config);
+    const receipt = await gateway.verifyPrivacyAndModel({ syntheticNonZdrSourceSha256: sha256 });
+    expect(receipt).toMatchObject({
+      accountZdr: false, providerRequiresZdr: false,
+      providerRequiresNoTraining: false, promptCaptureDisabled: false,
+      syntheticNonZdrTest: true, documentBytesSubmitted: false,
+    });
+    const observed = await gateway.observeImage({
+      ...request, syntheticNonZdrSourceSha256: sha256,
+    });
+    expect(observed.routeProof).toMatchObject({ zdr: false, syntheticNonZdrTest: true });
+    expect(calls.filter(c => c.url.endsWith("/v1/chat/completions"))).toHaveLength(1);
+
+    const strict = mockGateway({ ...config, zdrEnabled: true, requireZdr: true, modelZdr: true });
+    await expect(strict.gateway.verifyPrivacyAndModel()).rejects.toMatchObject({
+      code: "EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED",
+    });
+    expect(strict.calls.some(c => c.url.endsWith("/v1/chat/completions"))).toBe(false);
+  });
+
+  it("still blocks strict requests when content capture is enabled", async () => {
+    const { gateway, calls } = mockGateway({ captureEnabled: true });
+    await expect(gateway.verifyPrivacyAndModel()).rejects.toMatchObject({
+      code: "EXPERIENTIAL_PROMPT_CAPTURE_MUST_BE_OFF",
+    });
+    expect(calls.some(c => c.url.endsWith("/v1/chat/completions"))).toBe(false);
   });
 
   it("accepts partial ZDR only for allowlisted synthetic mode and still rejects wrong served models", async () => {
