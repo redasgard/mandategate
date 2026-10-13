@@ -98,16 +98,20 @@ export function InvoiceVisionObservation({
       </p>
       <p className="muted">
         The original file SHA-256 must be on the server's synthetic-fixture allowlist.
-        No-training and prompt-capture checks still apply. Results always escalate
-        and cannot authorize or execute a payment.
+        Paid provider privacy protections (ZDR, no-training enforcement, and
+        prompt-capture restrictions) may be unavailable. The provider may retain,
+        log, or use this fictional test document under its terms. Results always
+        escalate and cannot authorize or execute a payment.
       </p>
       {!syntheticTestAllowlisted ? <p role="status" className="error">
         This document is not an approved synthetic fixture. Non-ZDR observation is unavailable.
       </p> : <label className="review-checkbox">
         <input type="checkbox" checked={riskAccepted} disabled={busy || Boolean(data)}
           onChange={event => setRiskAccepted(event.currentTarget.checked)}/>
-        <span>I confirm this is an approved synthetic test document and accept that
-          the provider may retain its contents. I understand this is not a ZDR-compliant request.</span>
+        <span>I confirm this is an approved fictional test document, with no real
+          customer or financial data. I accept that the provider may retain, log,
+          or use its contents, including for training, under its terms.
+          This request does not establish privacy compliance.</span>
       </label>}
       <button disabled={busy || Boolean(data) || !syntheticTestAllowlisted || !riskAccepted}
         onClick={() => void observe(true)}>
