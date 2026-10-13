@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ExperientialInvoiceVisionGateway,
   INVOICE_VISION_MODEL,
@@ -52,6 +52,9 @@ function successResponse(headers: Record<string, string> = {}, model = "glm-5.3-
 
 function mockGateway(config: {
   zdrEnabled?: boolean;
+  zdrPartial?: boolean;
+  requireZdr?: boolean;
+  modelZdr?: boolean;
   captureEnabled?: boolean;
   requireNoTraining?: boolean;
   modelOnRoute?: boolean;
@@ -66,10 +69,10 @@ function mockGateway(config: {
     });
     if (address.endsWith("/api/whoami")) return json({ org_id: "org_test" });
     if (address.endsWith("/api/orgs/org_test/zero-data-retention")) {
-      return json({ enabled: config.zdrEnabled ?? true, partial: false });
+      return json({ enabled: config.zdrEnabled ?? true, partial: config.zdrPartial ?? false });
     }
     if (address.endsWith("/api/orgs/org_test/provider-policy")) {
-      return json({ require_zdr: true, require_no_training: config.requireNoTraining ?? true });
+      return json({ require_zdr: config.requireZdr ?? true, require_no_training: config.requireNoTraining ?? true });
     }
     if (address.endsWith("/api/orgs/org_test/telemetry-settings")) {
       return json({ capture_prompt_content: config.captureEnabled ?? false });
@@ -78,7 +81,7 @@ function mockGateway(config: {
       return json({ data: [{
         id: config.modelOnRoute === false ? "glm-5.3" : "glm-5.3-flash",
         uncensored: false,
-        data_policy: { zdr_on_request: true },
+        data_policy: { zdr_on_request: config.modelZdr ?? true },
       }] });
     }
     if (address.endsWith("/v1/chat/completions")) {
@@ -100,6 +103,87 @@ const request = {
 };
 
 describe("GLM-5.3 Flash image gateway", () => {
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  function allowExactSyntheticImage() {
+    vi.stubEnv("MANDATEGATE_DEPLOYMENT_ROLE", "demo");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_TEST", "1");
+    vi.stubEnv("PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com");
+    vi.stubEnv("BETTER_AUTH_URL", "http://127.0.0.1:3000");
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("RENDER_SERVICE_ID", "");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST", sha256);
+  }
+
+  it("accepts only an allowlisted synthetic image without ZDR and records the actual false ZDR proof", async () => {
+    allowExactSyntheticImage();
+    const config = {
+      zdrEnabled: false, requireZdr: false, modelZdr: false,
+      servedResponse: successResponse({ "x-gateway-zdr": "false" }),
+    };
+    const { gateway, calls } = mockGateway(config);
+    const preflight = await gateway.verifyPrivacyAndModel({ syntheticNonZdrSourceSha256: sha256 });
+    expect(preflight).toMatchObject({
+      accountZdr: false, providerRequiresZdr: false, providerRequiresNoTraining: true,
+      promptCaptureDisabled: true, targetModelHasZdrCapability: false,
+      syntheticNonZdrTest: true, documentBytesSubmitted: false,
+    });
+    const observed = await gateway.observeImage({
+      ...request, syntheticNonZdrSourceSha256: sha256,
+    });
+    expect(observed.routeProof).toMatchObject({
+      zdr: false, syntheticNonZdrTest: true, inputArtifactSha256: sha256,
+      model: "glm-5.3-flash",
+    });
+    const sent = calls.filter(c => c.url.endsWith("/v1/chat/completions"));
+    expect(sent).toHaveLength(1);
+    const payload = JSON.parse(String(sent[0].init.body));
+    expect(payload.provider).toBeUndefined();
+    expect(payload.response_format).toEqual(INVOICE_VISION_RESPONSE_FORMAT);
+    expect(payload.tools).toBeUndefined();
+
+    const strict = mockGateway(config);
+    await expect(strict.gateway.observeImage(request)).rejects.toMatchObject({
+      code: "EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED",
+    });
+    expect(strict.calls.some(c => c.url.endsWith("/v1/chat/completions"))).toBe(false);
+  });
+
+  it("never sends an unallowlisted image even with synthetic mode requested", async () => {
+    allowExactSyntheticImage();
+    const { gateway, calls } = mockGateway({ zdrEnabled: false });
+    await expect(gateway.observeImage({
+      ...request, syntheticNonZdrSourceSha256: "0".repeat(64),
+    })).rejects.toMatchObject({ code: "SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("keeps no-training and prompt-capture protections mandatory for synthetic tests", async () => {
+    allowExactSyntheticImage();
+    for (const config of [{ requireNoTraining: false }, { captureEnabled: true }]) {
+      const { gateway, calls } = mockGateway({ ...config, zdrEnabled: false });
+      await expect(gateway.observeImage({
+        ...request, syntheticNonZdrSourceSha256: sha256,
+      })).rejects.toThrow();
+      expect(calls.some(c => c.url.endsWith("/v1/chat/completions"))).toBe(false);
+    }
+  });
+
+  it("accepts partial ZDR only for allowlisted synthetic mode and still rejects wrong served models", async () => {
+    allowExactSyntheticImage();
+    const strict = mockGateway({ zdrPartial: true });
+    await expect(strict.gateway.verifyPrivacyAndModel()).rejects.toMatchObject({
+      code: "EXPERIENTIAL_ACCOUNT_ZDR_PARTIAL",
+    });
+    const test = mockGateway({
+      zdrPartial: true, servedResponse: successResponse({ "x-gateway-zdr": "false" }, "glm-5.3"),
+    });
+    await expect(test.gateway.observeImage({
+      ...request, syntheticNonZdrSourceSha256: sha256,
+    })).rejects.toMatchObject({ code: "EXPERIENTIAL_MODEL_MISMATCH" });
+  });
+
   it("returns a source-derived privacy receipt without keys or invoice content", async () => {
     const { gateway, calls } = mockGateway();
     const receipt = await gateway.verifyPrivacyAndModel();
