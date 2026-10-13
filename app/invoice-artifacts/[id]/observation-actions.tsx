@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AdvisoryErrorDetails } from "@/app/components/advisory-error";
 
 type SourceMime="application/pdf"|"image/png"|"image/jpeg";
 
@@ -47,7 +48,7 @@ export function InvoiceVisionObservation({artifactId,artifactSha256,mimeType}:{
     <button disabled={busy || Boolean(data)} onClick={()=>void observe()}>
       {busy?"Analyzing under fail-closed privacy policy…":"Observe this stored document (advisory only)"}
     </button>
-    {error?<p role="alert" className="error">{error}</p>:null}
+    {error?<AdvisoryErrorDetails code={error}/>:null}
     {data?<div role="status">
       <p>Disposition: <strong>{data.status}</strong>. Payment authorized: <strong>No</strong>.</p>
       <p className="mono">Reasons: {data.reasonCodes.join(", ")}</p>
