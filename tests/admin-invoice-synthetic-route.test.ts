@@ -4,7 +4,9 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   loadArtifact: vi.fn(),
   analyze: vi.fn(),
+  query: vi.fn(),
 }));
+vi.mock("../src/db/pool", () => ({ pool: { query: mocks.query } }));
 vi.mock("../src/auth/auth", () => ({
   auth: { api: { getSession: mocks.getSession } },
 }));
@@ -52,6 +54,7 @@ beforeEach(() => {
   mocks.loadArtifact.mockResolvedValue({
     sha256: sha, organizationId: "org_demo", mimeType: "application/pdf",
   });
+  mocks.query.mockResolvedValue({ rows: [{ id: "22222222-2222-4222-8222-222222222222" }] });
   mocks.analyze.mockResolvedValue({
     status: "ESCALATE",
     reasonCodes: ["SYNTHETIC_NON_ZDR_TEST_ONLY"],
@@ -112,6 +115,20 @@ describe("admin-only synthetic non-ZDR endpoint", () => {
     expect((await stale.json()).error).toBe("SYNTHETIC_TEST_SOURCE_MISMATCH");
     expect(mocks.analyze).not.toHaveBeenCalled();
   });
+
+  it("does not invoke inference when the admin membership is revoked before consent persistence", async () => {
+    mocks.query.mockResolvedValueOnce({ rows: [] });
+    const res = await POST(req(), params);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("SYNTHETIC_TEST_ADMIN_ACCESS_REVOKED");
+    expect(mocks.analyze).not.toHaveBeenCalled();
+  });
+  it("does not invoke inference if the append-only consent audit cannot be written", async () => {
+    mocks.query.mockRejectedValueOnce(new Error("database unavailable"));
+    await expect(POST(req(), params)).rejects.toThrow("database unavailable");
+    expect(mocks.analyze).not.toHaveBeenCalled();
+  });
+
   it("passes only a verified admin-owned synthetic source to the advisory analyzer", async () => {
     const res = await POST(req(), params);
     expect(res.status).toBe(200);
@@ -128,6 +145,9 @@ describe("admin-only synthetic non-ZDR endpoint", () => {
         evidence: { zdr: false, syntheticNonZdrTest: true },
       },
     });
+    expect(result.consentId).toBe("22222222-2222-4222-8222-222222222222");
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+    expect(mocks.query.mock.invocationCallOrder[0]).toBeLessThan(mocks.analyze.mock.invocationCallOrder[0]);
     expect(mocks.analyze).toHaveBeenCalledTimes(1);
     expect(mocks.analyze).toHaveBeenCalledWith(
       "org_demo", artifactId, undefined, { syntheticNonZdrTest: true },
