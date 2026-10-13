@@ -7,6 +7,7 @@ import { loadStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
+import { isSyntheticNonZdrSourceAllowlisted, syntheticNonZdrTestEnvironmentEnabled } from "@/src/ai/gateway/non-zdr-test-policy";
 
 export default async function InvoiceArtifactReviewPage({
   params,
@@ -17,6 +18,8 @@ export default async function InvoiceArtifactReviewPage({
   if(!/^[a-f0-9-]{36}$/i.test(id))notFound();
   const artifact=await loadInvoiceArtifactForHumanReview(session.user.id,id);
   if(!artifact)notFound();
+  const syntheticTestEnvironmentEnabled = syntheticNonZdrTestEnvironmentEnabled();
+  const syntheticTestAllowlisted = isSyntheticNonZdrSourceAllowlisted(artifact.sha256);
   if(artifact.mimeType!=="application/pdf") {
     return <main className="shell narrow">
       <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
@@ -32,7 +35,9 @@ export default async function InvoiceArtifactReviewPage({
             target="_blank" rel="noopener noreferrer">View original image</a></dd></div>
           <div><dt>Trust state</dt><dd>Untrusted document</dd></div>
         </dl>
-        <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
+        <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
+          syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
+          syntheticTestAllowlisted={syntheticTestAllowlisted}/>
       </section>
     </main>;
   }
@@ -90,7 +95,9 @@ export default async function InvoiceArtifactReviewPage({
         <div><dt>Source artifact SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
         <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect original PDF (admin-only download)</a></dd></div>
       </dl>
-      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
+      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
+          syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
+          syntheticTestAllowlisted={syntheticTestAllowlisted}/>
       <InvoiceArtifactReview
         artifactId={id} artifactSha256={artifact.sha256}
         initialPages={pages?.pages ?? []}

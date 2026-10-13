@@ -8,6 +8,36 @@ export type AdvisoryFailure={
 };
 
 const failures:Record<string,AdvisoryFailure>={
+  SYNTHETIC_NON_ZDR_TEST_DISABLED:{
+    title:"Synthetic test mode is disabled",
+    explanation:"This environment is not explicitly configured as the approved demo with PayPal Sandbox and the synthetic-only exception.",
+    resolution:"Use the approved MandateGate demo environment. The administrator must enable the server-side demo flag; production remains ZDR-only.",
+    preflightBlocked:true,
+  },
+  SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED:{
+    title:"This document is not approved for non-ZDR testing",
+    explanation:"The exact original SHA-256 is not on the server's synthetic-fixture allowlist. Checking a box cannot make an arbitrary invoice safe to transmit.",
+    resolution:"Use one of the approved synthetic test PDFs. Never add real or customer invoices to the non-ZDR allowlist.",
+    preflightBlocked:true,
+  },
+  SYNTHETIC_TEST_ACK_REQUIRED:{
+    title:"Explicit synthetic-test acknowledgement is required",
+    explanation:"The test request must confirm that the document is synthetic and that the administrator accepts the provider retention risk.",
+    resolution:"Review the non-ZDR test warning and explicitly confirm before running the test.",
+    preflightBlocked:true,
+  },
+  SYNTHETIC_TEST_SOURCE_MISMATCH:{
+    title:"The synthetic source document changed",
+    explanation:"The submitted original document hash does not match the server-stored invoice. No AI request was authorized.",
+    resolution:"Reload the invoice review page and retry only with an approved synthetic fixture.",
+    preflightBlocked:true,
+  },
+  EXPERIENTIAL_TEST_NO_TRAINING_REQUIRED:{
+    title:"Synthetic test blocked: provider no-training policy is not confirmed",
+    explanation:"Non-ZDR testing waives only the zero-retention requirement. The Experiential account must still prohibit training on submitted content.",
+    resolution:"Enable the provider no-training policy before running a synthetic test.",
+    preflightBlocked:true,
+  },
   EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED:{
     title:"AI observation blocked: full zero-data retention is not enabled",
     explanation:"The connected Experiential Labs account did not report full Zero Data Retention (ZDR). MandateGate requires it before submitting invoice content to GLM.",

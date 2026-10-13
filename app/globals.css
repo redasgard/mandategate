@@ -133,3 +133,11 @@ pre { background: #0e0d0b; border: 1px solid var(--line); padding: 16px; overflo
 @media (max-width: 360px) {
   .dashboard-table td { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+
+/* The non-ZDR exception is a visibly separate, admin-only demo control. */
+.synthetic-test-box { display:grid; gap:14px; min-width:0; max-width:100%; border:1px solid var(--amber); padding:18px; background:var(--surface-2); overflow-wrap:anywhere; }
+.synthetic-test-box h3 { margin:0; font-size:19px; }
+.synthetic-test-box p { margin:0; line-height:1.55; }
+.synthetic-test-box .review-checkbox { color:var(--text); }
+.synthetic-test-box button { justify-self:start; max-width:100%; }
+@media (max-width:720px) { .synthetic-test-box { padding:14px; } .synthetic-test-box button { justify-self:stretch; } }
