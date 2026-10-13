@@ -40,6 +40,9 @@ export default function PrivacyPreflightPage(){
       <p className="muted">Queries the connected gateway account identity, Zero Data Retention,
         provider no-training/ZDR policy, prompt-content capture setting, and available
         model route. No invoice bytes or model inference are sent during this check.</p>
+      <p className="muted">This page always checks the strict ZDR policy.
+        An admin's separate, allowlisted synthetic-only test exception does not
+        make this privacy preflight pass or establish ZDR compliance.</p>
       <button disabled={busy} onClick={()=>void check()}>Check live account privacy settings</button>
       {receipt?<div>
         <h2>Metadata policy checks passed</h2>
