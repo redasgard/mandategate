@@ -27,7 +27,7 @@ describe("synthetic invoice test control visibility", () => {
     }));
     expect(html).toContain("provider may retain");
     expect(html).toContain("including for training");
-    expect(html).toContain("approved synthetic test document");
+    expect(html).toContain("approved fictional test document");
     expect(html).toContain("type=\"checkbox\"");
     expect(html).toContain("Run synthetic test without ZDR");
     expect(html).toContain("disabled");
