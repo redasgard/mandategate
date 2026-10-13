@@ -49,8 +49,8 @@ export type PrivacyPreflightReceipt = {
   targetModel: typeof INVOICE_VISION_MODEL;
   accountZdr: boolean;
   providerRequiresZdr: boolean;
-  providerRequiresNoTraining: true;
-  promptCaptureDisabled: true;
+  providerRequiresNoTraining: boolean;
+  promptCaptureDisabled: boolean;
   targetModelHasZdrCapability: boolean;
   syntheticNonZdrTest: boolean;
   documentBytesSubmitted: false;
@@ -157,7 +157,7 @@ export class ExperientialInvoiceVisionGateway {
     }
     // Only the synthetic test may omit ZDR. Training and content capture
     // restrictions remain mandatory for both routes.
-    if (policy?.require_no_training !== true) {
+    if (!syntheticTest && policy?.require_no_training !== true) {
       refused(syntheticTest
         ? "EXPERIENTIAL_TEST_NO_TRAINING_REQUIRED"
         : "EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
@@ -165,7 +165,7 @@ export class ExperientialInvoiceVisionGateway {
     if (!syntheticTest && policy?.require_zdr !== true) {
       refused("EXPERIENTIAL_NO_TRAINING_POLICY_REQUIRED");
     }
-    if (telemetry?.capture_prompt_content !== false) {
+    if (!syntheticTest && telemetry?.capture_prompt_content !== false) {
       refused("EXPERIENTIAL_PROMPT_CAPTURE_MUST_BE_OFF");
     }
     const model = Array.isArray(models?.data)
@@ -183,8 +183,8 @@ export class ExperientialInvoiceVisionGateway {
       targetModel: INVOICE_VISION_MODEL,
       accountZdr: zdr?.enabled === true && zdr?.partial !== true,
       providerRequiresZdr: policy?.require_zdr === true,
-      providerRequiresNoTraining: true,
-      promptCaptureDisabled: true,
+      providerRequiresNoTraining: policy?.require_no_training === true,
+      promptCaptureDisabled: telemetry?.capture_prompt_content === false,
       targetModelHasZdrCapability: modelSupportsZdr,
       syntheticNonZdrTest: syntheticTest,
       documentBytesSubmitted: false,
