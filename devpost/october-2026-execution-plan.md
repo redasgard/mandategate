@@ -1,6 +1,6 @@
-# MandateGate | October 2026 Completion and Submission Plan, Revised v2
+# MandateGate | October 2026 Completion and Submission Plan, Revised v3
 
-**Status:** CONDITIONAL execution baseline, not a certification of staffing, external service access, Gate H, or completed release.  
+**Status:** REWORKED PLAN / G0 BLOCKED; conditional execution baseline, not a certification of staffing, external service access, Gate H, or completed release.  
 **Planning snapshot:** October 14, 2026, Pacific time.  
 **Target:** Submit by **Thursday, October 29, 2026, 6:00 PM PT**, before the user's end-of-October deadline.  
 **Emergency-only buffer:** October 30-31.  
@@ -161,7 +161,66 @@ The following is an acceptance checklist, **not a claim that entitlements exist*
 
 **Acceptance matrix:** trusted-standing-mandate ALLOW with no fresh generic admin click; controlled manual escalation with exact approval and reason; hard destination DENY; one-shot actual PayPal evidence; at least two judge replay sessions producing no outbound payouts and no misleading receipt labels.
 
-## 6. Daily execution sequence: October 14-29 PT
+## 6. Dependency-aware execution plan, October 14-29 PT
+
+### 6.1 Binding interpretation of dates and scope
+
+- **October 29 at 6 PM PT is the target for a *confirmed completed Devpost submission***, not an October 28 code freeze followed by submission November 12. November 12 at noon PT remains the external Devpost deadline and must not be mistaken for planned working time. October 30-31 are emergency-only. All dashboard/checklist/status copies must use this contract.
+- P0/P1/P2 and all thirteen slices remain approved *targets*. An unavailable sponsor, a missed gate, or insufficient engineering capacity does **not** silently authorize deletion, substitution, or a completion claim. An explicit owner decision with the affected acceptance criteria is required.
+- Dates are **conditional exit targets**, never permission to waive safety, reviews or payment authorization. The staffing/critical path gate can return BLOCK for the full-scope date while allowing bounded, non-mutating diagnostic work.
+
+### 6.2 Critical path, resource constraints and capacity gate (repair H2/H6)
+
+Critical path A: external GLM entitlement + consent/receipt (G1) -> immutable original invoice / field-source T2 verification -> truthful independent-or-controlled-origin T3 classification -> T4 exact authorization tuple -> hostile input and tenant/race regressions -> operator-authorized one-shot Sandbox Gate H -> webhook/reconciliation evidence -> hosted normal/ESCALATE/DENY -> safe judge replay -> independently reviewed financial integration -> tagged main/Render parity -> published submission.
+
+Critical path release: database restore/continuity -> agreed event/payment schema -> first clean-clone + preview parity rehearsal -> security-frozen candidate -> independent security reviewer -> final main/tag/Render smoke -> public-safe release. Critical path demo: separation of GLM advisory evidence and authorization -> first recorded rehearsal -> correct historic receipt labeling -> final sub-three-minute video.
+
+**Track-specific workload tests, not gross capacity arithmetic alone:**
+| Lane | Remaining estimate at planning | Blocking dependencies | Required G0 evidence |
+| --- | --- | --- | --- |
+| A money/source/Gate H | 7-10 focused days + >=20% per-lane reserve = 8.4-12 | Provider account, issuer/T2-T4, one-shot grant, review, live webhook | Named owner(s), actual time slots, measured ticket burn-down, working-day critical-path slack |
+| B UI/policy/schedule | 7-10 + reserve = 8.4-12 | A frozen action digest, policy/trust version contract | Owner and availability; no parallel authority mutations |
+| C integrity/DB/Elastic | 5-8 + reserve = 6-9.6 | Event contract, migration/restore and external access | Owner and restoration operator; exact verification receipts |
+| D integrations/models | 4-6 + reserve = 4.8-7.2 | Sponsor licenses, endpoints, non-authoritative interfaces | Owner, entitlement proofs and fallback decision |
+| Q QA/release | 4-6 + reserve = 4.8-7.2 | Independently testable hosted candidate and clean checkout | Distinct QA allocation; independent financial reviewer schedule |
+
+**Feasibility warning:** October 14-20 gives A only seven calendar days, versus 8.4-12 estimated effective days *without* an actual staffed parallel split. Therefore the published Oct 18/20 Gate H/P0 dates are **aspirational and not a feasible committed schedule** until A's measured remaining tickets, explicit weekend capacity and predecessor gates produce nonnegative slack. Four hypothetical engineers do not resolve serial dependencies. The plan may not claim G0 PASS from total engineer-days alone.
+
+At G0 calculate each lane's actual effective available days through its own latest safe integration cutoff, deduct meetings/rework and signed reviewer/operator windows, identify longest serial chain, and show >=20% reserve *on every constrained lane*. Record estimated-versus-observed progress daily. If A does not fit, full-scope Oct 29 remains BLOCKED. No fictional people or unapproved paid resources.
+
+### 6.3 Latest safe integration dates and dependency contracts (repair H3)
+
+| Scope | Earliest independent work | Latest safe integration target | Mandatory gating |
+| --- | --- | --- | --- |
+| P0 GLM + invoice T2/T3/T4 / Gate H | Now, diagnostics and tests only until compliant | Oct 20, **only after** Gate H evidence | No model/fixture grants payment authority; separate operator payout consent |
+| P0 hosted flows + safe judge replay | After A deterministic contracts stable | Oct 22 | Two isolated judge sessions; zero new outbound PayPal POST; historic payout receipt labeled |
+| P1 AG Grid read-only and dashboard | Now | Oct 22 | Tenant isolation, actual nonfabricated balances; fail closed/degrade safely |
+| P1 Assistant/policy prepared actions | Read-only scaffolding now | Oct 23 noon **before** money/schema freeze | Revoke, stale state, digest, tenant and hostile text tests |
+| P1 scheduling / Bryntum | Read-only UI now; execution after A contract stable | Oct 23 noon | Due runner and cancellation races, no bypass of execution-time revalidation |
+| P1 Base Sepolia/verifier | Canonical hash tests and restore now | Oct 24 | Independent chain receipt, tamper -> BROKEN, no sensitive data on chain |
+| P2 Elastic | Projection adapter now | Oct 24 | Rebuildable, downtime safe, read-only and no authoritative risk override |
+| P2 Zapier/Postman | Scoped contract/docs now | Oct 24 | Real external actor proof, no admin/payment elevation |
+| P2 Qwen/Jev/Laya | Isolated fixture testing now | Oct 24 | Exact model/entitlement and bounded monotonic-evidence verdict |
+
+**Freeze semantics:** Oct 23 noon locks shared authority, executor, approval, schedule and event contracts. No unfinished consequential component is merged after that point merely to hit its target. Emergency security repairs reopen impacted contract review/tests. Optional integrations must be complete and independently verified by their listed cutoff to enter the release candidate; otherwise the owner records an explicit feature deferral or deadline/capacity change (no silent cuts).
+
+### 6.4 Demo truth contract and early rehearsal (repair H4)
+
+**Do not imply a non-ZDR fictional GLM observation authorized a payout.** The permitted synthetic Free-account route is consented, SHA allowlisted, advisory **T1 only** and forcibly `ESCALATE`, with `paymentAuthorized=false` and `paymentExecuted=false`. Showing it next to ALLOW is not proof of a causal payment chain.
+
+Use two separately labeled tracks:
+1. **AI observation:** true external `glm-5.3-flash` inference on approved fictional bytes, actual served model and privacy metadata (including false/unknown), bounded invoice claims, immutable consent/receipt; clearly label advisory / escalation-only.
+2. **Financial authority + PayPal:** independently grounded T2/T3/T4 canonical source, trusted destination, existing standing mandate, deterministic ALLOW, plus a **separately granted** one-shot historical Sandbox proof. Label its real timestamp, payout identifiers and the fact that replay does not settle money. Do not claim real supplier contact where only a controlled fictional channel exists.
+
+Rehearse both paths and their transitions by **October 21** with truthful placeholders for any still-unverified external evidence; record the first screen capture, failure points and elapsed time. Final script must be reviewed against actual receipts and runtime state before publication. An externally unverified feature is omitted from the video or disclosed as planned, never filmed as operational.
+
+### 6.5 Advance release integration and QA (repair H5)
+
+By **October 21-22**, run a *non-public release-cutover rehearsal* on the review candidate: evaluate PR #2 against main, review money/tenant/schema diff, clean checkout, frozen install, migration twice, synthetic seed twice, signed-in HTTP tests, sandbox-host restriction and Render preview/equivalent tree-parity evidence. Back up and restore the DB before migration branch switch. The rehearsal does **not** authorize merging an unreviewed security-sensitive PR or creating a payout.
+
+By October 23, reconcile failed rehearsal outcomes and enter the shared money/schema freeze. By October 24-26, perform bounded concurrency tests, external outage/failure injection, restart/receipt recovery, judge reset/idempotency tests and two complete hosted three-case replays. Obtain independent financial-diff reviewer availability **before** the freeze; no self-review substitution. Oct 27 final review/merge/tag is only a narrow confirmed release cut, not first integration. Every fix to frozen authority code demands new review and revalidation.
+
+### 6.6 Daily execution sequence: October 14-29 PT
 
 The work is concurrent only under a staffed G0. Dates are **exit targets**; each packet has a named technical owner as soon as G0 confirms the roster. Do not treat an upcoming date as evidence its gate has passed.
 
@@ -174,13 +233,13 @@ The work is concurrent only under a staffed G0. Dates are **exit targets**; each
 | **Sun Oct 18** | After fresh exact operator authorization, one $1.01 invoice-derived PayPal Sandbox submission; receipt + webhook/reconciliation | Continue read-only policy/AG view, chain checkpoints; build judge replay without external payment rights | **G2:** actual external proof or distinct BLOCK, never synthetic success mislabeled |
 | **Mon Oct 19** | Finish historical replay/outlier ESCALATE review and destination hard DENY/re-verification, mandatory reason/evidence | Dashboard cards and balances with source/age; implement prepared-action digest and expiry | CI + hosted causal reasons, zero Payouts POST for anomalies |
 | **Tue Oct 20** | Run hosted normal/duplicate/destination with precise source-to-authorization trace; admin and machine scope regression | Continue P1 only if P0 unaffected; finish judge reset and isolated sessions | **G3 P0 acceptance:** safe judge replay twice, past Sandbox proof visible, scoped hosted access; if blocked, STOP new optional integrations |
-| **Wed Oct 21** | Stabilize P0, review PayPal execution statuses; migrate/upgrade durable DB with verified restore | AG Grid investigation, complete policy proposal/activation; Assistant explanation | Database available beyond Dec 15; integration QA starts, release branch preparation |
-| **Thu Oct 22** | Re-run P0 regression on new DB, source/approval and historic anomaly race checks | Assistant prepared confirmations with stale-state rejection; durable scheduling and time controls; signable chain tests | P1 internal acceptance; freeze notice for authority/schema changes |
+| **Wed Oct 21** | Stabilize P0, review PayPal execution statuses; rehearse clean-clone/main cutover; migrate/upgrade durable DB with verified restore | AG Grid investigation, complete policy proposal/activation; Assistant explanation | Database available beyond Dec 15; integration QA starts, release branch preparation |
+| **Thu Oct 22** | Re-run P0 regression on new DB, source/approval and historic anomaly race checks; complete release rehearsal | Assistant prepared confirmations with stale-state rejection; durable scheduling and time controls; signable chain tests | P1 internal acceptance; freeze notice for authority/schema changes |
 | **Fri Oct 23** | **Authority, payment executor, and event/schema contract freeze by noon PT.** Only security repairs after this point. | Scheduling/Bryntum completion; event Merkle checkpoint and Base Sepolia integration; Elastic projection prep | **G4** prepared action/scheduling safety; independent money-diff reviewer begins final review |
 | **Sat Oct 24** | Re-run money-path tests on pinned candidate, recover unknown payouts safely | Base Sepolia anchor/verifier/tamper cases; AG polish, Elastic similarity, scoped Zapier initial adapter | **G5** anchored integrity proof, chain receipts and no sensitive on-chain contents; full hosted QA underway |
 | **Sun Oct 25** | No new money/schema features; support blocked provider/integration only if needed | Finish Elastic, Zapier, Postman; Qwen/Jev/Laya measured bounded fixture runs | P2 access/behavior proofs; mock-only integration remains BLOCKED, not DONE |
 | **Mon Oct 26** | Re-run three cases and source-to-PayPal integrity after all accepted integrations | Finish model comparative report, sponsor evidence and fallback behavior; zero authority escalation from search/model | **G6** integration candidate complete; two separate full hosted three-case replays begin; no new features |
-| **Tue Oct 27 (before noon)** | Fix only blocking faults; obtain independent financial-security diff review and approve exact release tree | Clean install, adversarial suite, migration/restore smoke, full UI accessibility and mobile QA | **G7 security**. Freeze by noon. **G7a:** review PR #2, clear draft and merge to `main` only after gate; release/tag/redeploy parity tests |
+| **Tue Oct 27 (before noon)** | Fix only blocking faults already found in release rehearsal; obtain independent financial-security diff review and approve exact release tree | Clean install, adversarial suite, migration/restore smoke, full UI accessibility and mobile QA | **G7 security**. Freeze by noon. **G7a:** review PR #2, clear draft and merge to `main` only after gate; release/tag/redeploy parity tests |
 | **Wed Oct 28** | Non-mutating final test on tagged/main release; locked judge replay proof and DB monitoring | Public repo after history/secret/license review, README, screenshots, public <3min YouTube video, truthful Devpost | **G8:** clean-clone and Render parity, public judge test twice, accessible video/source links |
 | **Thu Oct 29 by 6 PM** | Non-mutating health, auth, provider status and recorded payout receipt checks | Submit Devpost and verify confirmation URL, public links and video; archive evidence packet | **FINISH:** submission confirmed by 6 PM PT; no feature development |
 | **Oct 30-31** | Emergency fixes only, every code change reopens necessary security/CI/release checks | Submission outage contingency only | No scheduled development |
@@ -251,7 +310,7 @@ All tests must identify whether they are pure mocked unit tests, local signed-in
 | Timing | Judge-visible proof |
 | --- | --- |
 | 0:00-0:15 | Agent needs an independent financial firewall, not permission to call PayPal itself |
-| 0:15-0:55 | Real synthetic GLM observation, grounded invoice evidence, deterministic standing-mandate ALLOW; show authentic historical Sandbox payout receipt clearly labeled |
+| 0:15-0:55 | Distinct, clearly labeled segments: GLM fictional advisory observation that forces ESCALATE; separately sourced deterministic standing-mandate ALLOW and authentic *historical* Sandbox payout, never imply advisory observation authorized it |
 | 0:55-1:25 | Real imported AP history catches near-duplicate/outlier, admin declines, no payout |
 | 1:25-1:55 | Changed destination triggers hard DENY and dedicated re-verification |
 | 1:55-2:15 | Actual investigation, Assistant/policy confirmation and schedule, **only if implemented** |
@@ -267,6 +326,9 @@ All tests must identify whether they are pure mocked unit tests, local signed-in
 
 ## 12. Explicit stop rules and change governance
 
+**Plan-level constraint:** A missed latest safe integration cutoff cannot be compensated by compressing financial review or skipping tests. Log an owner decision: add verified capacity, approve an identified deferral, or alter the internal delivery target. Unconfirmed staffing, licensed access, provider serving or a payment grant is always BLOCKED, not a fallback approval.
+
+
 - **G0-CAPACITY/ACCESS Oct 14:** Unassigned engineers, insufficient confirmed hours, no QA/reviewer slot or unverified sponsor licenses mean **no unconditional commitment to all 13 slices**. Diagnostic code/test work may continue but cannot be labeled scheduled completion.
 - **G1 GLM Oct 15:** Provider Free-plan metadata access or model inference error is a visible blocker; only the synthetic route may treat paid-control metadata as optional/unknown, never the strict route. Any provider contractual prohibition blocks inference entirely.
 - **G2 Oct 18:** A missed exact approved Sandbox payout does not authorize retesting with fresh recipients/amounts. Preserve zero unintended POST; operator and security gates remain required.
@@ -278,6 +340,9 @@ All tests must identify whether they are pure mocked unit tests, local signed-in
 - **FINISH Oct 29:** Only a confirmed published Devpost entry plus verified assets counts as submitted. October 30-31 held only for recovery.
 
 ## 13. Required documentation synchronization and revised plan review
+
+**This v3 repair resolves the plan-design findings, not the runtime evidence gaps.** Changes: one October 29 submission contract; critical-path and per-lane slack feasibility; latest safe P1/P2 integration dates; separate GLM/ALLOW demo causality; earlier release rehearsal; independent-review, reset/failure and video dry-run checks. The G0 full-scope gate is still BLOCK until named capacity and entitlements exist.
+
 
 **Documentation-only repair PR by October 16:**
 1. Commit this document as canonical `devpost/october-2026-execution-plan.md`; keep historical v1 outside the repository, clearly superseded.
