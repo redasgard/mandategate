@@ -66,9 +66,9 @@ On `build/slice-3-invoice-intake`, the signed-in admin UI offers:
 3. `/invoice-artifacts/[id]` (PDF): inspect the original source and independently parsed page text, record five typed/payment-critical field quotes and page numbers, and verify source fidelity as T2.
 4. Confirm the issuer through the previously known out-of-band source (T3), evaluate the server-frozen exact payment tuple, and navigate to `/invoice-bindings/[id]` for a separate signed-in review. Without real issuer evidence, the proposal **ESCALATES** and does not produce a payout.
 
-The current branch also includes a signed-in **advisory GLM observation** button on PDF, PNG and JPEG review pages. It requires live Experiential policy compliance; model evidence remains T1/untrusted and never authorizes a payment. Image-only single-page PDFs are locally rasterized with SHA-bound evidence. Multi-page scans are held for review rather than silently summarized.
+The development branch includes signed-in **advisory GLM observation** controls on PDF, PNG and JPEG review pages. The standard route requires strict Experiential ZDR/no-training/capture compliance; a separate admin-only demo route permits missing paid controls solely for exact SHA-allowlisted fictional fixtures with explicit provider-retention/training consent. Model evidence remains T1/untrusted and never authorizes payment. Image-only single-page PDFs are locally rasterized with SHA-bound evidence; multi-page scans are held for review. Real external GLM inference remains unverified.
 
-These routes are **CI-verified source-review code; hosted deployment and provider-serving verification are tracked separately**. The GitHub Actions checkpoint `37874974336` executes the HTTP upload/parse/T2/negative proposal path with a synthetic fixture and **no PayPal payout**. The isolated GLM and payment gates remain separate.
+The development branch is **LIVE on the existing Render demo** at `be75fecf`, and CI verifies source review and signed-in synthetic HTTP flow. Authenticated hosted user acceptance, actual Experiential inference and invoice-derived PayPal payout are **separate unverified gates**. Earlier GitHub Actions checkpoint `37874974336` exercised upload/parse/T2/negative proposal with **zero Payouts**. Do not confuse that with Gate H.
 
 ## Local setup
 
