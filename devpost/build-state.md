@@ -6,6 +6,19 @@ mode: fast
 
 # Build State
 
+## Current October 14 planning and development status (supersedes dated summary claims below)
+
+**Current canonical roadmap:** `devpost/october-2026-execution-plan.md`; critic: `devpost/reviews/october-2026-plan-v2-review.md`. The full October 29 target remains **conditional on G0 staffed capacity and sponsor access**, not formally accepted as an unconditional promise.
+
+- **Verified current development release:** Render `mandategate-web` is LIVE at SHA `be75fecf9cf0bff1deaecabf450888424088a51b`; development branch `build/slice-3-invoice-intake`, PR #2 remains draft/unmerged; GitHub CI 47/47 files, 259 tests passed. `main` remains at completed Slice 2, not at the hosted source.
+- **Checklist:** Only Slices 1-2 checked. Slices 3-7 partially coded; 8-13 mostly planned. Green CI is not actual external provider, financial Gate H or sponsor proof.
+- **Synthetic privacy exception:** Approved fictional, SHA-allowlisted admin demo permits missing ZDR/no-training/capture-off; strict route does not. The current code still attempts optional metadata endpoint GETs and does not durably persist all preflight metadata: real Free-plan inference and receipt storage remain OPEN G1.
+- **One-shot/judge distinction:** Historic real Sandbox proof is separate from planned restricted, repeatable judge replay with no outbound Payouts POST. Judge mode is a **planned feature**, not a tested production capability.
+- **Gate H:** No current evidence of invoice-originated new Sandbox payout, exact webhook and negative-case hosted acceptance. Slice 2 historical payout is separate.
+- **Database:** Existing free Render PostgreSQL expires November 6; durable restore/upgrade through December 15 judging is unverified.
+- **Release:** Reviewed merge to `main`, immutable release tag, clean clone, deployment parity and public submission remain OPEN G7a/G8. Earlier sections are historical evidence, not the present-day release status.
+
+
 ## Slice 7: targeted SQL mutation and two-session cross-organization HTTP validation (2026-10-12 UTC)
 
 **Status:** bounded, CI-verified security tests at code commit `3783a9f9951a982220cc8f9f9533ecea7bbb765c`. Review: `devpost/reviews/slice-7-mutation-cross-org-http-review.md`. This is not a complete dashboard, independently reviewed security audit, or release gate.

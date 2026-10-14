@@ -16,6 +16,14 @@ The current release centers the demo on three paths:
 
 The security boundary is the product: AI may interpret, explain, and prepare actions, but deterministic MandateGate controls decide what is authorized and the payment executor alone can call PayPal.
 
+## October completion plan (conditional)
+
+The current execution baseline is [the revised October 14-29 plan](devpost/october-2026-execution-plan.md), with a [Critical Review](devpost/reviews/october-2026-plan-v2-review.md). The October 29 target is not an unconditional promise: staffing, sponsor access, the live GLM test, Gate H, independent financial review and the `main` release cutover have specific go/no-go gates.
+
+**Source/version note:** `main` still contains the completed Slice 2 baseline while the development demo on Render currently runs `build/slice-3-invoice-intake` at `be75fecf`; PR #2 is draft. Public submission must not occur until reviewed code is merged and a tagged `main` checkout matches the hosted release.
+
+**Judge test contract:** A separately approved one-shot PayPal Sandbox payout supplies authentic historical payment evidence. Repeatable judge replay must **not** create another payout or present the old receipt as new. Full support for the restricted judge mode is still planned.
+
 ## Release priorities
 
 P0, P1, and P2 are all targeted for the November hackathon submission. The tiers define build order and emergency cut priority, not product scope.

@@ -37,7 +37,7 @@ Build mode: fast
   Build: Add PostgreSQL `bytea` ArtifactStore, bounded file admission, SHA-256 integrity metadata, PDF.js text/page preparation, bounded rasterization, Experiential route preflight/ZDR enforcement, GLM structured JSON-schema extraction, Zod validation, field-level evidence/provenance, async analysis adapter, and explicit extraction-failure/escalation states.
   Verify (mechanical): Run the invoice fixture suite covering text PDF, scanned PDF, JPEG/PNG, malformed/truncated/password-protected/oversized documents, missing or ambiguous payment fields, destination substitution, prompt injection, invalid model schema output, unsupported model route, and artifact-hash/provenance consistency; with Experiential env configured, run one live normal-invoice extraction through a compliant route.
   Additional Flash-only gate: prove image inference always calls exactly `glm-5.3-flash` (never text-only `glm-5.3`), loads versioned skill prompts, fails before image transmission when ZDR/no-training/capture settings are noncompliant on the standard path, rejects mismatched serving-model/ZDR headers and ignored strict-schema parameters, records prompt/provider evidence, and never permits extraction alone to authorize a payout.
-  Synthetic non-ZDR demo exception: separate admin-only route, exact original SHA allowlist, explicit provider-retention consent, bound Render demo service and PayPal Sandbox, mandatory no-training and disabled prompt capture, observed ZDR=false proof, forced ESCALATE, and regression tests proving the normal path still refuses non-ZDR. This exception does NOT satisfy the normal live ZDR acceptance gate.
+  Synthetic non-ZDR demo exception: separate admin-only route, exact original SHA allowlist, explicit provider-retention consent, bound Render demo service and PayPal Sandbox, ZDR, provider no-training and prompt-capture-off optional only for approved synthetic demo fixtures, truthful policy and served-ZDR metadata (true/false/unknown) with provider access failures handled explicitly; strict observation remains fail-closed, forced ESCALATE, and regression tests proving the normal path still refuses non-ZDR. This exception does NOT satisfy the normal live ZDR acceptance gate.
   Authority-blocker repair plan: devpost/authority-boundary-plan.md, Gates A-H. These are mandatory acceptance subgates before checking Slice 3 or calling invoice-to-payment integrated; do not substitute a green LLM-mock suite for value-flow proof.
   Subgate A (CI verified; live cutover pending): separate invoice upload/analyze scopes from privileged payment:submit, migrate existing demo principal scopes, keep the existing direct Sandbox path green. CI 37811225079 and review devpost/reviews/slice-3a-gate-a-review.md; no actual Render key migration has been performed.
   Subgate B (CI schema/contracts verified, runtime verification pending): tenant-bound field-claim, origin-attestation and proposed payment-binding schemas with append-only lineage and immutable tuples. Evidence CI 37813228504 and review devpost/reviews/slice-3a-gate-b-review.md; statuses and digests alone do not authorize money movement.
@@ -155,6 +155,21 @@ Build mode: fast
   Verify (mechanical): Run the full AI evaluation gate over clean extraction, malformed docs, near duplicates, destination substitution, direct/indirect injection, poisoned history/notes, malicious tool output, retargeting, stale state, provenance loss, and authorization bypass; fail the slice if any model can fabricate surviving payment-critical facts, clear a deterministic block, retarget an action, bypass confirmation, or weaken the ZDR/no-training requirement.
   Learner check: Inspect one clean and one adversarial case side by side and confirm the UI/evidence makes model disagreement visible while the deterministic payment outcome remains unchanged unless caution increases.
   Commit: `bound ai routes`
+
+## October 2026 release-specific gates (revised plan)
+
+Canonical plan: `devpost/october-2026-execution-plan.md`. These acceptance gates are **not checked** by implementation CI alone.
+
+- [ ] G0: actual named A/B/C/D/Q/security reviewers and available hours confirmed; capability, license and cost matrix approved
+- [ ] G1: actual synthetic GLM-5.3 Flash inference; metadata true/false/unknown and serving proof durably linked to fixture; strict route still fail-closed
+- [ ] G2: separate authorized one-shot invoice-derived Sandbox proof, exact receiver/amount, webhook and idempotence
+- [ ] G3: standing-mandate ALLOW, causal ESCALATE, destination DENY and restricted safe judge replay performed twice on Render
+- [ ] G4/G5: policy/Assistant/scheduling and anchored-history proofs meet their slice contracts
+- [ ] G6: P2 external providers and complete integration candidate actually tested, or any deferral explicitly owner-approved
+- [ ] G7: independent money/security review, Oct 23 schema freeze, two candidate replays and clean-clone smoke
+- [ ] G7a: draft PR #2 reviewed and merged to `main`, release tagged, Render commit/tree parity and post-merge regression verified
+- [ ] G8: repository public with MIT/clean history, durable DB through December 15, accessible judge demo and public under-three-minute YouTube video
+- [ ] FINISH: Devpost submission confirmed by October 29, 2026, 6:00 PM PT
 
 ## Hands-on Checkpoints
 
