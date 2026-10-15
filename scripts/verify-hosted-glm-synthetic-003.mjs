@@ -43,11 +43,20 @@ async function run(){
   });
   check(disabled.status===503&&(await json(disabled)).error==="PAYMENT_INTEGRATIONS_DISABLED_FOR_PREVIEW",
     "PAYMENT_KILL_SWITCH_UNVERIFIED");
-  const login=await req("/api/auth/sign-in/email",{
-    method:"POST",headers:{origin:BASE,"content-type":"application/json"},
-    body:JSON.stringify({email:"admin@mandategate.local",password})
-  });
-  check(login.status===200,"DEMO_ADMIN_LOGIN_FAILED");
+  let login;
+  for(let attempt=1;attempt<=3;attempt++){
+    login=await req("/api/auth/sign-in/email",{
+      method:"POST",headers:{origin:BASE,"content-type":"application/json"},
+      body:JSON.stringify({email:"admin@mandategate.local",password})
+    });
+    if(login.status===200)break;
+    // Retry only infrastructure transition failures, never invalid credentials,
+    // rate limiting or security refusals.
+    if(![502,503,504].includes(login.status)||attempt===3)
+      throw Error("DEMO_ADMIN_LOGIN_HTTP_"+login.status);
+    await new Promise(resolve=>setTimeout(resolve,12000));
+  }
+  check(login?.status===200,"DEMO_ADMIN_LOGIN_FAILED");
   const cookie=login.headers.get("set-cookie")?.split(";")[0];
   check(cookie?.includes("="),"DEMO_ADMIN_COOKIE_MISSING");
   const invoice=makeSyntheticPdf();
