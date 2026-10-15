@@ -17,6 +17,13 @@ test('legacy mode preserves the existing command path', () => {
 test('direct Neon legacy startup is refused', () => {
   assert.throws(() => runtimeProfile({ DATABASE_URL: neon }), /NEON_REQUIRES_EXPLICIT_PREVIEW_MODE/);
 });
+test('verified Neon pooled endpoint is allowed and other poolers rejected', () => {
+  const pooled=neon.replace(NEON_HOST, NEON_HOST.replace('arjowm4d.', 'arjowm4d-pooler.'));
+  const chosen=runtimeProfile({...env, NEON_PREVIEW_DATABASE_URL:pooled});
+  assert.equal(chosen.childEnv.DATABASE_URL, pooled);
+  assert.throws(()=>runtimeProfile({...env, NEON_PREVIEW_DATABASE_URL:pooled.replace('arjowm4d-pooler.','evil-pooler.')}), /RUNTIME_NEON_TARGET_MISMATCH/);
+});
+
 test('Neon selection preserves original input and omits credentials from child', () => {
   const input = Object.freeze({ ...env, PAYPAL_CLIENT_SECRET: 'fake-private', EXPLABS_API_KEY: 'fake-llm',
     DEMO_AGENT_API_KEY: 'fake-agent', RUN_SLICE2_SANDBOX_PROOF: '1', RUN_DEMO_CREDENTIAL_ROTATION: '1',
