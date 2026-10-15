@@ -47,6 +47,9 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
       /^[A-Z][A-Z0-9_]{0,119}$/.test(s)).slice(0, 24)
     : [];
   const parsed = invoiceExtractionSchema.safeParse(data.extraction);
+  // Valid-shaped fields alone do not establish a completed observation.
+  const hasCompletedObservation = data.state === "ESCALATE" || data.state === "EXTRACTED_UNTRUSTED";
+  const hasNoRecordedError = data.error_code === null || data.error_code === undefined || data.error_code === "";
   const state = stringOr(data.state, "UNKNOWN");
   const synthetic = codes.includes("SYNTHETIC_NON_ZDR_TEST_ONLY");
   const promptHash = shaOrNull(data.prompt_sha256);
@@ -72,7 +75,7 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
       {codes.filter(code => EXPLANATIONS[code]).map(code =>
         <p className="muted" key={code}><strong>{code}:</strong> {EXPLANATIONS[code]}</p>)}
     </div> : null}
-    {parsed.success ? <div className="risk-evidence-list">
+    {parsed.success && hasCompletedObservation && hasNoRecordedError ? <div className="risk-evidence-list">
       {DISPLAY_FIELDS.map(field => {
         const fact = parsed.data[field.key];
         return <article className="risk-evidence-card" key={field.key}>
@@ -91,7 +94,7 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
         </article>;
       })}
     </div> : <p className="muted" role="status">
-      No schema-accepted field observations are stored. Do not treat this as successful extraction.
+      No schema-accepted field observations are available for this saved outcome. Do not treat this as successful extraction.
     </p>}
     <details>
       <summary>Provider and source provenance</summary>
