@@ -13,6 +13,11 @@ const CLAIM_LEASE_MS = 60_000;
 export class ExecutionRejectedError extends Error {}
 
 function assertAuthorized(payment: AuthoritativePayment) {
+  // These three forever-fictional showcase requests never become payable,
+  // even if preview mode or the global payment kill switch is later disabled.
+  if (/^DEMO-(?:NORMAL|ANOMALY|SUBSTITUTION)-2026$/.test(payment.invoiceNumber)) {
+    throw new ExecutionRejectedError("SYNTHETIC_DEMO_NOT_PAYABLE");
+  }
   if (payment.decisionOutcome !== "ALLOW" && payment.decisionOutcome !== "APPROVED") {
     throw new ExecutionRejectedError("PAYMENT_NOT_AUTHORIZED");
   }
