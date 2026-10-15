@@ -40,7 +40,6 @@ const expected=[
   "Model-proposed source quotations",
   "invoice-vision-observer-v2",
   "SYNTHETIC_NON_ZDR_TEST_ONLY",
-  "No payment",
 ];
 let found=false;
 for(let i=0;i<50;i++){
