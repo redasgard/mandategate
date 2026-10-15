@@ -1,0 +1,50 @@
+name: Hosted GLM Synthetic Invoice V2
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-synthetic-002.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-glm-synthetic-fixture-002
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Verify exact never-before-used fictional PDF source
+        shell: bash
+        run: |
+          node --input-type=module -e "import {createHash} from 'node:crypto'; import {makeSyntheticPdf,EXPECTED_SHA256} from './scripts/glm-synthetic-receiver-002.mjs'; const b=makeSyntheticPdf(); if (EXPECTED_SHA256!=='9f620a1ccccf878448e0eb34e73f06770365e5778edfb1a04adb5aa21fa98c36'||createHash('sha256').update(b).digest('hex')!==EXPECTED_SHA256||!b.toString().includes('DEMO-GLM-RECEIVER-002'))process.exit(1); console.log('PASS immutable synthetic fixture');"
+      - name: Check hosted Neon health
+        shell: bash
+        run: |
+          for attempt in $(seq 1 5); do
+            code=$(curl -sS --max-time 45 -o /tmp/glm-health -w '%{http_code}' https://mandategate-web.onrender.com/api/health || true)
+            if [ "$code" = "200" ] && grep -q '"ready"' /tmp/glm-health; then
+              echo 'PASS hosted Neon health'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'BLOCK HOSTED_NEON_UNAVAILABLE'
+          exit 1
+      - name: One consented fictional GLM invoice observation
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-glm-synthetic-002.mjs
+      - name: Publish sanitized result
+        if: always()
+        shell: bash
+        run: |
+          if test -f out/glm-synthetic-observation.md; then
+            cat out/glm-synthetic-observation.md >> "$GITHUB_STEP_SUMMARY"
+          fi
