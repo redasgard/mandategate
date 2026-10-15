@@ -1,0 +1,25 @@
+name: Hosted Saved GLM Reviewer
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-review.yml]
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-hosted-glm-saved-review
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Confirm saved GLM evidence is visible to authorized reviewer
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-glm-review.mjs
