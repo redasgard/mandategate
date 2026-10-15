@@ -61,6 +61,7 @@ async function stop(ctx, port) {
   assert(alive(ctx.child), 'PREVIEW_WAS_NOT_RUNNING');
   ctx.child.kill('SIGTERM');
   const exit = await within(ctx.closed, 12000, 'PREVIEW_SHUTDOWN_TIMEOUT');
+  if (exit.code !== 0) console.error('PREVIEW_EXIT_METADATA', JSON.stringify({ code: exit.code, signal: exit.signal }));
   assert.equal(exit.code, 0, 'PREVIEW_DID_NOT_STOP_CLEANLY');
   assert.equal(await portOpen(port), false, 'PREVIEW_PORT_REMAINED_OPEN');
   assert(ctx.pid, 'ACTUAL_SERVER_PID_NOT_RECORDED');
@@ -166,7 +167,7 @@ async function main() {
     const before = await databaseFingerprint(pool);
     console.log('PASS baseline fingerprint:', before.tables, 'tables; zero payment executions');
     const result = await exerciseRecovery({ cwd: process.cwd(),
-      launcher: resolve('scripts/neon-preview-start.ts'), execArgv: ['--import', 'tsx'],
+      launcher: resolve('scripts/neon-preview-start.ts'), execArgv: ['--experimental-strip-types'],
       port: 3109, env: { ...process.env, PORT: '3109', PREVIEW_HOST: '127.0.0.1',
         BETTER_AUTH_URL: 'http://127.0.0.1:3109', MANDATEGATE_DISABLE_PAYMENTS: '1' },
     });
