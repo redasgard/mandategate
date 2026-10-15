@@ -96,7 +96,7 @@ function acceptsExactFlashIdentity(value: unknown) {
 // Log model *identifiers* only for source-pinned synthetic diagnostics.
 // Never log any model response, invoice, prompt, provider credential or arbitrary header.
 function safeModelIdentifier(value: unknown): string {
-  if (value === null || value === undefined) return "[missing]";
+  if (value === null || value === undefined || value === "") return "[missing]";
   if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$/.test(value)) {
     return "[redacted]";
   }
