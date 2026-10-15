@@ -23,6 +23,9 @@ async function save(){
     "Source SHA-256: "+result.sourceSha256,
     "Inference attempted: "+String(result.inferenceAttempted),
     "Serving route verified: "+String(result.providerServedInferenceProven),
+    "Schema valid: "+String(result.schemaValid===true),
+    "Field checks: "+JSON.stringify(result.fieldMatches??{}),
+    "Schema diagnostics: "+(result.schemaDiagnostics?.join(",")??"none"),
     "Payments disabled and zero transfer requested.",
     "Fictional invoice only; non-ZDR retention risk acknowledged.",
     "This does not establish real issuer authorization or ZDR compliance.",""
