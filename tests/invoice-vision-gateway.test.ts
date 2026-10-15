@@ -59,6 +59,8 @@ function mockGateway(config: {
   requireNoTraining?: boolean;
   modelOnRoute?: boolean;
   servedResponse?: Response;
+  catalogModelId?: string;
+  catalogSlug?: string;
 } = {}) {
   const calls: { url: string; init: RequestInit }[] = [];
   const fakeFetch: typeof fetch = async (url: any, init: any = {}) => {
@@ -83,6 +85,11 @@ function mockGateway(config: {
         uncensored: false,
         data_policy: { zdr_on_request: config.modelZdr ?? true },
       }] });
+    }
+    if (address.endsWith("/api/models/glm-5.3-flash/providers")) {
+      const modelId = config.catalogModelId ?? "13da8560-5463-4fca-af64-6021144772d5";
+      return json({ slug: config.catalogSlug ?? "glm-5.3-flash", model_id: modelId,
+        providers: [{ model_id: modelId, provider_model_id: "glm-5.3-flash" }] });
     }
     if (address.endsWith("/v1/chat/completions")) {
       return config.servedResponse ?? successResponse();
@@ -334,6 +341,58 @@ describe("GLM-5.3 Flash image gateway", () => {
       expect(evidence.canonicalMatches).toBe(false);
       expect(evidence.responseMatches).toBe(true);
     } finally { spy.mockRestore(); }
+  });
+
+  it("accepts only an opaque exact model ID independently bound to the target's catalog", async () => {
+    const servedResponse = successResponse({
+      "x-gateway-canonical-model": "exact-13da8560-5463-4fca-af64-6021144772d5",
+      "x-gateway-alias": "glm-5.3-flash",
+    });
+    const { gateway, calls } = mockGateway({ servedResponse });
+    const observed = await gateway.observeImage(request);
+    expect(observed.routeProof.model).toBe("glm-5.3-flash");
+    expect(calls.filter(c => c.url.endsWith("/api/models/glm-5.3-flash/providers"))).toHaveLength(1);
+    expect(calls.filter(c => c.url.endsWith("/v1/chat/completions"))).toHaveLength(1);
+  });
+
+  it("rejects a lookalike exact route ID not bound to the model catalog", async () => {
+    const { gateway } = mockGateway({
+      servedResponse: successResponse({
+        "x-gateway-canonical-model": "exact-00000000-0000-4000-8000-000000000000",
+        "x-gateway-alias": "glm-5.3-flash",
+      }),
+    });
+    await expect(gateway.observeImage(request)).rejects.toMatchObject({
+      code: "EXPERIENTIAL_MODEL_MISMATCH",
+    });
+  });
+
+  it("rejects an opaque GLM exact route with a different gateway alias", async () => {
+    const { gateway, calls } = mockGateway({
+      servedResponse: successResponse({
+        "x-gateway-canonical-model": "exact-13da8560-5463-4fca-af64-6021144772d5",
+        "x-gateway-alias": "glm-5.3",
+      }),
+    });
+    await expect(gateway.observeImage(request)).rejects.toMatchObject({
+      code: "EXPERIENTIAL_MODEL_MISMATCH",
+    });
+    expect(calls.some(c => c.url.endsWith("/api/models/glm-5.3-flash/providers"))).toBe(false);
+  });
+
+  it("rejects an opaque route when catalog slug or UUID binding drifts", async () => {
+    for (const config of [
+      { catalogModelId: "ffffffff-ffff-4fff-8fff-ffffffffffff" },
+      { catalogSlug: "glm-5.3" },
+    ]) {
+      const { gateway } = mockGateway({ ...config, servedResponse: successResponse({
+        "x-gateway-canonical-model": "exact-13da8560-5463-4fca-af64-6021144772d5",
+        "x-gateway-alias": "glm-5.3-flash",
+      }) });
+      await expect(gateway.observeImage(request)).rejects.toMatchObject({
+        code: "EXPERIENTIAL_MODEL_MISMATCH",
+      });
+    }
   });
 
   it("rejects regular text-only GLM-5.3 even if a router returns its result", async () => {
