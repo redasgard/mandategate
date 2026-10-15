@@ -7,6 +7,7 @@ import { loadStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
+import { PersistedInvoiceObservation } from "./persisted-observation";
 import { isSyntheticNonZdrSourceAllowlisted, syntheticNonZdrTestEnvironmentEnabled } from "@/src/ai/gateway/non-zdr-test-policy";
 
 export default async function InvoiceArtifactReviewPage({
@@ -18,6 +19,14 @@ export default async function InvoiceArtifactReviewPage({
   if(!/^[a-f0-9-]{36}$/i.test(id))notFound();
   const artifact=await loadInvoiceArtifactForHumanReview(session.user.id,id);
   if(!artifact)notFound();
+  // This query remains tenant-bound only after the signed-in admin artifact lookup.
+  const savedObservation = await pool.query([
+    "select state, error_code, extraction, reason_codes, model,",
+    "provider_name, gateway_request_id, gateway_zdr, prompt_version,",
+    "prompt_sha256, input_sha256, rendered_input_sha256",
+    "from invoice_image_observations where organization_id=$1 and artifact_id=$2 limit 1",
+  ].join(" "), [artifact.organizationId,id]);
+  const observation = savedObservation.rows[0] ?? null;
   const syntheticTestEnvironmentEnabled = syntheticNonZdrTestEnvironmentEnabled();
   const syntheticTestAllowlisted = isSyntheticNonZdrSourceAllowlisted(artifact.sha256);
   if(artifact.mimeType!=="application/pdf") {
@@ -38,6 +47,7 @@ export default async function InvoiceArtifactReviewPage({
         <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
           syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
           syntheticTestAllowlisted={syntheticTestAllowlisted}/>
+        <PersistedInvoiceObservation record={observation}/>
       </section>
     </main>;
   }
@@ -98,6 +108,7 @@ export default async function InvoiceArtifactReviewPage({
       <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
           syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
           syntheticTestAllowlisted={syntheticTestAllowlisted}/>
+        <PersistedInvoiceObservation record={observation}/>
       <InvoiceArtifactReview
         artifactId={id} artifactSha256={artifact.sha256}
         initialPages={pages?.pages ?? []}
