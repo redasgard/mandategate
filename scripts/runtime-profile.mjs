@@ -29,7 +29,7 @@ export function runtimeProfile(env) {
   const value = mode === 'neon-preview' ? env.NEON_PREVIEW_DATABASE_URL : env.DATABASE_URL;
   const url = parseDatabase(value);
   if (mode === 'neon-preview') {
-    if (url.hostname !== NEON_HOST || url.pathname !== '/neondb') throw Error('RUNTIME_NEON_TARGET_MISMATCH');
+    if (![NEON_HOST, NEON_HOST.replace('arjowm4d.', 'arjowm4d-pooler.')].includes(url.hostname) || url.pathname !== '/neondb') throw Error('RUNTIME_NEON_TARGET_MISMATCH');
     if (!['require', 'verify-full', 'verify-ca'].includes(url.searchParams.get('sslmode'))) {
       throw Error('RUNTIME_NEON_TLS_REQUIRED');
     }
