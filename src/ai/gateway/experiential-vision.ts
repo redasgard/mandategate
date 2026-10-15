@@ -272,8 +272,23 @@ export class ExperientialInvoiceVisionGateway {
       refused("EXPERIENTIAL_SERVING_ROUTE_NOT_ZDR");
     }
     const canonical = response.headers.get("x-gateway-canonical-model");
-    const canonicalMatches = acceptsExactFlashIdentity(canonical);
+    let canonicalMatches = acceptsExactFlashIdentity(canonical);
     const responseMatches = acceptsExactFlashIdentity(body?.model);
+    // Experiential's catalog uses an opaque exact-<model_id> serving identity
+    // for this slug. Bind it to the live public model catalog before accepting.
+    // A lookalike UUID, missing alias, different body model or catalog drift
+    // always remains a hard refusal; never allow arbitrary exact-* names.
+    if (!canonicalMatches && responseMatches &&
+        typeof canonical === "string" &&
+        /^exact-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(canonical) &&
+        response.headers.get("x-gateway-alias") === INVOICE_VISION_MODEL) {
+      const catalog = await this.getJson("/api/models/" + INVOICE_VISION_MODEL + "/providers");
+      const id = canonical.slice("exact-".length);
+      canonicalMatches = catalog?.slug === INVOICE_VISION_MODEL &&
+        catalog?.model_id === id &&
+        Array.isArray(catalog?.providers) && catalog.providers.length > 0 &&
+        catalog.providers.every((entry: any) => entry?.model_id === id);
+    }
     if (!canonicalMatches || !responseMatches) {
       if (syntheticTest) {
         // Restricted, model-identity-only metadata. A missing proof remains a hard failure.
