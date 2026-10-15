@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-export const INVOICE_PROMPT_VERSION = "invoice-vision-observer-v1";
+export const INVOICE_PROMPT_VERSION = "invoice-vision-observer-v2";
 
 function skillBody(text: string): string {
   const frontmatter = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
