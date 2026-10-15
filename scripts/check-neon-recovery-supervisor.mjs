@@ -22,7 +22,7 @@ test('supervisor denies unsafe env and proves distinct stopped servers', async (
         if(req.url==='/api/health')res.end(JSON.stringify({ok:true,database:'ready'}));
         else {res.statusCode=503;res.end(JSON.stringify({error:'PAYMENT_INTEGRATIONS_DISABLED_FOR_PREVIEW'}));}
       }).listen(port,'127.0.0.1');
-      process.on('SIGTERM',()=>{server.close(()=>process.exit(0));server.closeAllConnections();});
+      process.on('SIGTERM',()=>{server.close(()=>process.exit(Number(process.env.STUB_EXIT_CODE ?? 143)));server.closeAllConnections();});
     `);
     const env = { PATH: process.env.PATH, MANDATEGATE_DISABLE_PAYMENTS:'1',
       DATABASE_URL:'postgresql://fake:fake@fixture.neon.tech/neondb',
@@ -33,6 +33,10 @@ test('supervisor denies unsafe env and proves distinct stopped servers', async (
     const r = await exerciseRecovery(options);
     assert.equal(r.startupDenials.length,3);
     assert.equal(r.cycles.length,2);
+    assert.equal(await portOpen(31979),false);
+    await assert.rejects(exerciseRecovery({ ...options,
+      env: { ...env, STUB_EXIT_CODE: '1' },
+    }), /PREVIEW_DID_NOT_STOP_CLEANLY/);
     assert.equal(await portOpen(31979),false);
     const occupied = createServer().listen(31979,'127.0.0.1');
     await new Promise((resolveReady)=>occupied.once('listening',resolveReady));
