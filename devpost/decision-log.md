@@ -59,3 +59,12 @@
 - **Review:** `devpost/gates/neon-recovery-stage-review.md`, CONTINUE for this bounded stage, 8.9/10, self-review with deterministic and external CI evidence.
 - **Next stage started:** Draft PR #4, repair/neon-isolated-preview -> build/slice-3-invoice-intake. No merge: that destination auto-deploys on Render. Hosted startup/credential binding and host-specific backout remain pending; no database switch or provider call occurred.
 - **Rejected alternatives:** Treating a green shell loop as proof of process termination, treating all nonzero exits as success, leaking database credentials, creating another paid staging environment, and calling an ephemeral restart a proven Render rollback.
+
+## 2026-10-14 - Resume product implementation independently of Neon cutover
+
+- **Decision:** Continue the approved MandateGate product checklist now. Fresh Neon is initialized, seeded and tested. Its live Render cutover is **deferred as a separate infrastructure gate**, not a prerequisite for dependency-independent Slice 3/4 work.
+- **Why:** Repeated migration and recovery preparations delayed judge-visible product functionality. The existing Render PostgreSQL development environment remains available; its historical records must not be silently copied or erased.
+- **Implementation restarted:** Draft PR #5, `build/slice-4-risk-explanations`, adds source-aware payment decision explanations for imported AP replay/near-duplicates/outliers, vendor/policy limits and destination mismatch, with intact SHA provenance and raw evidence disclosure. UI-only, no payment authority changes. CI remains a separate verification step.
+- **Next product gates:** (1) complete truthful risk investigation / decline path and synthetic scenario replay; (2) finish the approved invoice extraction + GLM privacy/evidence gate; (3) deliver the three clear P0 demo outcomes without any new payout unless the user separately authorizes that exact Sandbox operation.
+- **Neon status:** PR #4 remains draft; the hosted URL/database switch and hosted rollback are unverified. No new paid resources or migrations are required to work on the product branch.
+- **Rejected:** Further serial infrastructure gating that prevents approved product work, direct unreviewed database URL replacement, and claims that synthetic fixtures prove real issuer authentication.
