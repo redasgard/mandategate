@@ -1,3 +1,4 @@
+import './check-invoice-ai-env.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -37,6 +38,13 @@ test('Neon selection preserves original input and omits credentials from child',
     'RUN_DEMO_CREDENTIAL_ROTATION','NODE_OPTIONS','PGHOST','PGOPTIONS','NEON_PREVIEW_DATABASE_URL','GITHUB_TOKEN']) {
     assert.equal(p.childEnv[key], undefined, key);
   }
+});
+test('AI opt-in composes with payment isolation in actual runtime profile',()=>{
+  const result=runtimeProfile({...env,RENDER_SERVICE_ID:'srv-db39vmm7bikc73c55nh0',
+    MANDATEGATE_ENABLE_INVOICE_AI:'1',EXPLABS_API_KEY:'synthetic-key',PAYPAL_CLIENT_SECRET:'forbidden'});
+  assert.equal(result.childEnv.EXPLABS_API_KEY,'synthetic-key');
+  assert.equal(result.childEnv.PAYPAL_CLIENT_SECRET,undefined);
+  assert.equal(result.childEnv.MANDATEGATE_DISABLE_PAYMENTS,'1');
 });
 test('backout selection uses preserved original target without seeding or payments', () => {
   const p = runtimeProfile({ ...env, MANDATEGATE_RUNTIME_MODE: 'render-preview' });

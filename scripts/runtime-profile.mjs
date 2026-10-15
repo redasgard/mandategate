@@ -1,4 +1,5 @@
 /** A reversible, payment-disabled runtime selection. Never edits process.env. */
+import { invoiceAiEnvironment } from './invoice-ai-env.mjs';
 export const NEON_HOST = 'ep-silent-poetry-arjowm4d.c-4.us-west-2.aws.neon.tech';
 export const RENDER_HOST = 'dpg-db39d5rbc2fs73d1ke70-a';
 const modes = new Set(['legacy', 'neon-preview', 'render-preview']);
@@ -54,7 +55,8 @@ export function runtimeProfile(env) {
   Object.assign(childEnv, { DATABASE_URL: value, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: auth.origin, PORT: port, PREVIEW_HOST: host,
     MANDATEGATE_DISABLE_PAYMENTS: '1', MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
-  // Deliberately omit all provider keys, demo/rotation flags, NODE_OPTIONS,
-  // the alternate connection string, and the source connection during Neon mode.
+  Object.assign(childEnv, invoiceAiEnvironment(env, mode));
+  // Invoice AI is separately opt-in. Payment keys, rotation/proof flags,
+  // NODE_OPTIONS, and the alternate database connection never reach the server.
   return { mode, isolated: true, childEnv };
 }
