@@ -42,6 +42,8 @@ describe("saved GLM observation source review",()=>{
       "Model-proposed source quotations","Quote evidence is unverified",
     ])expect(html).toContain(literal);
     expect(html).toContain("Provider retention may apply");
+    expect(html).toContain("Synthetic exception: ZDR metadata is not compliance proof");
+    expect(html).not.toContain("Gateway ZDR receipt");
     expect(html).not.toContain("Accept and execute");
     expect(html).toContain("independent PDF source");
   });

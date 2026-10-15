@@ -103,8 +103,11 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
         {promptHash ? <div><dt>Prompt SHA-256</dt><dd className="mono">{promptHash}</dd></div> : null}
         {inputHash ? <div><dt>Model input SHA-256</dt><dd className="mono">{inputHash}</dd></div> : null}
         {imageHash ? <div><dt>Rendered PDF PNG SHA-256</dt><dd className="mono">{imageHash}</dd></div> : null}
-        <div><dt>Gateway ZDR receipt</dt><dd>{data.gateway_zdr === true ? "True" :
-          data.gateway_zdr === false ? "False" : "Unverified"}</dd></div>
+        <div><dt>Gateway ZDR metadata</dt><dd>{synthetic
+          ? "Synthetic exception: ZDR metadata is not compliance proof"
+          : data.gateway_zdr === true
+            ? "Provider reported true; account-level policy verification is separate"
+            : data.gateway_zdr === false ? "Provider reported false" : "Unverified"}</dd></div>
       </dl>
     </details>
   </section>;
