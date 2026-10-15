@@ -8,7 +8,7 @@ import { analyzeStoredInvoiceImage, InvoiceImageAnalysisError } from "@/src/invo
 import { InvoiceVisionGatewayError } from "@/src/ai/gateway/experiential-vision";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 150;
 
 const MAX_BODY_BYTES = 1024;
 const consentSchema = z.object({

@@ -7,7 +7,7 @@ import {
 import { InvoiceVisionGatewayError } from "@/src/ai/gateway/experiential-vision";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 150;
 
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
   if(!isTrustedMutationOrigin(request))

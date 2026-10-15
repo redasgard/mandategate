@@ -7,7 +7,7 @@ import { isSyntheticNonZdrSourceAllowlisted } from "./non-zdr-test-policy";
 export const INVOICE_VISION_MODEL = "glm-5.3-flash" as const;
 export const EXPERIENTIAL_VISION_ORIGIN = "https://api.experientiallabs.ai";
 const PREFLIGHT_TIMEOUT_MS = 8_000;
-const INFERENCE_TIMEOUT_MS = 40_000;
+const INFERENCE_TIMEOUT_MS = 90_000;
 const MAX_GATEWAY_RESPONSE_BYTES = 512 * 1024;
 
 export class InvoiceVisionGatewayError extends Error {
