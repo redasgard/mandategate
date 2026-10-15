@@ -1,0 +1,42 @@
+name: Neon Read-Only Security Verify
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/neon-readonly-security.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://localhost:3000
+      DEMO_ADMIN_EMAIL: admin@mandategate.local
+      DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+      DEMO_AGENT_API_KEY: ${{ secrets.NEON_DEMO_INVOICE_API_KEY }}
+      DEMO_PAYMENT_AGENT_API_KEY: ${{ secrets.NEON_DEMO_PAYMENT_API_KEY }}
+    steps:
+      - name: Verify isolated database target
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL"
+          case "$DATABASE_URL" in *neon.tech*) ;; *) echo "Refusing non-Neon database"; exit 1 ;; esac
+      - uses: actions/checkout@v4
+        with:
+          ref: build/slice-3-invoice-intake
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check sign-in and least privilege without payments
+        run: pnpm exec tsx scripts/verify-neon-auth-scopes.ts
