@@ -48,7 +48,7 @@ jobs:
           done
           echo 'BLOCK SYNTHETIC_EXCEPTION_NOT_DEPLOYED'
           exit 1
-      - name: Submit one byte-bound fictional GLM test
+      - name: Final catalog-bound synthetic GLM inference (third attempt cap)
         env:
           DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
           MANDATEGATE_GLM_MISMATCH_DIAGNOSTIC_RETRY: '1'
