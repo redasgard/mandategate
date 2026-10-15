@@ -50,3 +50,12 @@
 - **Release and dependencies:** Freeze authority/schema by October 23; require independent financial diff review and two hosted scenario replays; complete reviewed draft PR #2 → `main` → tag → clean clone → Render parity before making source public. Current Render dev SHA `be75fecf` does not equal current `main`.
 - **Infrastructure:** The free PostgreSQL instance expires November 6; obtain approved durable storage and tested restore by October 21 so judges can test through December 15.
 - **Status:** Documentation repair branch is not product Gate H approval. Actual owner hours, model-serving proof, invoice-derived payout, repeatable judge mode, P1/P2 and submission remain unverified. Review artifact: `devpost/reviews/october-2026-plan-v2-review.md`.
+
+## 2026-10-14 - Close isolated Neon recovery stage
+
+- **Decision:** Advance to controlled deployment preparation after verified restart recovery. Preserve the approved autonomous-AI and fresh-Neon direction; do not require four human developers or reintroduce a full Render-data migration.
+- **Evidence:** Source `7e7d743c9f36d2926a8a103d4c1a58a4c1ce9c89`; full CI `38686498331` and recovery run `38686522495` both SUCCESS. Two distinct real Next server processes were stopped and replaced; ports closed; all 32 public-table row fingerprints unchanged; zero payment executions before and after.
+- **Repairs:** Replace the weak shell restart loop with actual process/port checks; handle Next.js 16.3.8's intentional signal exit 143 correctly; retain tests rejecting real shutdown errors; pin code and expose real secrets only in the bounded runtime test step.
+- **Review:** `devpost/gates/neon-recovery-stage-review.md`, CONTINUE for this bounded stage, 8.9/10, self-review with deterministic and external CI evidence.
+- **Next stage started:** Draft PR #4, repair/neon-isolated-preview -> build/slice-3-invoice-intake. No merge: that destination auto-deploys on Render. Hosted startup/credential binding and host-specific backout remain pending; no database switch or provider call occurred.
+- **Rejected alternatives:** Treating a green shell loop as proof of process termination, treating all nonzero exits as success, leaking database credentials, creating another paid staging environment, and calling an ephemeral restart a proven Render rollback.
