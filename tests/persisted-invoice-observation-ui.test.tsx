@@ -63,4 +63,46 @@ describe("saved GLM observation source review",()=>{
     expect(html).not.toContain("<img src=x");
     expect(render(null)).toBe("");
   });
+
+  it.each(["FAILED", "PENDING", "PROCESSING", "UNKNOWN", "ALLOW", "DENY", "", null, undefined])(
+    "withholds valid-shaped stale fields for unsupported observation state %s",
+    (state) => {
+      const html=render({...record,state});
+      expect(html).not.toContain("Northstar Components");
+      expect(html).not.toContain("fictional-payee@synthetic.invalid");
+      expect(html).not.toContain("Model confidence:");
+      expect(html).not.toContain("Model-proposed source quotations");
+      expect(html).toContain("Do not treat this as successful extraction");
+      expect(html).toContain("request-fixture");
+    },
+  );
+
+  it.each(["EXTRACTION_INVALID", "PROVIDER_FAILED", " ", 123, {unexpected:true}])(
+    "withholds valid-shaped fields when an error is present or malformed: %j",
+    (error_code) => {
+      const html=render({...record,error_code});
+      expect(html).not.toContain("Northstar Components");
+      expect(html).not.toContain("Model confidence:");
+      expect(html).toContain("Do not treat this as successful extraction");
+    },
+  );
+
+  it.each(["ESCALATE", "EXTRACTED_UNTRUSTED"])(
+    "keeps a completed advisory observation visible without granting authority: %s",
+    (state) => {
+      for(const error_code of [null,undefined,""]) {
+        const html=render({...record,state,error_code});
+        expect(html).toContain("Northstar Components");
+        expect(html).toContain("Quote evidence is unverified");
+        expect(html).not.toContain("Accept and execute");
+      }
+    },
+  );
+
+  it("never upgrades a synthetic exception when gateway metadata reports ZDR",()=>{
+    const html=render({...record,gateway_zdr:true});
+    expect(html).toContain("Synthetic exception: ZDR metadata is not compliance proof");
+    expect(html).not.toContain("Provider reported true; account-level policy verification is separate");
+  });
+
 });
