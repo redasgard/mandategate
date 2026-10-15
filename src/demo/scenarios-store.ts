@@ -53,11 +53,12 @@ export async function createDemoScenarios(adminUserId:string) {
     [DEMO_ORG_ID,demoKeys]);
   if(prior.rows.some(r=>r.source!=="demo_fixture"))
     fail("DEMO_IDEMPOTENCY_OWNED_BY_OTHER_SOURCE");
+  const allExisting=prior.rows.length===DEMO_CASES.length;
 
   // Historical AP import changes deterministic risk outcomes. Never pretend the
   // fixed three-case demonstration is truthful if this fixture has been modified.
   const history=await pool.query("select count(*)::int as n from ap_imports where organization_id=$1",[DEMO_ORG_ID]);
-  if(history.rows[0].n!==0)fail("DEMO_HISTORY_NOT_EMPTY");
+  if(history.rows[0].n!==0 && !allExisting)fail("DEMO_HISTORY_NOT_EMPTY");
   const vendor=await pool.query([
     "select d.destination from vendor_destinations d",
     "join vendors v on v.id=d.vendor_id",
@@ -66,8 +67,20 @@ export async function createDemoScenarios(adminUserId:string) {
   ].join(" "),[DEMO_VENDOR_ID,DEMO_ORG_ID]);
   if(vendor.rows.length!==1||vendor.rows[0].destination!==DEMO_TRUSTED_DESTINATION)
     fail("DEMO_TRUSTED_RECEIVER_CHANGED");
+  const limits=await pool.query([
+    "select v.normal_max_amount_cents,p.auto_pay_max_amount_cents",
+    "from vendors v",
+    "join lateral (select auto_pay_max_amount_cents from policies",
+    "  where organization_id=v.organization_id and active=true",
+    "  order by created_at desc,id desc limit 1) p on true",
+    "where v.id=$1 and v.organization_id=$2",
+  ].join(" "),[DEMO_VENDOR_ID,DEMO_ORG_ID]);
+  if(limits.rows.length!==1||Number(limits.rows[0].normal_max_amount_cents)!==250000||
+     Number(limits.rows[0].auto_pay_max_amount_cents)!==300000)
+    fail("DEMO_POLICY_CHANGED");
   const existingExecutions=await pool.query("select count(*)::int as n from payment_executions");
-  if(existingExecutions.rows[0].n!==0)fail("DEMO_REQUIRES_ZERO_EXECUTIONS");
+  if(existingExecutions.rows[0].n!==0 && !allExisting)
+    fail("DEMO_REQUIRES_ZERO_EXECUTIONS");
 
   for(const input of demoRequests(String(vendor.rows[0].destination))){
     const {expectedOutcome,...submission}=input;
