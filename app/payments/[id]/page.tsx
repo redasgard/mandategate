@@ -6,6 +6,7 @@ import { getDecisionDetail } from "@/src/db/views";
 import { ExecutePaymentButton } from "./execute-button";
 import { EscalationReview } from "./escalation-review";
 import { getEscalationSnapshot } from "@/src/history/escalation-review";
+import { DecisionEvidencePanel } from "./decision-evidence";
 import { pool } from "@/src/db/pool";
 
 export default async function PaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -54,10 +55,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         {row.outcome === "ALLOW" || (row.outcome==="ESCALATE" && row.status==="APPROVED")
           ? <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />
           : null}
-        <h2>Reason codes</h2>
-        <div className="chips">{row.reasonCodes.map((reason) => <span key={reason}>{reason}</span>)}</div>
-        <h2>Evidence</h2>
-        <pre>{JSON.stringify(row.evidence, null, 2)}</pre>
+        <DecisionEvidencePanel evidence={row.evidence} reasonCodes={row.reasonCodes} currency={row.currency}/>
       </section>
     </main>
   );
