@@ -32,6 +32,7 @@ test('Neon selection preserves original input and omits credentials from child',
   assert.equal(p.childEnv.DATABASE_URL, neon);
   assert.equal(input.DATABASE_URL, original);
   assert.equal(p.childEnv.MANDATEGATE_DISABLE_PAYMENTS, '1');
+  assert.equal(p.childEnv.MANDATEGATE_RUNTIME_MODE,'neon-preview');
   for (const key of ['PAYPAL_CLIENT_SECRET','EXPLABS_API_KEY','DEMO_AGENT_API_KEY','RUN_SLICE2_SANDBOX_PROOF',
     'RUN_DEMO_CREDENTIAL_ROTATION','NODE_OPTIONS','PGHOST','PGOPTIONS','NEON_PREVIEW_DATABASE_URL','GITHUB_TOKEN']) {
     assert.equal(p.childEnv[key], undefined, key);
