@@ -158,11 +158,18 @@ describe("tenant-scoped GLM invoice image observation", () => {
     });
     expect(postCount).toBe(1);
   });
-  it("reclaims a stale PENDING job once, preserving one observation", async () => {
+  it("reclaims only beyond the 180-second PENDING lease, preserving one observation", async () => {
     const staleId = extraArtifacts[recovered];
     await pool.query(
       "update invoice_artifacts set analysis_status = 'PENDING', analysis_claim_id = $2, analysis_claimed_at = now() - interval '2 minutes', analysis_attempts = 1 where id = $1",
       [staleId, "crashed-worker"],
+    );
+    await expect(analyzeStoredInvoiceImage(recovered, staleId, mockedGateway())).rejects.toMatchObject({
+      code: "ARTIFACT_ANALYSIS_NOT_CLAIMABLE",
+    });
+    await pool.query(
+      "update invoice_artifacts set analysis_claimed_at = now() - interval '4 minutes' where id = $1",
+      [staleId],
     );
     const result = await analyzeStoredInvoiceImage(recovered, staleId, mockedGateway());
     expect(result.status).toBe("ESCALATE");
