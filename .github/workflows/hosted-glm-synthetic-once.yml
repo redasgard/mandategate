@@ -1,0 +1,48 @@
+name: Hosted GLM Synthetic Invoice
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-synthetic-once.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-glm-synthetic-one-fixture
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Wait for Render configuration rollout
+        run: sleep 50
+      - name: Confirm healthy hosted Neon service
+        shell: bash
+        run: |
+          for attempt in $(seq 1 5); do
+            code=$(curl -sS --max-time 45 -o /tmp/mandategate-health -w '%{http_code}' https://mandategate-web.onrender.com/api/health || true)
+            if [ "$code" = "200" ] && grep -q '"ready"' /tmp/mandategate-health; then
+              echo 'PASS hosted Neon health'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'BLOCK HOSTED_NEON_UNAVAILABLE'
+          exit 1
+      - name: Submit one byte-bound fictional GLM test
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-glm-synthetic.mjs
+      - name: Publish sanitized outcome
+        if: always()
+        shell: bash
+        run: |
+          if test -f out/glm-synthetic-observation.md; then
+            cat out/glm-synthetic-observation.md >> "$GITHUB_STEP_SUMMARY"
+          fi
