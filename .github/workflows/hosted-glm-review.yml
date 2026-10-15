@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.21.0
-      - name: Confirm saved GLM evidence is visible to authorized reviewer
+      - name: Confirm saved GLM evidence and synthetic privacy caveat
         env:
           DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
         run: node scripts/verify-hosted-glm-review.mjs
