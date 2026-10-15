@@ -12,23 +12,25 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
-      EXPECTED_SOURCE_SHA: 113ed365797f112836a250eccaddd9b1ac88e00d
+      EXPECTED_SOURCE_SHA: 66f1a22a2f70078ca17a1da5e7ff6a502fcfee31
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 113ed365797f112836a250eccaddd9b1ac88e00d
+          ref: 66f1a22a2f70078ca17a1da5e7ff6a502fcfee31
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.21.0
       - name: Confirm exact hosted candidate source
-        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          grep -q 'export const dynamic="force-dynamic"' app/demo/page.tsx
       - name: Wait for hosted demo route from reviewed merge
         shell: bash
         run: |
-          for i in $(seq 1 60); do
+          for i in $(seq 1 180); do
             code=$(curl -sS --max-time 10 -o /dev/null -w '%{http_code}' https://mandategate-web.onrender.com/demo || true)
             if [ "$code" = "307" ] || [ "$code" = "302" ]; then exit 0; fi
             sleep 5
