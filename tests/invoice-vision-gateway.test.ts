@@ -287,6 +287,55 @@ describe("GLM-5.3 Flash image gateway", () => {
     }
   });
 
+  it("records only safe served model identifiers for a source-pinned synthetic mismatch", async () => {
+    allowExactSyntheticImage();
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { gateway } = mockGateway({
+        servedResponse: successResponse({
+          "x-gateway-canonical-model": "zai/glm-5.3",
+          "x-gateway-alias": "glm-5.3-flash",
+        }, "glm-5.3"),
+      });
+      await expect(gateway.observeImage({
+        ...request, syntheticNonZdrSourceSha256: sha256,
+      })).rejects.toMatchObject({ code: "EXPERIENTIAL_MODEL_MISMATCH" });
+      expect(spy).toHaveBeenCalledOnce();
+      expect(spy.mock.calls[0]?.[0]).toBe("GLM_SYNTHETIC_MODEL_IDENTITY");
+      const evidence = JSON.parse(String(spy.mock.calls[0]?.[1]));
+      expect(evidence).toEqual({
+        expected: "glm-5.3-flash", canonical: "zai/glm-5.3",
+        responseModel: "glm-5.3", gatewayAlias: "glm-5.3-flash",
+        canonicalMatches: false, responseMatches: false,
+      });
+      const logged = JSON.stringify(spy.mock.calls);
+      expect(logged).not.toContain("payer@example.com");
+      expect(logged).not.toContain("test-only-key");
+      expect(logged).not.toContain("Northstar");
+    } finally { spy.mockRestore(); }
+  });
+
+  it("distinguishes missing and unsafe synthetic identity values without accepting them", async () => {
+    allowExactSyntheticImage();
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { gateway } = mockGateway({
+        servedResponse: successResponse({
+          "x-gateway-canonical-model": "",
+          "x-gateway-alias": "malicious\\r\\nsecrets",
+        }, "glm-5.3-flash"),
+      });
+      await expect(gateway.observeImage({
+        ...request, syntheticNonZdrSourceSha256: sha256,
+      })).rejects.toMatchObject({ code: "EXPERIENTIAL_MODEL_MISMATCH" });
+      const evidence = JSON.parse(String(spy.mock.calls[0]?.[1]));
+      expect(evidence.canonical).toBe("[missing]");
+      expect(evidence.gatewayAlias).toBe("[redacted]");
+      expect(evidence.canonicalMatches).toBe(false);
+      expect(evidence.responseMatches).toBe(true);
+    } finally { spy.mockRestore(); }
+  });
+
   it("rejects regular text-only GLM-5.3 even if a router returns its result", async () => {
     const { gateway } = mockGateway({
       servedResponse: successResponse({}, "glm-5.3"),
