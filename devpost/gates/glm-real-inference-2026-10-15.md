@@ -35,3 +35,10 @@ If making another live synthetic call, generate a *new* immutable, visibly revie
 
 - On V4, `gateway_zdr=true` was stored even though the request used `SYNTHETIC_NON_ZDR_TEST_ONLY`. This single response header **does not** establish standard-account ZDR/no-training/prompt-capture compliance. Keep real invoices behind the strict metadata gate.
 - PR [#14](https://github.com/redasgard/mandategate/pull/14) merged at `e609ea637699c895e49a83b04c11f9bbae455c03`, explicitly labels synthetic gateway ZDR metadata as **not compliance proof**. CI [38799112721](https://github.com/redasgard/mandategate/actions/runs/38799112721) SUCCESS. The amended hosted reviewer check will confirm the exact label after Render rollout.
+
+### Hosted reviewer closeout
+
+- Render commit `e609ea637699c895e49a83b04c11f9bbae455c03` **LIVE**.
+- Authenticated host review gate [38799572327](https://github.com/redasgard/mandategate/actions/runs/38799572327) **SUCCESS**: saved GLM source fields and model quote provenance still visible after refresh, and the explicit `Synthetic exception: ZDR metadata is not compliance proof` label is present.
+- Render startup logs confirm `syntheticExceptionEnabled:false` at 20:11:18 UTC; no temporary synthetic source allowlist is active. Neon independently reports `payment_executions=0`, V4 artifact still `ESCALATED` after exactly one attempt.
+- Scope of verification is a fictional invoice in a payment-disabled demo. Normal-account ZDR, live independent issuer verification and invoice-to-PayPal execution remain incomplete.
