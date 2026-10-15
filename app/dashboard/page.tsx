@@ -18,6 +18,7 @@ function exactCents(cents: string, currency: string) {
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
+  const demoMode = process.env.MANDATEGATE_RUNTIME_MODE === "neon-preview" && process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
   const [rows, summary] = await Promise.all([
     listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
   ]);
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
         <div>
           <p className="eyebrow">MandateGate / authority console</p>
           <h1>The firewall between AI agents and your money.</h1>
-          <p className="muted"><Link href="/invoice-artifacts">Review source invoices</Link>
+          <p className="muted">{demoMode ? <><Link href="/demo">Three-case demo lab</Link>{" · "}</> : null}<Link href="/invoice-artifacts">Review source invoices</Link>
             {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
             {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
             {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
@@ -36,6 +37,12 @@ export default async function DashboardPage() {
         <div className="identity">{session.user.email}</div>
       </header>
 
+      {demoMode ? <section className="panel review-stage" aria-label="Demo preview status">
+        <p className="eyebrow">Synthetic preview / PayPal execution disabled</p>
+        <h2>See why an AI agent cannot authorize spending</h2>
+        <p className="muted">Replay three fictional invoice decisions. No payout or real vendor authorization is part of this preview.</p>
+        <p><Link href="/demo">Open the three-scenario demo →</Link></p>
+      </section> : null}
       <section className="metrics" aria-label="Current payment risk">
         <article className="metric danger"><span>AWAITING REVIEW</span><strong>{summary.pendingReview}</strong></article>
         <article className="metric blocked"><span>DENIED REQUESTS</span><strong>{summary.denied}</strong></article>

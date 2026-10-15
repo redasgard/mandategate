@@ -59,6 +59,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   catch{return Response.json({error:"INVALID_JSON"},{status:400});}
   const parsed=payloadSchema.safeParse(json);
   if(!parsed.success)return Response.json({error:"INVALID_REVIEW_ACTION"},{status:422});
+  if(process.env.MANDATEGATE_DISABLE_PAYMENTS==="1" && parsed.data.action==="ACCEPT")
+    return Response.json({error:"PAYMENTS_DISABLED_FOR_PREVIEW"},{status:503});
   let evidence:undefined|{mimeType:string;bytes:Buffer};
   if(parsed.data.evidenceBase64){
     if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(parsed.data.evidenceBase64))
