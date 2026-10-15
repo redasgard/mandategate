@@ -16,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EXPECTED_SOURCE_SHA: 7448ef6965468b22e93b885b26700343ca256bcc
+      EXPECTED_SOURCE_SHA: a6e2b0139987508b3412f9d39618f794cdd1fe4d
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 7448ef6965468b22e93b885b26700343ca256bcc
+          ref: a6e2b0139987508b3412f9d39618f794cdd1fe4d
           persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
