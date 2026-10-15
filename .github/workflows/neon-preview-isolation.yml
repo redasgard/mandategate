@@ -1,0 +1,75 @@
+name: Neon Preview Isolation Gate
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/neon-preview-isolation.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      MANDATEGATE_DISABLE_PAYMENTS: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check isolation configuration
+        run: |
+          test -n "$DATABASE_URL" && test -n "$BETTER_AUTH_SECRET"
+          case "$DATABASE_URL" in *neon.tech*) ;; *) exit 1 ;; esac
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/neon-isolated-preview
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Check preview refuses startup without kill switch
+        shell: bash
+        run: |
+          if env -u MANDATEGATE_DISABLE_PAYMENTS pnpm exec tsx scripts/neon-preview-start.ts >/tmp/preview-denied.log 2>&1; then
+            echo "Preview started without safety switch"; exit 1
+          fi
+      - name: Boot isolated preview
+        shell: bash
+        run: |
+          pnpm exec tsx scripts/neon-preview-start.ts >/tmp/preview.log 2>&1 &
+          echo $! >/tmp/preview.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -40 /tmp/preview.log
+          exit 1
+      - name: Verify PayPal webhooks disabled and authentication
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const base="http://127.0.0.1:3000";
+          const w=await fetch(base+"/api/paypal/webhooks",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});
+          if(w.status!==503)throw Error("PayPal webhook not disabled: "+w.status);
+          const a=await fetch(base+"/api/auth/sign-in/email",{method:"POST",headers:{origin:base,"content-type":"application/json"},body:JSON.stringify({email:"admin@mandategate.local",password:process.env.DEMO_ADMIN_PASSWORD})});
+          if(!a.ok)throw Error("Preview login failed: "+a.status);
+          const c=a.headers.get("set-cookie")?.split(";")[0];
+          if(!c)throw Error("Missing login cookie");
+          const d=await fetch(base+"/dashboard",{headers:{cookie:c}});
+          if(d.status!==200)throw Error("Dashboard failed: "+d.status);
+          console.log("PASS: preview login and dashboard, PayPal webhook disabled");
+          JS
+      - name: Verify no payouts
+        shell: bash
+        run: |
+          pnpm exec tsx -e 'import pg from "pg";const p=new pg.Pool({connectionString:process.env.DATABASE_URL});const r=await p.query("select count(*)::int as n from payment_executions");await p.end();if(r.rows[0].n!==0)throw Error("Unexpected payouts");console.log("PASS: zero executions");'
+      - if: always()
+        run: kill "$(cat /tmp/preview.pid)" 2>/dev/null || true
