@@ -1,0 +1,37 @@
+name: Neon Better Auth Bootstrap
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mandategate-neon-auth-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  migrate-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - name: Check required secrets
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL" || { echo "NEON_DATABASE_URL_DIRECT is required"; exit 1; }
+          test -n "$BETTER_AUTH_SECRET" || { echo "NEON_BOOTSTRAP_AUTH_SECRET is required"; exit 1; }
+          test "${#BETTER_AUTH_SECRET}" -ge 32 || { echo "Auth secret too short"; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate only Better Auth tables
+        run: pnpm exec tsx scripts/migrate-auth-only.ts
