@@ -24,8 +24,6 @@ jobs:
         shell: bash
         run: |
           node --input-type=module -e "import {createHash} from 'node:crypto'; import {EXPECTED_SHA256,makeSyntheticPdf} from './scripts/glm-synthetic-basic-003.mjs'; const b=makeSyntheticPdf(); if(EXPECTED_SHA256!=='64f7476f98181d9263e9de726b5b10cc89f1f58ed3839743455a4741d1cf1200'||createHash('sha256').update(b).digest('hex')!==EXPECTED_SHA256||!b.toString().includes('DEMO-GLM-INVOICE-003'))process.exit(1); console.log('PASS source-bound fictional PDF');"
-      - name: Wait for synthetic-only Render configuration rollout
-        run: sleep 75
       - name: Confirm Neon health
         shell: bash
         run: |
