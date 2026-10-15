@@ -93,6 +93,16 @@ function acceptsExactFlashIdentity(value: unknown) {
     (value === INVOICE_VISION_MODEL || value.endsWith("/" + INVOICE_VISION_MODEL));
 }
 
+// Log model *identifiers* only for source-pinned synthetic diagnostics.
+// Never log any model response, invoice, prompt, provider credential or arbitrary header.
+function safeModelIdentifier(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "[missing]";
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$/.test(value)) {
+    return "[redacted]";
+  }
+  return value;
+}
+
 function safeTokenCount(value: unknown): number | null {
   return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : null;
 }
@@ -262,7 +272,19 @@ export class ExperientialInvoiceVisionGateway {
       refused("EXPERIENTIAL_SERVING_ROUTE_NOT_ZDR");
     }
     const canonical = response.headers.get("x-gateway-canonical-model");
-    if (!acceptsExactFlashIdentity(canonical) || !acceptsExactFlashIdentity(body?.model)) {
+    const canonicalMatches = acceptsExactFlashIdentity(canonical);
+    const responseMatches = acceptsExactFlashIdentity(body?.model);
+    if (!canonicalMatches || !responseMatches) {
+      if (syntheticTest) {
+        // Restricted, model-identity-only metadata. A missing proof remains a hard failure.
+        console.warn("GLM_SYNTHETIC_MODEL_IDENTITY", JSON.stringify({
+          expected: INVOICE_VISION_MODEL,
+          canonical: safeModelIdentifier(canonical),
+          responseModel: safeModelIdentifier(body?.model),
+          gatewayAlias: safeModelIdentifier(response.headers.get("x-gateway-alias")),
+          canonicalMatches, responseMatches,
+        }));
+      }
       refused("EXPERIENTIAL_MODEL_MISMATCH");
     }
 
