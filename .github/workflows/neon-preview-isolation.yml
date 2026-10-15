@@ -70,6 +70,6 @@ jobs:
       - name: Verify no payouts
         shell: bash
         run: |
-          pnpm exec tsx -e 'import pg from "pg";const p=new pg.Pool({connectionString:process.env.DATABASE_URL});const r=await p.query("select count(*)::int as n from payment_executions");await p.end();if(r.rows[0].n!==0)throw Error("Unexpected payouts");console.log("PASS: zero executions");'
+          pnpm exec tsx -e 'import pg from "pg";(async()=>{const p=new pg.Pool({connectionString:process.env.DATABASE_URL});try{const r=await p.query("select count(*)::int as n from payment_executions");if(r.rows[0].n!==0)throw Error("Unexpected payouts");console.log("PASS: zero executions");}finally{await p.end()}})().catch(e=>{console.error(e);process.exit(1)})'
       - if: always()
         run: kill "$(cat /tmp/preview.pid)" 2>/dev/null || true
