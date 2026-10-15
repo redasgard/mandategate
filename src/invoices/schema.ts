@@ -70,9 +70,25 @@ export function assessUntrustedInvoiceExtraction(
 ): InvoiceExtractionAssessment {
   const parsed = invoiceExtractionSchema.safeParse(candidate);
   if (!parsed.success) {
+    // Emit only fixed, schema-owned field names. Never leak a model-provided
+    // key, quote, value, or validation error message into audit reasons.
+    const allowedRoots = new Set([
+      "vendor_name", "invoice_number", "invoice_date", "due_date",
+      "currency", "total_amount_decimal", "invoice_payment_destination",
+      "line_items", "observed_instructions",
+    ]);
+    const safeReasons = new Set<string>(["EXTRACTION_INVALID"]);
+    for (const issue of parsed.error.issues.slice(0, 32)) {
+      const root = issue.path[0];
+      if (typeof root === "string" && allowedRoots.has(root)) {
+        safeReasons.add("EXTRACTION_SCHEMA_" + root.toUpperCase());
+      } else {
+        safeReasons.add("EXTRACTION_SCHEMA_OTHER");
+      }
+    }
     return {
       state: "ESCALATE",
-      reasonCodes: ["EXTRACTION_INVALID"],
+      reasonCodes: [...safeReasons].sort(),
       extracted: null,
       amountCents: null,
     };
