@@ -55,7 +55,18 @@ export function runtimeProfile(env) {
   Object.assign(childEnv, { DATABASE_URL: value, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: auth.origin, PORT: port, PREVIEW_HOST: host,
     MANDATEGATE_DISABLE_PAYMENTS: '1', MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
-  Object.assign(childEnv, invoiceAiEnvironment(env, mode));
+  const invoiceAi = invoiceAiEnvironment(env, mode);
+  if (mode === 'neon-preview') {
+    // Boolean-only diagnostics; never log or return the API key or any URL.
+    console.info('INVOICE_AI_CONFIG', JSON.stringify({
+      optedIn: env.MANDATEGATE_ENABLE_INVOICE_AI === '1',
+      renderServiceBound: env.RENDER_SERVICE_ID === 'srv-db39vmm7bikc73c55nh0',
+      parentKeyPresent: typeof env.EXPLABS_API_KEY === 'string' && env.EXPLABS_API_KEY.length > 0,
+      forwardedKeyPresent: typeof invoiceAi.EXPLABS_API_KEY === 'string' && invoiceAi.EXPLABS_API_KEY.length > 0,
+      syntheticExceptionEnabled: invoiceAi.MANDATEGATE_SYNTHETIC_NON_ZDR_TEST === '1',
+    }));
+  }
+  Object.assign(childEnv, invoiceAi);
   // Invoice AI is separately opt-in. Payment keys, rotation/proof flags,
   // NODE_OPTIONS, and the alternate database connection never reach the server.
   return { mode, isolated: true, childEnv };
