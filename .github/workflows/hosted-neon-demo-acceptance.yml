@@ -1,0 +1,28 @@
+name: Hosted Neon Three-Case Acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-hosted-demo-acceptance
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_SOURCE_SHA: 113ed365797f112836a250eccaddd9b1ac88e00d
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 113ed365797f112836a250eccaddd9b1ac88e00d
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Confirm exact hosted candidate source
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+      - name: Verify hosted login, demo outcomes and payment isolation
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-demo.mjs
