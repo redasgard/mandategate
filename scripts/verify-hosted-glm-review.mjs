@@ -40,13 +40,15 @@ const expected=[
   "Model-proposed source quotations",
   "invoice-vision-observer-v2",
   "SYNTHETIC_NON_ZDR_TEST_ONLY",
+  "Synthetic exception: ZDR metadata is not compliance proof",
 ];
 let found=false;
 for(let i=0;i<50;i++){
   const page=await request("/invoice-artifacts/"+ID,{headers:{cookie}});
   if(page.status===200){
     const html=await page.text();
-    if(html.includes("What GLM observed in this invoice")){
+    if(html.includes("What GLM observed in this invoice") &&
+       html.includes("Synthetic exception: ZDR metadata is not compliance proof")){
       const checks=Object.fromEntries(expected.map(s=>[s,html.includes(s)]));
       for(const [name,ok] of Object.entries(checks)) {
         if(!ok){console.log("BLOCK hosted review marker: "+name);process.exit(1);}
