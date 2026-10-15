@@ -100,7 +100,7 @@ export class PayPalPayoutsClient implements PaymentGateway {
   }
 
   async createSinglePayout(input: PayoutSubmission): Promise<PayoutSubmissionResult> {
-    if (process.env.MANDATEGATE_DISABLE_PAYMENTS === "1") throw new PaymentGatewayError("PAYMENTS_DISABLED_FOR_PREVIEW", "REJECTED");
+    if (process.env.MANDATEGATE_DISABLE_PAYMENTS === "1") throw new PaymentGatewayError("PAYMENTS_DISABLED_FOR_PREVIEW", "DEFINITE_FAILURE");
     let lastDebugId: string | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
