@@ -1,0 +1,52 @@
+name: Hosted GLM Synthetic Invoice V3
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-synthetic-003.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-glm-synthetic-fixture-003
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Verify exact fictional invoice PDF fixture
+        shell: bash
+        run: |
+          node --input-type=module -e "import {createHash} from 'node:crypto'; import {EXPECTED_SHA256,makeSyntheticPdf} from './scripts/glm-synthetic-basic-003.mjs'; const b=makeSyntheticPdf(); if(EXPECTED_SHA256!=='64f7476f98181d9263e9de726b5b10cc89f1f58ed3839743455a4741d1cf1200'||createHash('sha256').update(b).digest('hex')!==EXPECTED_SHA256||!b.toString().includes('DEMO-GLM-INVOICE-003'))process.exit(1); console.log('PASS source-bound fictional PDF');"
+      - name: Wait for synthetic-only Render configuration rollout
+        run: sleep 75
+      - name: Confirm Neon health
+        shell: bash
+        run: |
+          for attempt in $(seq 1 5); do
+            code=$(curl -sS --max-time 45 -o /tmp/glm-health -w '%{http_code}' https://mandategate-web.onrender.com/api/health || true)
+            if [ "$code" = "200" ] && grep -q '"ready"' /tmp/glm-health; then
+              echo 'PASS hosted Neon health'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'BLOCK HOSTED_NEON_UNAVAILABLE'
+          exit 1
+      - name: One synthetic GLM invoice with strict schema and field acceptance
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-glm-synthetic-003.mjs
+      - name: Publish sanitized field and schema checks
+        if: always()
+        shell: bash
+        run: |
+          if test -f out/glm-synthetic-observation.md; then
+            cat out/glm-synthetic-observation.md >> "$GITHUB_STEP_SUMMARY"
+          fi
