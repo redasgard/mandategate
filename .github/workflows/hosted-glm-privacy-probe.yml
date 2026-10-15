@@ -1,0 +1,34 @@
+name: Hosted GLM Privacy Probe
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-privacy-probe.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-hosted-glm-privacy
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 1342e8548c57
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Check live GLM metadata and disabled payments
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+        run: node scripts/verify-hosted-glm-preflight.mjs
+      - name: Capture sanitized verdict
+        if: always()
+        shell: bash
+        run: |
+          if test -f out/glm-preflight.md; then
+            cat out/glm-preflight.md >> "$GITHUB_STEP_SUMMARY"
+          fi
