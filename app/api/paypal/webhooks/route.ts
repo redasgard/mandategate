@@ -21,6 +21,9 @@ function isPayoutEvent(eventType: string) {
 }
 
 export async function POST(request: Request) {
+  if (process.env.MANDATEGATE_DISABLE_PAYMENTS === "1") {
+    return Response.json({ error: "PAYMENT_INTEGRATIONS_DISABLED_FOR_PREVIEW" }, { status: 503 });
+  }
   const event = await request.json().catch(() => null);
   if (!event || typeof event?.id !== "string" || typeof event?.event_type !== "string") {
     return Response.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
