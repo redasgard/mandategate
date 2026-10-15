@@ -1,0 +1,70 @@
+name: Neon HTTP Auth Smoke
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/neon-http-auth-smoke.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Verify Neon target
+        run: |
+          test -n "$DATABASE_URL" && test -n "$DEMO_ADMIN_PASSWORD"
+          case "$DATABASE_URL" in *neon.tech*) ;; *) exit 1 ;; esac
+      - uses: actions/checkout@v4
+        with:
+          ref: build/slice-3-invoice-intake
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Start isolated application server
+        run: |
+          pnpm exec next start >/tmp/mandategate-neon-http.log 2>&1 &
+          echo $! > /tmp/mandategate-neon-http.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "Application failed to start"
+          tail -60 /tmp/mandategate-neon-http.log
+          exit 1
+      - name: Verify HTTP login and dashboard guards
+        run: |
+          node --input-type=module <<'JS'
+          const base="http://127.0.0.1:3000";
+          const get=async(path,opts)=>fetch(base+path,{redirect:"manual",...opts});
+          for(const cookie of [undefined,"better-auth.session_token=synthetic-invalid"]) {
+            const r=await get("/dashboard",{headers:cookie?{cookie}:{}});
+            if(![302,303,307,308].includes(r.status) ||
+               !new URL(r.headers.get("location")??"/",base).pathname.startsWith("/sign-in"))
+              throw Error("Untrusted dashboard request was not redirected: "+r.status);
+          }
+          const r=await get("/api/auth/sign-in/email",{method:"POST",headers:{"content-type":"application/json",origin:base},body:JSON.stringify({email:"admin@mandategate.local",password:process.env.DEMO_ADMIN_PASSWORD})});
+          if(!r.ok)throw Error("Admin HTTP sign-in failed: "+r.status);
+          const cookie=r.headers.get("set-cookie")?.split(";")[0];
+          if(!cookie)throw Error("Login missing session cookie");
+          const dashboard=await get("/dashboard",{headers:{cookie}});
+          if(dashboard.status!==200)throw Error("Admin dashboard unavailable: "+dashboard.status);
+          console.log("PASS HTTP anonymous/session guards and admin login");
+          JS
+      - if: always()
+        run: kill "$(cat /tmp/mandategate-neon-http.pid)" 2>/dev/null || true
