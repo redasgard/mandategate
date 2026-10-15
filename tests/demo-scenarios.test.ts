@@ -1,5 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {DEMO_CASES,DEMO_TRUSTED_DESTINATION,demoRequests,demoPreviewEnabled} from "../src/demo/scenarios";
+import {evaluatePayment} from "../src/policy/decision";
 const good={MANDATEGATE_RUNTIME_MODE:"neon-preview",MANDATEGATE_DISABLE_PAYMENTS:"1",
  DATABASE_URL:"postgresql://user:pass@ep-silent-poetry-arjowm4d-pooler.c-4.us-west-2.aws.neon.tech/neondb?sslmode=require"};
 describe("bounded nonpayable demo scenario definitions",()=>{
@@ -20,6 +21,17 @@ describe("bounded nonpayable demo scenario definitions",()=>{
   expect(requests.every(x=>x.source==="demo_fixture")).toBe(true);
   expect(requests[2].paymentDestination).not.toBe(DEMO_TRUSTED_DESTINATION);
   expect(requests.slice(0,2).every(x=>x.paymentDestination===DEMO_TRUSTED_DESTINATION)).toBe(true);
+ });
+ it("produces the promised results through the real deterministic policy engine",()=>{
+   for(const scenario of demoRequests(DEMO_TRUSTED_DESTINATION)){
+     const decision=evaluatePayment({
+       amountCents:scenario.amountCents,currency:scenario.currency,
+       requestedDestination:scenario.paymentDestination,
+       trustedDestination:DEMO_TRUSTED_DESTINATION,
+       vendorNormalMaxAmountCents:250000,policyAutoPayMaxAmountCents:300000,
+     });
+     expect(decision.outcome).toBe(scenario.expectedOutcome);
+   }
  });
  it("refuses unverified receiver",()=>{
   expect(()=>demoRequests("real-payee@somewhere.example")).toThrow("DEMO_RECEIVER_NOT_SYNTHETIC");
