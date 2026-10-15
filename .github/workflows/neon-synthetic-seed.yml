@@ -1,0 +1,59 @@
+name: Neon Synthetic Seed
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mandategate-neon-seed
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://localhost:3000
+      DEMO_ADMIN_EMAIL: admin@mandategate.local
+    steps:
+      - name: Check destination and secrets
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$BETTER_AUTH_SECRET"
+          test "${#BETTER_AUTH_SECRET}" -ge 32
+          case "$DATABASE_URL" in
+            *neon.tech*) ;;
+            *) echo "Refusing non-Neon database"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Seed synthetic-only fixtures
+        shell: bash
+        run: |
+          export DEMO_AGENT_API_KEY="$(openssl rand -hex 32)"
+          export DEMO_PAYMENT_AGENT_API_KEY="$(openssl rand -hex 32)"
+          export DEMO_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+          pnpm demo:seed
+      - name: Verify non-payment seed
+        shell: bash
+        run: |
+          pnpm exec tsx -e '
+          import pg from "pg";
+          const p = new pg.Pool({connectionString:process.env.DATABASE_URL});
+          try {
+            const r = await p.query("select (select count(*)::int from organizations) as orgs, (select count(*)::int from vendors) as vendors, (select count(*)::int from policies) as policies, (select count(*)::int from payment_executions) as payouts");
+            const x=r.rows[0];
+            if(x.orgs<1 || x.vendors<1 || x.policies<1 || x.payouts!==0) throw Error("seed verification failed");
+            console.log("Synthetic seed verified; zero payment executions");
+          } finally { await p.end() }'
