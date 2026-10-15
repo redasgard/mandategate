@@ -21,6 +21,19 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24.21.0
+      - name: Warm Render and confirm Neon health
+        shell: bash
+        run: |
+          for attempt in $(seq 1 4); do
+            status=$(curl -sS --max-time 100 -o /tmp/glm-health -w '%{http_code}' https://mandategate-web.onrender.com/api/health || true)
+            if [ "$status" = "200" ] && grep -q '"ready"' /tmp/glm-health; then
+              echo 'PASS hosted health'
+              exit 0
+            fi
+            sleep 6
+          done
+          echo 'GLM_HOSTED_HEALTH_UNAVAILABLE'
+          exit 1
       - name: Check live GLM metadata and disabled payments
         env:
           DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
