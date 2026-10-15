@@ -395,6 +395,16 @@ describe("GLM-5.3 Flash image gateway", () => {
     }
   });
 
+  it("uses bounded 90-second model inference with shorter metadata preflights", async () => {
+    const spy=vi.spyOn(AbortSignal,"timeout");
+    try {
+      const {gateway}=mockGateway();
+      await gateway.observeImage(request);
+      expect(spy).toHaveBeenCalledWith(90_000);
+      expect(spy).toHaveBeenCalledWith(8_000);
+    } finally {spy.mockRestore();}
+  });
+
   it("rejects regular text-only GLM-5.3 even if a router returns its result", async () => {
     const { gateway } = mockGateway({
       servedResponse: successResponse({}, "glm-5.3"),
