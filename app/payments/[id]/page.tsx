@@ -21,6 +21,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
     "select action,explanation,created_at,evidence_sha256",
     "from payment_escalation_reviews where payment_request_id=$1 limit 1",
   ].join(" "),[id]):null;
+  const payoutsDisabled = process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
   const terminal = ["PAID", "PAYMENT_FAILED", "PAYMENT_BLOCKED", "PAYMENT_RETURNED", "PAYMENT_REFUNDED", "PAYMENT_REVERSED", "PAYMENT_UNKNOWN_MANUAL_RECONCILIATION"].includes(row.executionStatus ?? "");
 
   return (
@@ -42,7 +43,8 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         {row.outcome==="ESCALATE" && row.status==="ESCALATED" && snapshot
           ? <EscalationReview requestId={row.requestId}
               snapshotSha256={snapshot.snapshotSha256}
-              trustedDestinationCurrent={snapshot.trustedDestinationCurrent}/>
+              trustedDestinationCurrent={snapshot.trustedDestinationCurrent}
+              payoutsDisabled={payoutsDisabled}/>
           : null}
         {row.outcome==="ESCALATE" && recordedReview?.rows[0]
           ? <section className="review-stage">
@@ -53,7 +55,9 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
                  / evidence digest: {recordedReview.rows[0].evidence_sha256??"none"}</p>
             </section>:null}
         {row.outcome === "ALLOW" || (row.outcome==="ESCALATE" && row.status==="APPROVED")
-          ? <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />
+          ? (payoutsDisabled
+              ? <p role="status" className="muted">Synthetic preview: PayPal payout execution is disabled. This request remains a recorded decision only.</p>
+              : <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />)
           : null}
         <DecisionEvidencePanel evidence={row.evidence} reasonCodes={row.reasonCodes} currency={row.currency}/>
       </section>

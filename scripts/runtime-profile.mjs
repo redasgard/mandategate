@@ -53,7 +53,7 @@ export function runtimeProfile(env) {
   for (const key of passthrough) if (env[key] !== undefined) childEnv[key] = env[key];
   Object.assign(childEnv, { DATABASE_URL: value, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: auth.origin, PORT: port, PREVIEW_HOST: host,
-    MANDATEGATE_DISABLE_PAYMENTS: '1', NEXT_TELEMETRY_DISABLED: '1' });
+    MANDATEGATE_DISABLE_PAYMENTS: '1', MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
   // Deliberately omit all provider keys, demo/rotation flags, NODE_OPTIONS,
   // the alternate connection string, and the source connection during Neon mode.
   return { mode, isolated: true, childEnv };
