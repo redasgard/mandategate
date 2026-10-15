@@ -1,0 +1,62 @@
+name: Hosted GLM Synthetic Invoice V2
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/hosted-glm-synthetic-v2.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mandategate-glm-synthetic-v2
+  cancel-in-progress: false
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.21.0
+      - name: Confirm healthy hosted Neon service
+        shell: bash
+        run: |
+          for attempt in $(seq 1 5); do
+            code=$(curl -sS --max-time 45 -o /tmp/mandategate-health -w '%{http_code}' https://mandategate-web.onrender.com/api/health || true)
+            if [ "$code" = "200" ] && grep -q '"ready"' /tmp/mandategate-health; then
+              echo 'PASS hosted Neon health'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'BLOCK HOSTED_NEON_UNAVAILABLE'
+          exit 1
+      - name: Confirm synthetic-only gate active without authorization
+        shell: bash
+        run: |
+          for attempt in $(seq 1 72); do
+            status=$(curl -sS --max-time 12 -o /dev/null -w '%{http_code}' -X POST \
+              -H 'Origin: https://wrong-origin.invalid' \
+              https://mandategate-web.onrender.com/api/admin/invoice-artifacts/00000000-0000-4000-8000-000000000000/observe-synthetic || true)
+            if [ "$status" = "403" ]; then
+              echo 'PASS source-pinned synthetic route reached cross-origin guard'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'BLOCK SYNTHETIC_EXCEPTION_NOT_DEPLOYED'
+          exit 1
+      - name: New immutable synthetic invoice on the longer timeout
+        env:
+          DEMO_ADMIN_PASSWORD: ${{ secrets.NEON_DEMO_ADMIN_PASSWORD }}
+          MANDATEGATE_GLM_FRESH_TEST: '1'
+        run: node scripts/verify-hosted-glm-synthetic-v2.mjs
+      - name: Publish sanitized outcome
+        if: always()
+        shell: bash
+        run: |
+          if test -f out/glm-synthetic-observation.md; then
+            cat out/glm-synthetic-observation.md >> "$GITHUB_STEP_SUMMARY"
+          fi
