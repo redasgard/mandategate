@@ -1,0 +1,47 @@
+name: GLM Public Model Resolution
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/glm-public-model-resolution.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify public GLM catalog identity (no key, no invoice)
+        shell: bash
+        run: |
+          curl -fsS --max-time 20 --retry 2 \
+            'https://api.experientiallabs.ai/api/models/glm-5.3-flash' \
+            -o /tmp/glm-model.json
+          curl -fsS --max-time 20 --retry 2 \
+            'https://api.experientiallabs.ai/api/models/glm-5.3-flash/providers' \
+            -o /tmp/glm-routes.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const wanted='exact-13da8560-5463-4fca-af64-6021144772d5';
+          const paths=['/tmp/glm-model.json','/tmp/glm-routes.json'];
+          for(const path of paths){
+            const payload=JSON.parse(fs.readFileSync(path,'utf8'));
+            const matches=[];
+            const labels=[];
+            function walk(value,key='',depth=0){
+              if(depth>12||matches.length>25||labels.length>40)return;
+              if(typeof value==='string'){
+                if(value===wanted)matches.push(key);
+                if(/canonical|exact|model_id|slug|route_id/.test(key) && /^[A-Za-z0-9._:/-]{1,120}$/.test(value))
+                  labels.push({key,value});
+                return;
+              }
+              if(Array.isArray(value)){for(let i=0;i<Math.min(value.length,35);i++)walk(value[i],key+'['+i+']',depth+1);return;}
+              if(value&&typeof value==='object')for(const [k,v]of Object.entries(value))walk(v,key?key+'.'+k:k,depth+1);
+            }
+            walk(payload);
+            console.log(JSON.stringify({endpoint:path.includes('routes')?'providers':'model',
+              keys:Object.keys(payload).slice(0,25),exactIdFound:matches.length>0,
+              exactPaths:matches,identityFields:labels.slice(0,26)}));
+          }
+          NODE
