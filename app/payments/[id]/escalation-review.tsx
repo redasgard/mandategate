@@ -3,8 +3,8 @@ import {useRouter} from "next/navigation";
 import {useState} from "react";
 
 const allowed=new Set(["application/pdf","image/png","image/jpeg"]);
-export function EscalationReview({requestId,snapshotSha256,trustedDestinationCurrent}:{
-  requestId:string;snapshotSha256:string;trustedDestinationCurrent:boolean;
+export function EscalationReview({requestId,snapshotSha256,trustedDestinationCurrent,payoutsDisabled=false}:{
+  requestId:string;snapshotSha256:string;trustedDestinationCurrent:boolean;payoutsDisabled?:boolean;
 }){
   const router=useRouter();
   const [explanation,setExplanation]=useState("");
@@ -14,7 +14,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
   const [notice,setNotice]=useState<string|null>(null);
 
   async function handle(action:"ACCEPT"|"DECLINE"){
-    if(busy || explanation.trim().length<16 ||
+    if((action==="ACCEPT" && payoutsDisabled) || busy || explanation.trim().length<16 ||
        (action==="ACCEPT" && !trustedDestinationCurrent))return;
     const question=action==="ACCEPT"
       ?"Accept this exact payment request and immediately attempt the PayPal Sandbox payout?"
@@ -71,6 +71,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
       a mismatched trusted destination. The original automated decision
       remains in the activity trail. Accept defaults to immediate Sandbox
       payout with a separate server-side authority recheck.
+      {payoutsDisabled ? " In this synthetic preview, accepting and paying are disabled; declining a request remains available." : ""}
     </p>
     {!trustedDestinationCurrent?<p className="error">
       Trusted destination changed. Resolve vendor trust before any approval.
@@ -88,9 +89,9 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         onClick={()=>void handle("DECLINE")}>
         {busy?"Reviewing…":"Decline without payout"}
       </button>
-      <button type="button" disabled={busy||!trustedDestinationCurrent||explanation.trim().length<16}
+      <button type="button" disabled={busy||payoutsDisabled||!trustedDestinationCurrent||explanation.trim().length<16}
         onClick={()=>void handle("ACCEPT")}>
-        {busy?"Reviewing…":"Accept and execute PayPal Sandbox"}
+        {payoutsDisabled?"Accept unavailable in preview":busy?"Reviewing…":"Accept and execute PayPal Sandbox"}
       </button>
     </div>
     {notice?<p role="status" className="review-notice">{notice}</p>:null}

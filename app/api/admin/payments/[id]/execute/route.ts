@@ -25,6 +25,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // Logging in is not authorization to act on another organization's funds.
   if (!(await isAuthorized()))
     return Response.json({error:"NOT_FOUND"},{status:404});
+  if(process.env.MANDATEGATE_DISABLE_PAYMENTS==="1")
+    return Response.json({error:"PAYMENTS_DISABLED_FOR_PREVIEW"},{status:503});
   try {
     const execution = await executeAuthorizedPayment(id, {
       store:postgresExecutionStore,gateway:getPayPalClient(),
