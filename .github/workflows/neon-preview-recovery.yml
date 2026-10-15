@@ -1,0 +1,42 @@
+name: Neon Preview Recovery Drill
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
+      BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      MANDATEGATE_DISABLE_PAYMENTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/neon-isolated-preview
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Restart preview under payment isolation
+        shell: bash
+        run: |
+          set -e
+          for attempt in 1 2; do
+            pnpm exec tsx scripts/neon-preview-start.ts >/tmp/preview.log 2>&1 &
+            pid=$!
+            for i in $(seq 1 60); do
+              if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then break; fi
+              sleep 2
+            done
+            curl -fsS http://127.0.0.1:3000/api/health
+            test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' http://127.0.0.1:3000/api/paypal/webhooks)" = 503
+            kill "$pid" || true
+            sleep 3
+          done
