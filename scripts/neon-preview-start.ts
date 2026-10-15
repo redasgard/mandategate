@@ -31,11 +31,13 @@ const child = spawn(process.execPath, [require.resolve("next/dist/bin/next"),
   stdio: "inherit", env: process.env,
 });
 let stopping = false;
+let requestedSignal: "SIGINT" | "SIGTERM" | undefined;
 let forced = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 const stop = (signal: "SIGINT" | "SIGTERM") => {
   if (stopping) return;
   stopping = true;
+  requestedSignal = signal;
   if (child.exitCode !== null || child.signalCode !== null) return;
   child.kill(signal);
   timer = setTimeout(() => {
@@ -61,7 +63,11 @@ child.once("close", (code, signal) => {
   if (timer) clearTimeout(timer);
   process.removeListener("SIGTERM", onTerm);
   process.removeListener("SIGINT", onInt);
-  const cleanStop = stopping && !forced && (code === 0 || signal === "SIGTERM" || signal === "SIGINT");
+  // Next.js 16.3.8 completes its shutdown with 128 + the requested signal.
+  const expectedSignalExit = signal === requestedSignal ||
+    (requestedSignal === "SIGTERM" && code === 143) ||
+    (requestedSignal === "SIGINT" && code === 130);
+  const cleanStop = stopping && !forced && (code === 0 || expectedSignalExit);
   process.exitCode = cleanStop ? 0 : (code === 0 ? 0 : 1);
   if (forced) process.exitCode = 1;
   if (process.connected) process.disconnect();
