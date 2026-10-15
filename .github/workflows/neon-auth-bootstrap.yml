@@ -13,7 +13,6 @@ jobs:
   migrate-auth:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: neon-bootstrap
     env:
       DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_DIRECT }}
       BETTER_AUTH_SECRET: ${{ secrets.NEON_BOOTSTRAP_AUTH_SECRET }}
