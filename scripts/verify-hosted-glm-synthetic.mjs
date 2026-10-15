@@ -62,9 +62,14 @@ async function run(){
   check(typeof id==="string"&&/^[0-9a-f-]{36}$/i.test(id),"SYNTHETIC_ARTIFACT_ID_INVALID");
   result.artifactId=id;
   // Never repeat inference for an already-analyzed stored source.
-  if(metadata.artifact.analysisStatus!=="STORED_UNTRUSTED"){
+  // One explicitly flagged retry of the existing failed, source-pinned
+  // GLM model-identity observation. The server separately caps attempts.
+  const existingState=metadata.artifact.analysisStatus;
+  const diagnosticRetry=process.env.MANDATEGATE_GLM_MISMATCH_DIAGNOSTIC_RETRY==="1";
+  if(existingState!=="STORED_UNTRUSTED"&&!(existingState==="FAILED"&&diagnosticRetry)){
     result.code="ARTIFACT_ALREADY_ANALYZED";return;
   }
+  result.retryOfPriorFailure=existingState==="FAILED";
   result.inferenceAttempted=true;
   const observed=await req("/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/observe-synthetic",{
     method:"POST",
