@@ -7,10 +7,11 @@ import {listDemoScenarios,DemoScenarioError} from "@/src/demo/scenarios-store";
 import {LoadDemoScenarios} from "./load-button";
 
 const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n/100);
+export const dynamic="force-dynamic";
 export default async function DemoPage(){
-  if(!demoPreviewEnabled(process.env))notFound();
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
+  if(!demoPreviewEnabled(process.env))notFound();
   let scenarios;
   try{scenarios=await listDemoScenarios(session.user.id);}
   catch(e){if(e instanceof DemoScenarioError && e.httpStatus===404)notFound();throw e;}
