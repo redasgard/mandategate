@@ -96,12 +96,14 @@ export async function exerciseRecovery(options) {
       assert.equal(ctx.pid, undefined, 'UNSAFE_CONFIGURATION_STARTED_SERVER');
       assert.equal(await portOpen(port), false, 'UNSAFE_CONFIGURATION_BOUND_PORT');
       result.startupDenials.push(name);
+      console.log('PASS startup refusal:', name);
     }
     for (let cycle = 1; cycle <= 2; cycle++) {
       assert.equal(await portOpen(port), false, 'OLD_SERVER_STILL_LISTENING');
       const ctx = launch(options);
       contexts.push(ctx);
       await readiness(ctx, port);
+      console.log('PASS ready cycle', cycle);
       assert(alive(ctx.child), 'SUPERVISOR_EXITED_AFTER_READY');
       const r = await fetch(`http://127.0.0.1:${port}/api/paypal/webhooks`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
@@ -111,6 +113,7 @@ export async function exerciseRecovery(options) {
       const error = await r.json();
       assert.equal(error.error, 'PAYMENT_INTEGRATIONS_DISABLED_FOR_PREVIEW');
       await stop(ctx, port);
+      console.log('PASS stopped cycle', cycle);
       result.cycles.push({ cycle, supervisorPid: ctx.child.pid, serverPid: ctx.pid,
         stopped: true, portClosed: true, webhookStatus: 503 });
     }
@@ -161,6 +164,7 @@ async function main() {
   const pool = new pg.Pool({ connectionString: target.toString(), max: 1, connectionTimeoutMillis: 15000 });
   try {
     const before = await databaseFingerprint(pool);
+    console.log('PASS baseline fingerprint:', before.tables, 'tables; zero payment executions');
     const result = await exerciseRecovery({ cwd: process.cwd(),
       launcher: resolve('scripts/neon-preview-start.ts'), execArgv: ['--import', 'tsx'],
       port: 3109, env: { ...process.env, PORT: '3109', PREVIEW_HOST: '127.0.0.1',
@@ -183,5 +187,5 @@ async function main() {
   } finally { await pool.end(); }
 }
 if (process.argv[1] && resolve(process.argv[1]) === here) {
-  main().catch((e) => { const detail = /^[A-Z0-9_]+$/.test(e.message ?? '') ? e.message : (e.code ?? 'CHECK_FAILED'); console.error('NEON_RECOVERY_GATE_FAILED', detail); process.exitCode = 1; });
+  main().catch((e) => { const firstLine = String(e.message ?? '').split('\n')[0].trim(); const detail = /^[A-Z0-9_]+$/.test(firstLine) ? firstLine : (e.code ?? 'CHECK_FAILED'); console.error('NEON_RECOVERY_GATE_FAILED', detail); process.exitCode = 1; });
 }
