@@ -66,5 +66,30 @@ jobs:
           if(dashboard.status!==200)throw Error("Admin dashboard unavailable: "+dashboard.status);
           console.log("PASS HTTP anonymous/session guards and admin login");
           JS
+      - name: Verify HTTP agent scope separation without mutations
+        env:
+          DEMO_AGENT_API_KEY: ${{ secrets.NEON_DEMO_INVOICE_API_KEY }}
+          DEMO_PAYMENT_AGENT_API_KEY: ${{ secrets.NEON_DEMO_PAYMENT_API_KEY }}
+        run: |
+          node --input-type=module <<'JS'
+          const base="http://127.0.0.1:3000";
+          const invoice=process.env.DEMO_AGENT_API_KEY;
+          const payment=process.env.DEMO_PAYMENT_AGENT_API_KEY;
+          if(!invoice||!payment||invoice===payment)throw Error("Missing or shared agent keys");
+          async function post(path,key,headers={}) {
+            return fetch(base+path,{method:"POST",headers:{authorization:key?"Bearer "+key:"",...headers},body:"{}",redirect:"manual"});
+          }
+          const checks=[
+            ["anonymous payment denied",await post("/api/agent/payment-requests",null),401],
+            ["invoice agent payment denied",await post("/api/agent/payment-requests",invoice),401],
+            ["anonymous invoice denied",await post("/api/agent/invoice-artifacts",null),401],
+            ["payment agent invoice denied",await post("/api/agent/invoice-artifacts",payment),401],
+            ["payment agent accepted for schema validation",await post("/api/agent/payment-requests",payment),400],
+          ];
+          for(const [name,r,want] of checks) {
+            if(r.status!==want)throw Error(name+": expected "+want+", got "+r.status);
+            console.log("PASS "+name);
+          }
+          JS
       - if: always()
         run: kill "$(cat /tmp/mandategate-neon-http.pid)" 2>/dev/null || true
