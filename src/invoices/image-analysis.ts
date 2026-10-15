@@ -42,7 +42,7 @@ export async function getInvoiceImageObservation(
  * Its result is always advisory. A vision quote is not an independently
  * verified source, so the current policy assessor escalates images.
  */
-const ANALYSIS_LEASE_MS = 90_000;
+const ANALYSIS_LEASE_MS = 180_000;
 const MAX_ANALYSIS_ATTEMPTS = 3;
 
 async function persistObservation(
@@ -128,7 +128,7 @@ async function persistObservation(
 /**
  * A vision result is an untrusted observation, never a payment instruction.
  * Claims are serialized, fenced by UUID, and bounded to three attempts.
- * An interrupted request is reclaimable after the 90-second lease.
+ * An interrupted request is reclaimable after the 180-second lease.
  */
 export async function analyzeStoredInvoiceImage(
   organizationId: string,
