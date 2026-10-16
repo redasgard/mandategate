@@ -8,6 +8,7 @@ export type GateHInventoryCounts = {
   pdfArtifactsWithPages: number;
   verifiedPdfClaims: number;
   activeEnrolledChannels: number;
+  eligiblePreexistingChannelInvoicePairs: number;
   currentHumanOriginAttestations: number;
   authorizedBindings: number;
   consentedSyntheticGlmObservations: number;
@@ -54,6 +55,12 @@ export const GATE_H_INVENTORY_SQL = [
   "), channels as (",
   "  select count(*)::int as n from vendor_origin_channels",
   "  where organization_id=$1 and active=true and kind <> 'SYNTHETIC_FIXTURE'",
+  "), eligible_pairs as (",
+  "  select count(*)::int as n from invoice_artifacts art",
+  "  join vendor_origin_channels ch on ch.organization_id=art.organization_id",
+  "    and ch.active=true and ch.kind <> 'SYNTHETIC_FIXTURE'",
+  "    and ch.created_at < art.created_at",
+  "  where art.organization_id=$1",
   "), origin as (",
   "  select count(*)::int as n from invoice_origin_attestations a",
   "  join vendor_origin_channels ch on ch.id=a.origin_channel_id",
@@ -87,12 +94,13 @@ export const GATE_H_INVENTORY_SQL = [
   "select artifacts.n as invoice_artifacts, pdf_pages.n as independent_pdf_pages,",
   " pdf_pages.artifacts as pdf_artifacts_with_pages,",
   " verified_pdf.n as verified_pdf_claims, channels.n as active_enrolled_channels,",
+  " eligible_pairs.n as eligible_preexisting_channel_invoice_pairs,",
   " origin.n as current_human_origin_attestations,",
   " bindings.n as authorized_bindings,",
   " synthetic.n as consented_synthetic_glm_observations,",
   " invoice_requests.n as invoice_payment_requests,",
   " executions.n as all_payment_executions",
-  " from artifacts,pdf_pages,verified_pdf,channels,origin,bindings,synthetic,invoice_requests,executions",
+  " from artifacts,pdf_pages,verified_pdf,channels,eligible_pairs,origin,bindings,synthetic,invoice_requests,executions",
 ].join(" ");
 
 function count(row: Record<string, unknown>, key: string): number {
@@ -118,6 +126,7 @@ export function classifyGateHInventory(
     pdfArtifactsWithPages: count(raw, "pdf_artifacts_with_pages"),
     verifiedPdfClaims: count(raw, "verified_pdf_claims"),
     activeEnrolledChannels: count(raw, "active_enrolled_channels"),
+    eligiblePreexistingChannelInvoicePairs: count(raw, "eligible_preexisting_channel_invoice_pairs"),
     currentHumanOriginAttestations: count(raw, "current_human_origin_attestations"),
     authorizedBindings: count(raw, "authorized_bindings"),
     consentedSyntheticGlmObservations: count(raw, "consented_synthetic_glm_observations"),
@@ -128,6 +137,8 @@ export function classifyGateHInventory(
   if (counts.invoiceArtifacts === 0) blockers.push("T0_NO_STORED_INVOICES");
   if (counts.independentPdfPages === 0) blockers.push("T2_PDF_PAGES_NOT_PREPARED");
   if (counts.verifiedPdfClaims === 0) blockers.push("T2_NO_VERIFIED_PDF_FACTS");
+  if (counts.eligiblePreexistingChannelInvoicePairs === 0)
+    blockers.push("T3_NO_ELIGIBLE_PREEXISTING_CHANNEL_INVOICE_PAIR");
   if (counts.currentHumanOriginAttestations === 0)
     blockers.push("T3_NO_CURRENT_NON_SYNTHETIC_ORIGIN_ATTESTATION");
   if (counts.authorizedBindings === 0) blockers.push("T4_NO_AUTHORIZED_BINDING");
