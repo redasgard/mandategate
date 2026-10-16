@@ -6,7 +6,7 @@
 
 ## 1. Existing hackathon environment
 
-- **Existing MandateGate app:** `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), Render workspace `tea-d27bea6uk2gs73dv4up0`. It currently tracks `build/slice-2-gated`; the Slice 3 development branch is `build/slice-3-invoice-intake`, draft PR #2, not merged.
+- **Existing MandateGate app:** `mandategate-web` (`srv-db39vmm7bikc73c55nh0`), Render workspace `tea-d27bea6uk2gs73dv4up0`. It tracks `build/slice-3-invoice-intake` as of 2026-10-16; draft PR #2 targets the wider Slice 3 release and remains unmerged.
 - **Existing free Postgres:** `mandategate-sandbox-db` (`dpg-db39d5rbc2fs73d1ke70-a`). The app and Postgres are the **development/demo** environment, not a production payment platform.
 - **PayPal:** `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com`, Sandbox Business sender/API credentials and Sandbox Personal test recipient. No production credentials or real transfers.
 - **AI:** Experiential/GLM-5.3 Flash uses the existing connected account and actual policy checks when explicitly enabled; model output is untrusted.
@@ -39,6 +39,12 @@ The bounded scanned-PDF/image reviewer is implemented, tested and linked from th
 A **live** GLM-5.3 Flash serving-route request (including ZDR response header and resolved model) is **not** proven. The external `EXPLABS_API_KEY` is not verified here. The document cannot be upgraded to payment authority merely because its model output is persuasive. This does not alter the need for explicit one-time Sandbox payout consent.
 
 The approved `scope.md > Hackathon Release Boundary` allows a clearly labeled **simulated** vendor re-verification for the demo and explicitly cuts a live external vendor verification provider. Do not present the simulated portal event as a real supplier callback. The existing Gate H evidence-review requirement must be evaluated against this approved scope rather than silently redefining the product.
+
+### Strict GLM proof versus synthetic exception (2026-10-16)
+
+A Gate H payout **must not** accept a synthetic non-ZDR model observation as proof of the strict GLM serving route, even if the provider's response header reported `gateway_zdr=true`. The Gate H receipt reader fails closed if the observation has `SYNTHETIC_NON_ZDR_TEST_ONLY` in its reason codes **or** any matching append-only synthetic-test consent record. It also requires a SHA-bound original source, non-error advisory result, strict model identity, original request ID, saved prompt hash and provider metadata. Checking the current provider privacy settings does **not** retroactively convert an earlier synthetic exception into a compliant invocation.
+
+CI fixture receipts prove only this metadata/persistence guard; they are not independently validated provider statements. A newly executed, non-synthetic strict `/observe` call under verified ZDR/no-training controls remains required for Gate H live evidence. No PayPal payout is authorized by this guard.
 
 ## 3. The single-environment validation path
 
