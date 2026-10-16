@@ -11,7 +11,7 @@ describe("synthetic invoice test control visibility", () => {
   it("does not display the non-ZDR option in strict or production mode", () => {
     const html = renderToStaticMarkup(createElement(InvoiceVisionObservation, base));
     expect(html).not.toContain("Test a synthetic invoice without ZDR");
-    expect(html).toContain("Observe this stored document (strict ZDR)");
+    expect(html).toContain("Observe with strict ZDR (requires compliant account)");
   });
   it("disables the option when the source is not allowlisted", () => {
     const html = renderToStaticMarkup(createElement(InvoiceVisionObservation, {
