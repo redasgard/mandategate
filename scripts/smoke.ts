@@ -1,4 +1,4 @@
-import { createPdf } from "../tests/helpers/pdf-fixture";
+import { createPdf, createScannedPdf } from "../tests/helpers/pdf-fixture";
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const invoiceKey = process.env.DEMO_AGENT_API_KEY;
 const paymentKey = process.env.DEMO_PAYMENT_AGENT_API_KEY;
@@ -177,6 +177,69 @@ const reviewed=await review.json() as {review:{
 if(!reviewed.review.claimSetId ||reviewed.review.sourceVerified!==true ||
    reviewed.review.issuerAuthenticated!==false ||reviewed.review.paymentAuthorized!==false)
   throw new Error("source verifier incorrectly granted issuer or payment authority");
+// A separate image-only PDF is intentionally not the text PDF verified above.
+// Convincing model-visible content is insufficient: no PDF.js page text means
+// no T2 VERIFIED claim, issuer authentication, bound tuple, or PayPal payment.
+// CI never invokes the external GLM provider for this negative case.
+const scannedPdf=await createScannedPdf();
+const scannedUpload=await fetch(adminUploadPath,{
+  method:"POST",headers:adminHeaders,body:new Uint8Array(scannedPdf),
+});
+if(![200,201].includes(scannedUpload.status))
+  throw new Error(`scanned PDF upload failed: ${scannedUpload.status} ${await scannedUpload.text()}`);
+const scan=await scannedUpload.json() as {
+  artifact:{artifactId:string;sha256:string;analysisStatus:string};
+  paymentAuthorized:boolean;paymentExecuted:boolean;
+};
+if(!scan.artifact.artifactId || scan.artifact.analysisStatus!=="STORED_UNTRUSTED" ||
+   scan.paymentAuthorized!==false || scan.paymentExecuted!==false)
+  throw new Error("scanned PDF intake was incorrectly trusted or executed");
+const scannedId=scan.artifact.artifactId;
+const scannedPages=await fetch(`${adminUploadPath}/${scannedId}/pdf-pages`,{
+  method:"POST",headers:{cookie:adminCookie,origin:baseUrl},
+});
+const scannedPagesResult=await scannedPages.json() as {error?:string};
+if(scannedPages.status!==422 || scannedPagesResult.error!=="PDF_PAGE_TEXT_UNAVAILABLE")
+  throw new Error("image-only PDF unexpectedly supplied independently corroborated page text");
+const fakeScannedReview=await fetch(`${adminUploadPath}/${scannedId}/verify-pdf-facts`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    ...reviewBody,
+    artifactId:scannedId,
+    expectedArtifactSha256:scan.artifact.sha256,
+    reviewerReason:"Negative synthetic scan: model-like facts cannot replace independent PDF text",
+  }),
+});
+const scannedReviewResult=await fakeScannedReview.json() as {error?:string};
+if(fakeScannedReview.status!==409 ||
+   scannedReviewResult.error!=="PDF_INDEPENDENT_SOURCE_NOT_PREPARED")
+  throw new Error("scanned source was promoted into a PDF-verified T2 claim");
+const scannedProposal=await fetch(`${adminUploadPath}/${scannedId}/proposals`,{
+  method:"POST",headers:{
+    cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
+  },
+  body:JSON.stringify({
+    claimSetId:"11111111-1111-4111-8111-111111111111",
+    attestationId:"22222222-2222-4222-8222-222222222222",
+    expectedArtifactSha256:scan.artifact.sha256,
+  }),
+});
+if(scannedProposal.status!==200)
+  throw new Error(`scanned source proposal failed: ${scannedProposal.status} ${await scannedProposal.text()}`);
+const scannedDecision=await scannedProposal.json() as {
+  proposal:{outcome:string;reasonCodes:string[];bindingId:string|null;tupleSha256:string|null};
+  paymentAuthorized:boolean;paymentExecuted:boolean;
+};
+if(scannedDecision.proposal.outcome!=="ESCALATE" ||
+   !scannedDecision.proposal.reasonCodes.includes("SOURCE_CLAIM_NOT_INDEPENDENTLY_VERIFIED") ||
+   scannedDecision.proposal.bindingId!==null ||
+   scannedDecision.proposal.tupleSha256!==null ||
+   scannedDecision.paymentAuthorized!==false || scannedDecision.paymentExecuted!==false)
+  throw new Error("scanned model-only source reached a payment-authority binding");
+console.log("PASS scanned-PDF authority negative: no independently verified T2, issuer proof or payment");
+
 const withoutIssuer=await fetch(`${adminUploadPath}/${adminId}/proposals`,{
   method:"POST",headers:{
     cookie:adminCookie,origin:baseUrl,"content-type":"application/json",
