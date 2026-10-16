@@ -38,7 +38,7 @@ beforeEach(() => {
   mocks.query.mockReset();
   mocks.preview.mockReset();
   mocks.query.mockImplementation(async (sql: string) => {
-    if (sql.includes("select 1 from organization_admin_memberships")) return { rows: [{ "?column?": 1 }] };
+    if (sql.startsWith("select 1 from organization_admin_memberships where")) return { rows: [{ "?column?": 1 }] };
     if (sql.includes("from invoice_image_observations")) return { rows: [{
       id: artifactId,
       sha256: "a".repeat(64),
