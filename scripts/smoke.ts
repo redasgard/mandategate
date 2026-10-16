@@ -1,4 +1,4 @@
-import { createPdf } from "../tests/helpers/pdf-fixture";
+import { createPdf, createScannedPdf } from "../tests/helpers/pdf-fixture";
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
 const invoiceKey = process.env.DEMO_AGENT_API_KEY;
 const paymentKey = process.env.DEMO_PAYMENT_AGENT_API_KEY;
@@ -181,7 +181,7 @@ if(!reviewed.review.claimSetId ||reviewed.review.sourceVerified!==true ||
 // Convincing model-visible content is insufficient: no PDF.js page text means
 // no T2 VERIFIED claim, issuer authentication, bound tuple, or PayPal payment.
 // CI never invokes the external GLM provider for this negative case.
-const scannedPdf=createPdf([""]);
+const scannedPdf=await createScannedPdf();
 const scannedUpload=await fetch(adminUploadPath,{
   method:"POST",headers:adminHeaders,body:new Uint8Array(scannedPdf),
 });
