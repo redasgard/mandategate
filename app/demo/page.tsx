@@ -4,6 +4,8 @@ import {notFound,redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
 import {demoPreviewEnabled} from "@/src/demo/scenarios";
 import {listDemoScenarios,DemoScenarioError} from "@/src/demo/scenarios-store";
+import {readDemoEvidence} from "@/src/demo/evidence";
+import {DemoVisionEvidence} from "./vision-evidence";
 import {LoadDemoScenarios} from "./load-button";
 
 const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n/100);
@@ -12,17 +14,27 @@ export default async function DemoPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
   if(!demoPreviewEnabled(process.env))notFound();
-  let scenarios;
-  try{scenarios=await listDemoScenarios(session.user.id);}
-  catch(e){if(e instanceof DemoScenarioError && e.httpStatus===404)notFound();throw e;}
+  let scenarios: Awaited<ReturnType<typeof listDemoScenarios>>;
+  let evidence: Awaited<ReturnType<typeof readDemoEvidence>>;
+  try {
+    [scenarios,evidence] = await Promise.all([
+      listDemoScenarios(session.user.id),
+      readDemoEvidence(session.user.id),
+    ]);
+  } catch(e) {
+    if(e instanceof DemoScenarioError && e.httpStatus===404)notFound();
+    throw e;
+  }
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
       <p className="eyebrow">MandateGate / synthetic test lab</p>
       <h1>Three decisions. Zero payouts.</h1>
       <p className="muted">Use these fictional Northstar Components invoices to explain why an agent
-        can request a payment but cannot authorize one. This is a simulation:
-        no issuer authentication, customer invoice, or actual PayPal payout is represented here.</p>
+        can request a payment but cannot authorize one. These deterministic decisions are a separate simulation:
+        no external issuer authentication, customer invoice, or PayPal payout is represented.
+        Above them, inspect saved model observations from fictional documents.</p>
+      <DemoVisionEvidence evidence={evidence}/>
       <LoadDemoScenarios/>
       <section className="risk-evidence-list" aria-label="Synthetic demonstration scenarios">
         {scenarios.map((item,index)=><article key={item.id} className="risk-evidence-card">
