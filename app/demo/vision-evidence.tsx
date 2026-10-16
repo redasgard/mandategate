@@ -14,8 +14,8 @@ export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
     <p className="eyebrow">AI evidence / observed, not authorized</p>
     <h2>What GLM observed in fictional invoices</h2>
     <p className="muted">
-      These records were saved from consented synthetic-only tests. The model
-      proposed invoice facts but could not independently authenticate a PDF,
+      These T1 model observations were saved from consented fictional-only tests.
+      The model proposed invoice facts but could not independently authenticate a PDF,
       verify a vendor, update a receiver, or authorize PayPal.
       Every observation shown here remained ESCALATE.
     </p>
@@ -34,9 +34,10 @@ export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
                 ? finding.vendor ?? "Not observed"
                 : "Not schema-accepted"}</p>
             <p><strong>Model-proposed total:</strong>{" "}
-              {finding.fieldsSchemaValid && finding.amount
+              {finding.fieldsSchemaValid && finding.amount &&
+                !finding.reasonCodes.includes("INVALID_AMOUNT")
                 ? (finding.currency ?? "Currency unverified") + " " + finding.amount
-                : "Not schema-accepted"}</p>
+                : "Invalid or not schema-accepted as payable"}</p>
             <p><strong>Finding:</strong> Advisory-only. Payment authority: <strong>No.</strong></p>
             {finding.reasonCodes.filter(code => code in meaning).map(code =>
               <p className="muted" key={code}>
