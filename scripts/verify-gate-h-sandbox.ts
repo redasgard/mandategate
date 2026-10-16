@@ -11,6 +11,7 @@ import { executeAuthorizedPayment } from "../src/payments/executor/service";
 import { postgresExecutionStore } from "../src/payments/executor/postgres-store";
 import { PayPalPayoutsClient } from "../src/payments/paypal/client";
 import { ExperientialInvoiceVisionGateway } from "../src/ai/gateway/experiential-vision";
+import { assertActualGateHGlmObservation } from "../src/gate-h/glm-evidence";
 
 loadLocalEnv();
 const mode=process.argv[2];
@@ -81,19 +82,6 @@ async function assertNegativeArtifactsOwned(){
   );
   if(Number(r.rows[0]?.n??0)!==2)
     throw new GateHSandboxError("GATE_H_NEGATIVE_ARTIFACTS_NOT_OWNED");
-}
-async function assertActualGlmObservation(){
-  const r=await pool.query([
-    "select artifact_id from invoice_image_observations",
-    "where organization_id=$1 and artifact_id=$2",
-    "and gateway_request_id=$3 and model='glm-5.3-flash'",
-    "and gateway_zdr=true and provider_name is not null and state='ESCALATE'",
-  ].join(" "),[
-    org,process.env.GATE_H_ACTUAL_GLM_ARTIFACT_ID,
-    process.env.GATE_H_ACTUAL_GLM_GATEWAY_REQUEST_ID,
-  ]);
-  if(r.rows.length!==1)
-    throw new GateHSandboxError("GATE_H_REAL_GLM_ADVERSARIAL_EVIDENCE_NOT_FOUND");
 }
 async function outcomeChecks(){
   const before=await countOrgExecutions();
@@ -171,7 +159,11 @@ try{
     },null,2));
   }else if(mode==="submit"){
     const b=await getBound();
-    await assertActualGlmObservation();
+    await assertActualGateHGlmObservation({
+      organizationId: org,
+      artifactId: process.env.GATE_H_ACTUAL_GLM_ARTIFACT_ID!,
+      gatewayRequestId: process.env.GATE_H_ACTUAL_GLM_GATEWAY_REQUEST_ID!,
+    });
     // Recheck actual provider account policy immediately before any payment
     // movement. A historical mock or old GLM request ID is insufficient.
     await new ExperientialInvoiceVisionGateway().verifyPrivacyAndModel();
