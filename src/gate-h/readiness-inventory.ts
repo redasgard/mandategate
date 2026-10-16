@@ -21,7 +21,7 @@ export type GateHInventory = {
   organizationId: string;
   status: "BLOCKED";
   payoutAuthorized: false;
-  externalRequestsMade: false;
+  modelOrPaymentRequestsMade: false;
   counts: GateHInventoryCounts;
   tiers: {
     t0Source: "RECORDED" | "MISSING";
@@ -150,7 +150,7 @@ export function classifyGateHInventory(
     organizationId,
     status: "BLOCKED",
     payoutAuthorized: false,
-    externalRequestsMade: false,
+    modelOrPaymentRequestsMade: false,
     counts,
     tiers: {
       t0Source: counts.invoiceArtifacts ? "RECORDED" : "MISSING",
