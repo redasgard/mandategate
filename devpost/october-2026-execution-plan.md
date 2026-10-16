@@ -91,7 +91,7 @@ The user can later grant a narrow standing authorization for safe R2 deployment 
 | H3 final security and publication | Oct 26-28 | Approve exact reviewed release commit/tree/tag, confirmed infrastructure cost/availability, repo visibility and public video/account permissions; independently obtained financial-diff signoff | Do not merge unreviewed money changes, publish secrets, pay for services or switch live branch |
 | H4 final submission | Oct 28-29 | Preview the final Devpost form, authorized representative and URLs; user performs final submission if no connected submission capability and returns confirmation URL | Submission NOT claimed, escalation before Oct 29 deadline |
 
-Target interaction pattern: a compact written status only on a gate that needs a decision, not one request per test/commit; one consolidated packet lists exact choices and a recommended safe default. Execution must remain truthful if there is no response.
+Target interaction pattern: a compact written status only on a gate that needs a decision, not one request per test/commit; one consolidated packet lists exact choices and a recommended safe default. This low-touch budget assumes the owner separately grants the narrow R2 batch-merge authority in H0; otherwise each auto-deploy merge still needs an explicit approval and human interactions increase. Execution must remain truthful if there is no response.
 
 ### 2.4 Daily status and automatic incident routing
 
@@ -113,7 +113,7 @@ G0-CAPACITY cannot pass without:
 
 **Mode A, all thirteen slices by October 29:** CONDITIONAL and currently UNVERIFIED. Requires demonstrated independent work lanes A/B/C/D, QA/release coverage, applicable paid/service permissions and independent security reviewer. Parallelism is allowed only on disjoint state and frozen interfaces. No project manager should claim Mode A PASS merely because four role names appear in a document.
 
-**Mode B, deadline-protected working submission:** This is a PROPOSED contingency, **not pre-approved removal of P1/P2**. First finish demonstrable P0, safely replay judges' three cases, publish existing separately evidenced PayPal and AI paths, and package a truthful submission. Each P1/P2 slice must still be attempted/verified if capacity exists. At H2, owner must explicitly enumerate deferred items and their effects if Mode A proves unattainable. The default without H2 is to keep preparing truthful assets while leaving official scope changes unresolved, never silently check boxes or weaken security.
+**Mode B, deadline-protected working submission:** This is a PROPOSED contingency, **not pre-approved removal of P1/P2**. First finish demonstrable P0, safely replay judges' three cases, publish existing separately evidenced PayPal and AI paths, and package a truthful submission. Each P1/P2 slice must still be attempted/verified if capacity exists. At H2, owner must explicitly enumerate deferred items and their effects if Mode A proves unattainable. The default without H2 is to keep preparing truthful assets while leaving official scope changes unresolved, never silently check boxes or weaken security. A release candidate may include only previously verified S02 financial functionality if a late new authorization change is not independently reviewable; the owner must authorize the named omission and claims.
 
 ## 4. Task dependency DAG and gates
 
@@ -238,7 +238,7 @@ Public deliverables: tagged main, clean README and setup command, license, judge
 
 - [ ] Exact candidate commit and tree SHA frozen; code affecting money/tenant/auth independently reviewed; latest G6 QA passed.
 - [ ] Backup+restore test of actual target persistence completed before migration or branch switch; scheduled persistence remains valid through December 15.
-- [ ] PR #2 source diff reviewed against main and no secrets/lost migrations; merge only with appropriate explicit approval.
+- [ ] PR #2 source diff reviewed against main and no secrets/lost migrations; merge only with appropriate explicit approval. If the large draft cannot pass review, assemble a narrower release candidate from main plus specifically verified changes, with an explicit owner-approved scope ledger; never merge the entire WIP solely to match Render.
 - [ ] Immutable release tag created on reviewed main commit, clean checkout, frozen install, migrations/seed twice, test, typecheck, build, signed-in smoke.
 - [ ] Render production/demo uses reviewed tree (same SHA or independently verified equal tree), status LIVE, health/auth and three-case judge replay observed.
 - [ ] No normal judge action causes an outbound Payouts request; historical payout separately labeled with original identifiers and date.
@@ -263,7 +263,7 @@ Public deliverables: tagged main, clean README and setup command, license, judge
 
 **R6: PR #3 October v3 is stale and has merge conflicts.** This v4 is reconstructed from latest live commit and old v3 as evidence, without pulling contradictory/stale gate statuses into deployed truth. After this PR is accepted, mark PR #3 superseded or individually recover useful historical review documents; do not merge both canonical plan files.
 
-**R7: Prohibited/unauthorized sponsor integration, testnet spend or missing independent review.** Do not fabricate provider receipts, charge accounts or replace review with self-review. Keep in an isolated branch; escalate the named gate. Owner decides exact deferral if timebox expires.
+**R7: Prohibited/unauthorized sponsor integration, testnet spend or missing independent review.** Do not fabricate provider receipts, charge accounts or replace review with self-review. Keep in an isolated branch; escalate the named gate. If independent review of a new money/auth change cannot be obtained, remove that change from the candidate and revert to the already verified S02 financial trust boundary, then rerun integration/hosted tests; do not claim the excluded invoice-derived feature. If the resulting smaller release is still functional, owner must explicitly approve its named scope deferral and exact release tree. If reverting cannot preserve safety, G7 remains BLOCKED.
 
 ## 11. Next executable actions, ordered
 
