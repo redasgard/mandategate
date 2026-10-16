@@ -56,7 +56,7 @@ describe("free-tier demo and strict provider privacy are visibly separate", () =
     });
     expect(html).not.toContain("Hackathon demo:");
     expect(html).not.toContain("Run synthetic test without ZDR");
-    expect(html).toContain("Observe with strict ZDR (requires compliant account)");
+    expect(html).toContain("Observe this stored document (strict ZDR)");
     expect(html).not.toContain("strict-privacy-details");
   });
 
