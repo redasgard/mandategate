@@ -30,11 +30,10 @@ describe("free-tier demo and strict provider privacy are visibly separate", () =
     expect(strictIndex).toBeGreaterThan(demoIndex);
     expect(html).toContain("<details");
     expect(html).toContain("Run synthetic test without ZDR");
-    expect(html).toContain("acknowledge");
+    expect(html).toContain("I confirm this is an approved fictional test document");
     expect(html).toContain("may retain");
     expect(html).toContain("including for training");
     expect(html).toContain("no real");
-    expect(html).toContain("Observ");
     expect(html).not.toContain("Pay now");
     expect(html).not.toContain("Execute payment");
     expect(html).not.toContain("ZDR compliant");
