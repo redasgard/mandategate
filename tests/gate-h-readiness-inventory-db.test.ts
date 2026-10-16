@@ -18,7 +18,7 @@ describe("Gate H read-only inventory against the migrated CI PostgreSQL schema",
     expect(report.contract).toBe("mandategate/gate-h-readonly-inventory/v1");
     expect(report.status).toBe("BLOCKED");
     expect(report.payoutAuthorized).toBe(false);
-    expect(report.externalRequestsMade).toBe(false);
+    expect(report.modelOrPaymentRequestsMade).toBe(false);
     expect(report.counts.allPaymentExecutions).toBe(before.rows[0]?.n);
     expect(after.rows[0]?.n).toBe(before.rows[0]?.n);
     expect(report.tiers.strictPrivacy).toBe("NOT_EVALUATED");
