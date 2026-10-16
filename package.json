@@ -19,7 +19,8 @@
     "security:rotate-demo-credentials": "tsx scripts/rotate-demo-credentials.ts",
     "recover:paypal-webhooks": "tsx scripts/recover-paypal-webhooks.ts",
     "verify:vision:privacy": "tsx scripts/verify-experiential-vision-privacy.ts",
-    "gate-h:sandbox": "tsx scripts/verify-gate-h-sandbox.ts"
+    "gate-h:sandbox": "tsx scripts/verify-gate-h-sandbox.ts",
+    "gate-h:inventory": "tsx scripts/report-gate-h-readiness.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.10",
