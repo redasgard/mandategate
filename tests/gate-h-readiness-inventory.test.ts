@@ -34,7 +34,7 @@ describe("read-only Gate H inventory does not grant payment authority", () => {
       organizationId: "org_demo",
       status: "BLOCKED",
       payoutAuthorized: false,
-      externalRequestsMade: false,
+      modelOrPaymentRequestsMade: false,
       counts: {
         invoiceArtifacts: 4,
         independentPdfPages: 0,
