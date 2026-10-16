@@ -84,7 +84,7 @@ export function InvoiceVisionObservation({
     </p>
     <p><Link href="/invoice-artifacts/privacy">Check strict privacy metadata (no invoice sent)</Link></p>
     <button disabled={busy || Boolean(data)} onClick={() => void observe(false)}>
-      {busy ? "Analyzing…" : "Observe with strict ZDR (requires compliant account)"}
+      {busy ? "Analyzing…" : "Observe this stored document (strict ZDR)"}
     </button>
   </section>;
 
