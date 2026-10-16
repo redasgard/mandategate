@@ -40,9 +40,16 @@ export default function PrivacyPreflightPage(){
       <p className="muted">Queries the connected gateway account identity, Zero Data Retention,
         provider no-training/ZDR policy, prompt-content capture setting, and available
         model route. No invoice bytes or model inference are sent during this check.</p>
-      <p className="muted">This page always checks the strict ZDR policy.
-        An admin's separate, allowlisted synthetic-only test exception does not
-        make this privacy preflight pass or establish ZDR compliance.</p>
+      <p className="muted">This page tests the strict privacy lane for real or
+        sensitive invoices. Full account ZDR may require a paid provider entitlement.
+        An account-level privacy refusal is the expected safe result when the
+        entitlement is unavailable; it does not prevent a separate fictional-only
+        hackathon demonstration.</p>
+      <p className="muted">For a synthetic demo, return to <Link href="/invoice-artifacts">
+        Invoice intake</Link> and open a server-allowlisted fictional document.
+        The admin must acknowledge possible retention and training before model
+        inference. That consent is not proof of ZDR, document authenticity, or
+        payment authority.</p>
       <button disabled={busy} onClick={()=>void check()}>Check live account privacy settings</button>
       {receipt?<div>
         <h2>Metadata policy checks passed</h2>
@@ -57,7 +64,14 @@ export default function PrivacyPreflightPage(){
         </dl>
         <p className="muted">Do not interpret a metadata PASS as proof that a particular model response used a ZDR serving route.</p>
       </div>:null}
-      {error?<AdvisoryErrorDetails code={error} metadataOnly/>:null}
+      {error?<div role="status">
+        {error==="EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED"
+          ? <p className="muted">Full account ZDR is unavailable. The strict
+              observation remains blocked and no invoice was submitted. The
+              separate approved fictional-only demo may still be used with
+              explicit retention-risk consent.</p> : null}
+        <AdvisoryErrorDetails code={error} metadataOnly/>
+      </div>:null}
     </section>
   </main>;
 }
