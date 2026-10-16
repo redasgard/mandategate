@@ -35,6 +35,7 @@ export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
                 : "Not schema-accepted"}</p>
             <p><strong>Model-proposed total:</strong>{" "}
               {finding.fieldsSchemaValid && finding.amount &&
+                /^[0-9]{1,16}(?:\.[0-9]{1,2})?$/.test(finding.amount) &&
                 !finding.reasonCodes.includes("INVALID_AMOUNT")
                 ? (finding.currency ?? "Currency unverified") + " " + finding.amount
                 : "Invalid or not schema-accepted as payable"}</p>
