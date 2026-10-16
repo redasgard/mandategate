@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { createPdf } from "./helpers/pdf-fixture";
+import { createPdf, createScannedPdf } from "./helpers/pdf-fixture";
 import { parseIndependentPdfSource } from "../src/invoices/pdf-text";
 import { rasterizeStoredPdfPage, PDF_RASTERIZER_VERSION } from "../src/invoices/pdf-raster";
 import { validateInvoiceImageContainer } from "../src/invoices/image-integrity";
@@ -24,6 +24,21 @@ describe("bounded PDF-to-image preparation, never authority",()=>{
     expect(prepared.height).toBeGreaterThan(500);
     expect(prepared.png.subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
     expect(()=>validateInvoiceImageContainer(prepared.png,"image/png")).not.toThrow();
+  });
+  it("renders actual rasterized invoice words without supplying any T2 PDF text",async()=>{
+    const scan=await createScannedPdf();
+    const digest=sha(scan);
+    await expect(parseIndependentPdfSource({
+      content:scan,expectedArtifactSha256:digest,
+    })).rejects.toMatchObject({code:"PDF_PAGE_TEXT_UNAVAILABLE"});
+    const prepared=await rasterizeStoredPdfPage({
+      content:scan,expectedArtifactSha256:digest,
+    });
+    expect(prepared.pageCount).toBe(1);
+    expect(prepared.pageNumber).toBe(1);
+    expect(prepared.sourceArtifactSha256).toBe(digest);
+    expect(prepared.renderedPngSha256).toBe(sha(prepared.png));
+    expect(prepared.png.subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
   });
   it("bounds raster page indices and source hashes before native decoding",async()=>{
     const pdf=createPdf(["page one"]);
