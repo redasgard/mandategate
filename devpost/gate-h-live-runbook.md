@@ -101,3 +101,38 @@ This mode is **not** proof of ZDR compliance or Gate H completion. It is for the
 ### Free-tier demo exception (2026-10-13)
 
 On the bound demo service only, ZDR, provider `require_no_training`, and provider `capture_prompt_content=false` are **optional** for byte-identical, server-allowlisted fictional fixtures after authenticated admin consent. The preflight still retrieves and records their **actual** boolean values, including false. This does not imply the provider will honor a no-training or no-retention guarantee. The UI explicitly warns that the provider may retain, log, or train on the fictional test content under its terms. Normal `/observe` and `/api/admin/experiential-privacy` remain fail-closed for all three controls. This demo path is not Gate H production privacy evidence.
+
+## 6. Hackathon and strict acceptance lanes (2026-10-16)
+
+### Gate H-S: Strict invoice-to-payment release (BLOCKED)
+
+This is the original strict `gate-h:sandbox` acceptance runner and **must not** be silently weakened or invoked with synthetic free-tier observations.
+
+- Account-level full ZDR, provider `require_zdr=true`, `require_no_training=true`, prompt capture disabled, compatible served Flash model and non-synthetic request metadata are required for the actual invoice-processing call.
+- Original source bytes and independent PDF text (T2), genuine issuer-origin evidence (T3), exact authenticated human approval (T4), immutable binding, trusted recipient, active policy, one-shot explicit $1.01 Sandbox authorization and verified webhook/reconciliation remain separate requirements.
+- Hosted strict privacy metadata check returned `EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED`. Owner reports full ZDR is gated by the Experiential **Pro** plan. Record this as a **vendor entitlement blocker**, not evidence that a private invoice was ever submitted. Do not purchase or assume Pro as a hackathon requirement.
+- Strict Gate H and the full Slice 3 invoice-to-payout claim remain **BLOCKED**. Never use synthetic `gateway_zdr=true` observations as Gate H-S receipts; the implementation also rejects their synthetic reason/consent audit.
+
+### Gate H-D: Free-tier synthetic AI demo (usable, not strict Gate H proof)
+
+This is an **independent, non-authorizing** acceptance lane for the hackathon, not a blanket ZDR waiver.
+
+1. Confirm the hosted Render demo service and Sandbox host; original artifact SHA exactly matches the server-side fictional-fixture allowlist. The fixture must contain **no real customer, vendor, personal financial or credential material**.
+2. The signed-in administrator explicitly acknowledges provider retention/training risk. Consent is durably recorded before model inference. Provider account ZDR, no-training and prompt-capture controls are queried and their **actual values** recorded, regardless of whether each is true or false. The provider may retain or train on the fictional submission.
+3. Observe `glm-5.3-flash` through the separate `observe-synthetic` endpoint, record the actual model/provider/request identity and input/raster hashes, and persist an `ESCALATE` observation with `SYNTHETIC_NON_ZDR_TEST_ONLY`. The model can identify candidate facts, but all model citations remain unverified **T1**.
+4. Reload the signed-in reviewer and verify saved vendor/amount/destination plus the untrusted-source and privacy warnings remain visible. This is the user-confirmed Northstar `DEMO-GLM-004` observation checkpoint; repeated inference is not necessary. An expired or unknown serving receipt is not silently reclassified as strict ZDR proof.
+5. Present the exact consequence: **no payment authority, no change of trusted destination, and no invoice-derived PayPal Payouts POST**. All external supplier authentication remains separate.
+
+**Acceptance label:** `SYNTHETIC_AI_ADVISORY_DEMO`. Not `STRICT_ZDR_PASS`, `ISSUER_VERIFIED`, or `INVOICE_TO_PAYPAL_VERIFIED`.
+
+### Gate H-P: Existing independent PayPal Sandbox proof (separate path)
+
+- Reuse the recorded Slice 2 direct trusted-agent Sandbox payout/reconciliation evidence rather than sending money again. Verify its batch/item state and immutable local logical-payment linkage **read-only** if refreshed evidence is needed.
+- That proof demonstrates the PayPal rail, idempotency, verified webhook and reconciliation controls for the direct canonical request path. It **does not** prove that a GLM-observed or PDF-origin invoice triggered that payout.
+- The three-minute presentation may show an advisory synthetic invoice and, **as a distinctly labeled second scene**, the already evidenced PayPal Sandbox result. The changed-receiver scene must show `DENY`/blocked trust without a new payout. Never imply one continuous invoice-to-payout transaction unless a later independently reviewed run establishes it.
+
+### Deferred invoice-derived Sandbox experiment
+
+A dedicated *demo-only* invoice-to-payout proof can be proposed without changing `gate-h:sandbox submit` or the strict `/observe` route. It must first specify an isolated fictional issuer/source fixture, independently parser-verified fields, pre-enrolled and transparently **simulated** issuer provenance, explicit human approval, an exact $1.01 Sandbox receiver/binding SHA, irreversible single-POST fence, safe negative controls and webhook proof. It must be reviewed for truthful provenance and cross-tenant/replay risks; user approval to **merge** that code is separate from explicit user authorization to **submit** one Sandbox payout. No such payment is authorized by this plan.
+
+**Demo completion standard:** Verify actual hosted UI and synthetic model receipt, independent source/issuer negative gates, and existing real Sandbox proof. Keep Gate H-S blocked, call out unverified pieces, and avoid a misleading full-Slice-3 completion claim.
