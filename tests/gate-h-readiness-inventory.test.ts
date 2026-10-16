@@ -12,7 +12,8 @@ const emptyRow = {
   independent_pdf_pages: 0,
   pdf_artifacts_with_pages: 0,
   verified_pdf_claims: 0,
-  active_enrolled_channels: 1,
+  active_enrolled_channels: 0,
+  eligible_preexisting_channel_invoice_pairs: 0,
   current_human_origin_attestations: 0,
   authorized_bindings: 0,
   consented_synthetic_glm_observations: 3,
@@ -38,7 +39,8 @@ describe("read-only Gate H inventory does not grant payment authority", () => {
         invoiceArtifacts: 4,
         independentPdfPages: 0,
         verifiedPdfClaims: 0,
-        activeEnrolledChannels: 1,
+        activeEnrolledChannels: 0,
+        eligiblePreexistingChannelInvoicePairs: 0,
         currentHumanOriginAttestations: 0,
         authorizedBindings: 0,
         consentedSyntheticGlmObservations: 3,
@@ -55,6 +57,7 @@ describe("read-only Gate H inventory does not grant payment authority", () => {
       },
     });
     expect(report.blockers).toContain("T2_NO_VERIFIED_PDF_FACTS");
+    expect(report.blockers).toContain("T3_NO_ELIGIBLE_PREEXISTING_CHANNEL_INVOICE_PAIR");
     expect(report.blockers).toContain("T3_NO_CURRENT_NON_SYNTHETIC_ORIGIN_ATTESTATION");
     expect(report.blockers).toContain("T4_NO_AUTHORIZED_BINDING");
     expect(report.blockers).toContain("STRICT_PROVIDER_PRIVACY_REQUIRES_SEPARATE_EXTERNAL_PROOF");
@@ -69,6 +72,8 @@ describe("read-only Gate H inventory does not grant payment authority", () => {
       pdf_artifacts_with_pages: 2,
       verified_pdf_claims: 1,
       current_human_origin_attestations: 1,
+      active_enrolled_channels: 1,
+      eligible_preexisting_channel_invoice_pairs: 1,
       authorized_bindings: 1,
       invoice_payment_requests: 1,
       all_payment_executions: 1,
@@ -93,6 +98,7 @@ describe("read-only Gate H inventory does not grant payment authority", () => {
     expect(GATE_H_INVENTORY_SQL).toContain("c.source_sha256=art.sha256");
     expect(GATE_H_INVENTORY_SQL).toContain("a.method='ADMIN_OUT_OF_BAND'");
     expect(GATE_H_INVENTORY_SQL).toContain("ch.created_at < art.created_at");
+    expect(GATE_H_INVENTORY_SQL).toContain("eligible_preexisting_channel_invoice_pairs");
     expect(GATE_H_INVENTORY_SQL).toContain("verification_status='VERIFIED'");
     expect(GATE_H_INVENTORY_SQL).not.toMatch(/\b(?:insert|update|delete|truncate|drop|alter|grant|execute)\b/i);
   });
