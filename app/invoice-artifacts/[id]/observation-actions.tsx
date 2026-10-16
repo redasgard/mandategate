@@ -73,24 +73,34 @@ export function InvoiceVisionObservation({
     }
   }
 
+  const strictControls = <section aria-label="Strict ZDR observation">
+    <p className="eyebrow">Strict ZDR / real-data privacy requirements</p>
+    <h3>Strict observation requires full account ZDR</h3>
+    <p className="muted">
+      This standard route will not submit invoice content unless account-level
+      ZDR, no-training, prompt-capture and model-route checks pass. These
+      protections are separate from the fictional demo exception. Model
+      observations never authenticate the issuer or authorize payments.
+    </p>
+    <p><Link href="/invoice-artifacts/privacy">Check strict privacy metadata (no invoice sent)</Link></p>
+    <button disabled={busy || Boolean(data)} onClick={() => void observe(false)}>
+      {busy ? "Analyzing…" : "Observe with strict ZDR (requires compliant account)"}
+    </button>
+  </section>;
+
   return <section className="review-stage">
     <p className="eyebrow">AI / advisory observation only</p>
-    <h2>Run GLM-5.3 Flash with strict privacy checks</h2>
+    <h2>GLM-5.3 Flash invoice observations</h2>
     <p className="muted">
-      The standard observation sends an image only after ZDR, no-training and
-      prompt-capture checks pass. Single-page PDFs are rendered locally first;
-      multi-page PDFs are held for manual review. Model observations never
-      establish issuer identity, invoice authenticity or payment authority.
+      The model can suggest invoice facts, but it cannot authenticate the source,
+      update a trusted destination, approve a payment, or execute a payout.
+      Single-page PDFs are rendered locally; multi-page scans require review.
     </p>
     <p>Source: <span className="mono">{mimeType} / {artifactSha256}</span></p>
-    <p><Link href="/invoice-artifacts/privacy">Check live account privacy metadata (no invoice sent)</Link></p>
-    <button disabled={busy || Boolean(data)} onClick={() => void observe(false)}>
-      {busy ? "Analyzing…" : "Observe this stored document (strict ZDR)"}
-    </button>
 
     {syntheticTestEnvironmentEnabled ? <section className="synthetic-test-box" aria-label="Synthetic non-ZDR test">
       <p className="eyebrow">Demo only / non-ZDR test</p>
-      <h3>Test a synthetic invoice without ZDR</h3>
+      <h3>Hackathon demo: observe an approved fictional invoice</h3>
       <p>
         This is an explicitly permitted test exception, not a production privacy pass.
         Experiential Labs may retain submitted content according to its account policies.
@@ -118,6 +128,13 @@ export function InvoiceVisionObservation({
         {busy ? "Analyzing…" : "Run synthetic test without ZDR"}
       </button>
     </section> : null}
+
+    {syntheticTestEnvironmentEnabled
+      ? <details className="strict-privacy-details">
+          <summary>Strict privacy route (requires full account ZDR)</summary>
+          {strictControls}
+        </details>
+      : strictControls}
 
     {error ? <AdvisoryErrorDetails code={error}/> : null}
     {data ? <div role="status">
