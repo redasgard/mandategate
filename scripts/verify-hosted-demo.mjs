@@ -46,7 +46,12 @@ const dashboardHtml=await dashboard.text();
 assert(dashboardHtml.includes("Three-case demo lab"),"DEMO_LINK_NOT_VISIBLE");
 const demoPage=await request("/demo",{headers});
 assertHttp(demoPage,200,"HOSTED_DEMO_PAGE");
-assert((await demoPage.text()).includes("Three decisions. Zero payouts."),"DEMO_PAGE_MISSING");
+const html = await demoPage.text();
+assert(html.includes("Three decisions. Zero current demo executions."),"DEMO_PAGE_MISSING");
+assert(html.includes("All local payment execution rows in this demo organization: 0"),
+  "DEMO_ORGANIZATION_EXECUTION_COUNT_NOT_ZERO");
+assert(html.includes("Recorded earlier PayPal Sandbox payout") &&
+  html.includes("BA7V96FCY8Z64"), "HISTORICAL_PAYPAL_PROVENANCE_MISSING");
 
 const path="/api/admin/demo-scenarios";
 const crossSite=await request(path,{method:"POST",headers:{...headers,origin:"https://example.invalid"}});
