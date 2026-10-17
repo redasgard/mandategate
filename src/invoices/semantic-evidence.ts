@@ -35,6 +35,19 @@ function invoiceIdentifiers(source: string): string[] {
 }
 
 /**
+ * A PDF may print both the known PayPal receiver and an attacker-controlled
+ * replacement. A quote containing the good address is not sufficient: every
+ * email-like destination token from the full parsed artifact must agree.
+ * This intentionally escalates documents containing separate contact emails
+ * until a more specific, independently verified destination label exists.
+ */
+function documentEmailCandidates(source: string): string[] {
+  const tokens = [...source.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+/gi)]
+    .map(match => match[0].toLowerCase());
+  return [...new Set(tokens)];
+}
+
+/**
  * Checks a model-selected value against the actual page text and a labeled
  * exact quote. The text must come from an independent, bounded parser.
  * This does NOT establish issuer authenticity or permission to pay.
@@ -96,8 +109,19 @@ export function verifyFieldEvidenceBinding(input: {
       return issues;
     }
     case "vendor_name":
-    case "invoice_payment_destination":
       if (!quote.includes(value)) issues.push("FIELD_VALUE_NOT_IN_SOURCE_QUOTE");
       return issues;
+    case "invoice_payment_destination": {
+      const selected = value.toLowerCase();
+      const quoteEmails = documentEmailCandidates(quote);
+      const documentEmails = documentEmailCandidates(source);
+      if (quoteEmails.length !== 1 || quoteEmails[0] !== selected) {
+        issues.push("DESTINATION_NOT_BOUND_TO_EXACT_EMAIL_TOKEN");
+      }
+      if (documentEmails.length !== 1 || documentEmails[0] !== selected) {
+        issues.push("DESTINATION_AMBIGUOUS_OR_CONTRADICTED");
+      }
+      return issues;
+    }
   }
 }
