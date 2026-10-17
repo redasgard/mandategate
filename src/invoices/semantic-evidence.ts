@@ -42,8 +42,13 @@ function invoiceIdentifiers(source: string): string[] {
  * until a more specific, independently verified destination label exists.
  */
 function documentEmailCandidates(source: string): string[] {
-  const tokens = [...source.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+/gi)]
-    .map(match => match[0].toLowerCase());
+  // Bound each token to avoid pathological matching on attacker-supplied PDF
+  // text. A malformed or unsupported @-bearing token forces a safe hold.
+  const tokens = [...source.matchAll(
+    /(?<![A-Z0-9._%+-])[A-Z0-9._%+-]{1,64}@[A-Z0-9-]{1,63}(?:\.[A-Z0-9-]{1,63}){1,5}(?![A-Z0-9-]|\.[A-Z0-9-])/gi,
+  )].map(match => match[0].toLowerCase());
+  const allAtSigns = source.match(/@/g)?.length ?? 0;
+  if (allAtSigns !== tokens.length) return [];
   return [...new Set(tokens)];
 }
 
