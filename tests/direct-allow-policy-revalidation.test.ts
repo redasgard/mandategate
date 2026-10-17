@@ -116,7 +116,7 @@ describe("direct-agent ALLOW authority expires with current policy", () => {
     const csv=Buffer.from([
       "vendor_name,invoice_number,invoice_date,amount_decimal,currency,status,payment_destination",
       "Test vendor,INV-REVALIDATE-01,2026-10-01,9.00,USD,PAID,ap@revalidate.invalid",
-    ].join("\\n") + "\\n");
+    ].join("\n") + "\n");
     const importResult=await importApHistory({
       organizationId,actorUserId:adminId,content:csv,
     });
