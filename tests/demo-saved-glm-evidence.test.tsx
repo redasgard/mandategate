@@ -17,6 +17,8 @@ vi.mock("../src/demo/scenarios-store", () => ({
 import { readDemoEvidence } from "../src/demo/evidence";
 import { DemoVisionEvidence } from "../app/demo/vision-evidence";
 
+let localExecutionCount: unknown = 0;
+
 const artifactId = "11111111-1111-4111-8111-111111111111";
 const field = (value: string | null) => ({
   value, confidence: 0.99,
@@ -35,6 +37,7 @@ const extraction = {
 };
 
 beforeEach(() => {
+  localExecutionCount = 0;
   mocks.query.mockReset();
   mocks.preview.mockReset();
   mocks.query.mockImplementation(async (sql: string) => {
@@ -52,7 +55,7 @@ beforeEach(() => {
         "SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED",
       ],
     }] };
-    if (sql.includes("from payment_executions")) return { rows: [{ n: 0 }] };
+    if (sql.includes("from payment_executions")) return { rows: [{ n: localExecutionCount }] };
     throw Error("UNEXPECTED_DEMO_QUERY");
   });
 });
@@ -61,7 +64,7 @@ describe("saved fictional model findings in three-case demo", () => {
   it("scopes every read to active admin membership, original SHA consent, and non-authorizing T1", async () => {
     const evidence = await readDemoEvidence("authorized-admin");
     expect(evidence.findings).toHaveLength(1);
-    expect(evidence.invoiceExecutionRows).toBe(0);
+    expect(evidence.organizationExecutionRows).toBe(0);
     expect(evidence.findings[0]).toMatchObject({
       artifactId,
       model: "glm-5.3-flash",
@@ -84,7 +87,8 @@ describe("saved fictional model findings in three-case demo", () => {
     expect(observationSql).toContain("o.state='ESCALATE'");
     expect(observationSql).toContain("o.error_code is null");
     const paymentSql=mocks.query.mock.calls[2][0] as string;
-    expect(paymentSql).toContain("pr.source='verified_invoice'");
+    expect(paymentSql).toContain("where pr.organization_id=$1");
+    expect(paymentSql).not.toContain("pr.source=");
     expect(paymentSql).not.toContain("insert into");
   });
 
@@ -113,8 +117,8 @@ describe("saved fictional model findings in three-case demo", () => {
     expect(html).toContain("Payment authority:");
     expect(html).toContain("No.");
     expect(html).toContain("/invoice-artifacts/" + artifactId);
-    expect(html).toContain("Invoice-derived payout records in this demo database: ");
-    expect(html).toContain("No invoice-derived payment execution record");
+    expect(html).toContain("All local payment execution rows in this demo organization: ");
+    expect(html).toContain("No local payment execution records");
     expect(html).not.toContain("Execute payment");
   });
 
@@ -129,23 +133,45 @@ describe("saved fictional model findings in three-case demo", () => {
           reasonCodes:["DOCUMENT_INSTRUCTIONS_SUSPECTED","INVALID_AMOUNT"],
           fieldsSchemaValid:false,
         }],
-        invoiceExecutionRows:1,
+        organizationExecutionRows:1,
       },
     }));
     expect(html).not.toContain("<script>");
     expect(html).not.toContain("He said 125.00");
     expect(html).toContain("Untrusted extraction rejected by schema");
     expect(html).toContain("Document instructions were treated as hostile");
-    expect(html).toContain("Execution records exist.");
+    expect(html).toContain("Execution records exist in this demo organization.");
     expect(html).not.toContain("PayPal transfer complete");
   });
 
   it("distinguishes no saved synthetic evidence from any claim of strict provider proof", () => {
     const html = renderToStaticMarkup(createElement(DemoVisionEvidence, {
-      evidence: { findings: [], invoiceExecutionRows: 0 },
+      evidence: { findings: [], organizationExecutionRows: 0 },
     }));
     expect(html).toContain("No consented synthetic observations are available");
     expect(html).toContain("Review stored source invoices");
     expect(html).not.toContain("ZDR verified");
   });
+  it("detects other-source trusted-agent executions instead of claiming zero payouts", async () => {
+    localExecutionCount = 1;
+    const evidence = await readDemoEvidence("authorized-admin");
+    expect(evidence.organizationExecutionRows).toBe(1);
+    const sql = mocks.query.mock.calls[2][0] as string;
+    expect(sql).toContain("join payment_requests pr on pr.id=e.payment_request_id");
+    expect(sql).toContain("where pr.organization_id=$1");
+    expect(sql).not.toContain("pr.source=");
+    const html = renderToStaticMarkup(createElement(DemoVisionEvidence, { evidence }));
+    expect(html).toContain("Stop judge replay");
+    expect(html).not.toContain("No local payment execution records");
+  });
+
+  it("fails closed when execution count is missing, negative, fractional or malformed", async () => {
+    for (const invalid of [undefined, null, -1, 0.5, NaN, Infinity, "0"]) {
+      localExecutionCount = invalid;
+      await expect(readDemoEvidence("authorized-admin")).rejects.toMatchObject({
+        code: "DEMO_EXECUTION_COUNT_INVALID", httpStatus: 503,
+      });
+    }
+  });
+
 });
