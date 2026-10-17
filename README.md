@@ -1,122 +1,107 @@
 # MandateGate
 
-Zero-trust authorization and policy layer for AI agents that can spend money.
+**The firewall between autonomous agents and your money.**
 
-MandateGate sits between an autonomous operations agent and PayPal. Agents can submit vendor invoices and request payment, but they never receive payment credentials or payment authority. MandateGate independently evaluates invoice facts, historical behavior, vendor trust, and active policy, then returns `ALLOW`, `ESCALATE`, or `DENY`.
+MandateGate is an authorization and payment-risk boundary for autonomous accounts-payable (AP) agents. Agents may request vendor payments and supply invoices, but they do **not** receive PayPal credentials or the right to authorize a payout. Independently enforced policy, vendor trust, organization boundaries and human review determine whether a request is `ALLOW`, `ESCALATE` or `DENY`.
 
-Current release milestone: PayPal AI Hackathon 2026. MandateGate itself is the product; the hackathon is a release target, not the product boundary.
+Built for the PayPal AI Hackathon 2026. The working product and longer-term roadmap are broader than the hackathon submission.
 
-## Demo
+## What the current demo actually proves
 
-The current release centers the demo on three paths:
+There are **three separate evidence paths**. They should not be presented as one already completed invoice-to-payment transaction.
 
-1. Known vendor + normal invoice -> `ALLOW` -> PayPal Sandbox payout.
-2. Near-duplicate / unusual invoice -> `ESCALATE` -> admin declines -> no payout.
-3. Changed payment destination -> `DENY` + vendor re-verification required.
+| Path | Current evidence | Important limit |
+| --- | --- | --- |
+| **AI interprets a fictional invoice** | Actual saved Experiential Labs GLM-5.3 Flash observations of exact-SHA-allowlisted fictional documents, after recorded admin consent to possible provider retention. The model proposed fields; the result remained **T1 advisory `ESCALATE`**. | This consented synthetic route is **not** strict account-level ZDR. No GLM observation authenticates an issuer or authorizes a payment. |
+| **MandateGate makes deterministic decisions** | An authenticated three-case preview loads normal `ALLOW`, unusual amount `ESCALATE` and destination substitution `DENY`, with source-visible reason codes and payment detail links. It is repeatable and refuses suspicious replay state. | These are synthetic, separate canonical requests, **not** the AI-observed PDFs. No payout occurs through judge replay. |
+| **PayPal Sandbox executes a protected payout** | In an **earlier Render environment**, the direct trusted-agent Slice 2 path created one real Sandbox payout (batch `BA7V96FCY8Z64`, item `A3R9LWD8XTX72`), then recorded PayPal `SUCCESS`, local `PAID`, verified webhook and reconciliation evidence. The judge page links that archived record. | It was **not** triggered by the AI-reviewed invoices. The current Neon-backed demo has no corresponding payment execution rows. Displaying archived identifiers does not re-verify PayPal settlement today. |
 
-The security boundary is the product: AI may interpret, explain, and prepare actions, but deterministic MandateGate controls decide what is authorized and the payment executor alone can call PayPal.
+**Full invoice-derived GLM → verified PDF facts (T2) → independently authenticated issuer (T3) → exact human payment authority (T4) → PayPal payout is not complete.** Strict Gate H remains **BLOCKED**: the hosted account did not satisfy the strict full-ZDR preflight, and live independent issuer/payment proof is still missing. Do not treat a seeded or synthetic issuer channel as genuine external issuer verification.
 
-## Release priorities
+The evidence table with limitations and original sources is at [devpost/judge-evidence-matrix.md](devpost/judge-evidence-matrix.md). The authoritative release checklist is at [devpost/checklist.md](devpost/checklist.md).
 
-P0, P1, and P2 are all targeted for the November hackathon submission. The tiers define build order and emergency cut priority, not product scope.
+## Hosted judge walkthrough
 
-- **P0:** end-to-end invoice authorization, trusted-destination enforcement, escalation, permanent idempotency, PayPal Sandbox execution, evidence trail, three canonical demo scenarios.
-- **P1:** Assistant, policy lifecycle, scheduled payments, Base Sepolia integrity witness, AG Studio / AG Grid, Bryntum timeline.
-- **P2:** Elastic, Zapier MCP, Postman, challenger/evaluation model work, sponsor-integration polish.
+Development demo: **https://mandategate-web.onrender.com/demo**
 
-Nothing in P1/P2 is allowed to destabilize the P0 money-movement boundary.
+The demo requires a signed-in, organization-authorized account. **Judge login/access is not publicly provisioned yet** and must be confirmed before submission; there is no shared password in this repository.
 
-## Stack
+1. Open **/demo** after sign-in. Inspect the saved fictional GLM observation cards and click through to the original invoice artifacts. Merely viewing the cards makes **no new model request**.
+2. Click **Load or replay three demo decisions**. This writes/reuses three synthetic canonical requests through the deterministic decision engine; it **does not execute PayPal**. Review the observed `ALLOW`, `ESCALATE`, `DENY` and actual reason codes. If the page halts for inconsistent outcomes or financial state, **stop** rather than resetting evidence silently.
+3. Inspect the **Historical PayPal Sandbox** section and follow the links to the **earlier** payout ledger and critical review. It is a *separate previous workflow*, not the receipt for any GLM-observed invoice.
+4. Optional: use **/ap-history** to explicitly import the fictional AP CSV and explore history-based anomalies. This is a separate history exercise, not the source of the three initially seeded policy decisions.
 
-- Next.js / TypeScript / Node.js
-- PostgreSQL + Drizzle
-- Better Auth
-- Render Web Service, Postgres, Key Value, Workflows, and Cron
-- PayPal Payouts Sandbox
-- Experiential Labs with GLM-5.3 Flash / Qwen3.8 routing
-- TypeSafe Jev bounded decisions
-- AG Studio / AG Grid
-- Elastic
-- Bryntum Scheduler
-- Base Sepolia append-only checkpoint registry
-- Postman and Zapier MCP integration surfaces
+These steps are a scripted **demonstration**, not a claim of production payment readiness. Authenticated local HTTP smoke and Render deployment confirm code and reachability; a separately witnessed hosted browser visual walkthrough remains a release check.
 
-See `devpost/spec.md` for the authoritative technical design.
+## Implemented versus targeted stack
 
-## One development environment for the hackathon
+**Implemented / independently tested to the indicated boundary:**
 
-Use the existing Render development app and existing free PostgreSQL database with **PayPal Sandbox** and synthetic invoices. A separate paid staging environment is **not** a requirement. The former Gate H staging-only infrastructure plan is superseded; see `devpost/gate-h-live-runbook.md` for the single-environment acceptance test and manual deletion of the extra paid resources.
+- Next.js, TypeScript, Node.js, PostgreSQL / Drizzle, Better Auth, authenticated scoped agent ingestion and admin review
+- Render web-hosted development build; Neon-backed isolated payments-disabled judge preview
+- Deterministic payment-policy decisions, tenant-bound invoices and provenance, PDF/image artifact storage, PDF.js source parsing, T2 review controls, historical AP import and destination mismatch guards
+- PayPal Payouts REST Sandbox, permanent idempotency and webhook/reconciliation, with **historical** live Slice 2 proof
+- Experiential Labs GLM-5.3 Flash with **consented fictional T1 observations only** on the separate synthetic lane, and strict provider-privacy fail-closed checks
 
-Live Payouts stay sandbox-only. No model observation or invoice text is payment authority without verified source evidence, trusted issuer channel, an authenticated approval and a one-time explicit test grant.
+**Targeted but not release-verified:** persistent Assistant, inferred-policy activation, scheduling / Bryntum, AG Grid investigation, tamper-evident Merkle + Base Sepolia anchoring, Elastic, Zapier MCP, Postman demonstration collection, and Qwen / Jev / Laya challenger evaluation. Inclusion in the architecture does **not** mean those integrations are live.
 
-## Slice 3 invoice reviewer demo (development branch)
+The design and scope live in [devpost/spec.md](devpost/spec.md) and [devpost/scope.md](devpost/scope.md). The 13-slice implementation checklist currently accepts Slices 1–2; Slices 3–7 have partial work and Slices 8–13 are not yet accepted.
 
-On `build/slice-3-invoice-intake`, the signed-in admin UI offers:
+## Run locally (no paid services needed for core checks)
 
-1. `/vendor-origin-channels`: register a previously known vendor callback, portal, or ERP source **before** an invoice arrives. A checked box and digest are human evidence assertions, not proof that the vendor actually responded.
-2. `/invoice-artifacts`: upload the original PDF, PNG, or JPEG as untrusted bytes. The UI enforces the admin's organization membership and stores its SHA-256. No agent token is necessary for this manual demo.
-3. `/invoice-artifacts/[id]` (PDF): inspect the original source and independently parsed page text, record five typed/payment-critical field quotes and page numbers, and verify source fidelity as T2.
-4. Confirm the issuer through the previously known out-of-band source (T3), evaluate the server-frozen exact payment tuple, and navigate to `/invoice-bindings/[id]` for a separate signed-in review. Without real issuer evidence, the proposal **ESCALATES** and does not produce a payout.
+Prerequisites: **Node.js 24**, **pnpm 12.9.1**, **PostgreSQL 18**, and a private local development database.
 
-The current branch also includes a signed-in **advisory GLM observation** button on PDF, PNG and JPEG review pages. It requires live Experiential policy compliance; model evidence remains T1/untrusted and never authorizes a payment. Image-only single-page PDFs are locally rasterized with SHA-bound evidence. Multi-page scans are held for review rather than silently summarized.
+Until the pending Slice 3 development branch is reviewed and integrated into `main`, the hosted preview source is on **`build/slice-3-invoice-intake`**, not the default clone branch.
 
-These routes are **CI-verified source-review code; hosted deployment and provider-serving verification are tracked separately**. The GitHub Actions checkpoint `37874974336` executes the HTTP upload/parse/T2/negative proposal path with a synthetic fixture and **no PayPal payout**. The isolated GLM and payment gates remain separate.
-
-## Local setup
-
-Prerequisites:
-
-- Node.js 24 LTS
-- pnpm 12.9.1
-- PostgreSQL 18
-
-```bash
+```sh
 git clone https://github.com/redasgard/mandategate.git
 cd mandategate
+git switch build/slice-3-invoice-intake
 pnpm install --frozen-lockfile
 cp .env.example .env.local
+```
+
+Before proceeding, fill **`.env.local`** with locally generated, unique secrets and your local PostgreSQL URL. Required for the basic seed/login:
+
+- `DATABASE_URL` pointing to **your own** local PostgreSQL database, `BETTER_AUTH_SECRET` (strong random secret) and `BETTER_AUTH_URL=http://localhost:3000`
+- `DEMO_ADMIN_EMAIL` and **`DEMO_ADMIN_PASSWORD` set before the first seed** (at least 12 characters). The seed **does not print the password** or recover one if the account already exists.
+- Distinct `DEMO_AGENT_API_KEY` and `DEMO_PAYMENT_AGENT_API_KEY` (each at least 32 non-whitespace characters); the invoice-only principal and privileged payment principal have different scopes.
+- Leave `PAYPAL_BASE_URL` at the Sandbox host. PayPal OAuth keys, external AI keys, and optional sponsor credentials are **not required** for local deterministic, non-paying tests. Never use production financial accounts or real customer invoices in a demo.
+
+```sh
 pnpm db:migrate
 pnpm demo:seed
 pnpm dev
 ```
 
-Open `http://localhost:3000/sign-in`, then continue to `http://localhost:3000/dashboard`. `pnpm demo:seed` creates the synthetic demo admin; local credentials are supplied through local-only seed variables or generated once and printed to the terminal.
+Sign in at http://localhost:3000/sign-in and use **/dashboard**, **/invoice-artifacts** and **/ap-history** for supported local workflows.
 
-`pnpm demo:seed` uses synthetic hackathon fixtures. Do not place production credentials or real sensitive invoice data in a public clone.
+**Important:** the special hosted **/demo** judge lab is intentionally gated to its designated Neon-preview environment with `MANDATEGATE_DISABLE_PAYMENTS=1`. It is **not** enabled automatically on an arbitrary local PostgreSQL installation. This is a payment-safety control, not a missing setup step.
 
-External integrations require their corresponding values from `.env.example`. Base Sepolia anchor writes can remain disabled locally; when disabled, the UI must show history as locally verified / pending external anchor rather than externally verified.
+For CI-style checks against an isolated development database:
 
-## Demo readiness
+```sh
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
-The hosted Render demo is the primary judging path and must prove:
+`pnpm smoke` additionally requires an authenticated local running server and the configured synthetic admin/agent test credentials. It changes **test** database state; keep it off shared accounts. `pnpm gate-h:inventory` is read-only and always reports a non-authorizing evidence inventory. **Do not run `pnpm gate-h:sandbox submit`**, `pnpm verify:slice2:sandbox`, or payment execution endpoints as routine setup or judge replay. They are financial test actions with separate approval rules.
 
-- real PayPal Sandbox payout for the normal invoice
-- anomaly escalation without payout
-- destination mismatch block
-- scheduled-payment execution/revalidation
-- independent checkpoint verification against the Base Sepolia registry
-- sponsor integrations used in their documented roles
+## Security and evidence boundaries
 
-No production money or production PayPal credentials are used.
+- An invoice, PDF text, model response, assistant action or tool result is untrusted input, never a source of issuer identity or payment permission.
+- T2 parser-text verification confirms *what the document says*, not whether the issuer is genuine. A T3 out-of-band issuer assertion needs independently inspected evidence, pre-enrolled before arrival; a synthetic fixture or after-the-fact channel is not equivalent.
+- T4 requires an authenticated exact tuple review with current recipient/policy binding. No one-off approval, prior payout, or test fixture can become blanket payment authority.
+- Privileged payment credentials stay server-side. Agent keys are scoped; the request/decision, authorization and executor boundaries are separate.
+- Exact logical-payment idempotency, recipient checks and webhook signature/reconciliation paths are tested. Production durability, independent WORM storage and external Merkle anchoring remain **future work**, not current proof.
+- The synthetic non-ZDR GLM exception is limited to exact allowlisted fictional files with explicit admin consent. Normal strict inference remains **fail closed** without the required account/provider privacy evidence.
+- Hosted payments-disabled judge replay must not produce an outbound PayPal Payouts request.
 
-## Security notes
+## Delivery status and hackathon submission
 
-- Operations-agent credentials cannot become admin sessions.
-- Models and sponsor tools are advisory/non-authoritative.
-- Payment idempotency is enforced permanently in PostgreSQL, not delegated to PayPal's remote duplicate window.
-- Invoice payment destinations are never authoritative vendor destinations.
-- Every consequential action is bound to an immutable prepared-action digest and revalidated before commit.
-- Trail history is hash-chained, checkpointed, signed, and externally anchored for tamper evidence.
-- Production should add separately administered WORM retention and isolated signing for independent recoverability.
+**Internal hard target: submitted Devpost entry by October 29, 2026, 6 PM Pacific.** October 30–31 are emergency buffer only; work is not planned into November. This is earlier than the competition's published deadline.
 
-## Project docs
+The repository is currently **private**, and the default `main` branch has not yet received the current development-branch demo. Before declaring submission-ready we must independently verify: public MIT-licensed release with correct default branch/tag, clean-clone setup, actual judge access and stable data service through judging, a public YouTube demo under three minutes, accurate Devpost content and the platform's **submitted entry confirmation URL**. None of those publication outcomes is implied by this README.
 
-- `devpost/scope.md`
-- `devpost/prd.md`
-- `devpost/spec.md`
-- `docs/plans/2026-10-06-mandategate-design.md` preserves the original design rationale and is superseded by the spec for implementation decisions.
-
-## Hackathon submission
-
-The repository is intentionally private during active development. Before Devpost submission it must be made public. The project is licensed under MIT; see `LICENSE`. The final submission also needs the hosted/testable build instructions, public YouTube demo under three minutes, and the Devpost project description/tool disclosures required by the current official rules.
-
+See [devpost/october-2026-execution-plan.md](devpost/october-2026-execution-plan.md), [devpost/gate-h-live-runbook.md](devpost/gate-h-live-runbook.md), the [historical payout review](devpost/reviews/slice-2-critical-review.md), and [LICENSE](LICENSE).
