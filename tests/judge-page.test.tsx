@@ -30,6 +30,9 @@ vi.mock("../src/demo/judge-readonly", () => ({
 vi.mock("../app/judge/replay-cases", () => ({
   JudgeScenarioReplay: () => "JUDGE_READONLY_REPLAY",
 }));
+vi.mock("../app/judge/sign-out", () => ({
+  JudgeSignOut: () => "JUDGE_SESSION_END_CONTROL",
+}));
 vi.mock("../app/demo/historical-sandbox-proof", () => ({
   HistoricalSandboxProof: () => "ARCHIVED_PAYPAL_SEPARATE_FROM_GLM",
 }));
@@ -56,6 +59,7 @@ describe("read-only signed-in judge presentation", () => {
   it("keeps real AI and historical PayPal evidence separate", async () => {
     const html = await render();
     expect(html).toContain("JUDGE_READONLY_REPLAY");
+    expect(html).toContain("JUDGE_SESSION_END_CONTROL");
     expect(html).toContain("ARCHIVED_PAYPAL_SEPARATE_FROM_GLM");
     expect(html).toContain("consented fictional input");
     expect(html).toContain("not independently verified");
