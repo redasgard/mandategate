@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { listRecentDecisions } from "@/src/db/views";
 import { readDashboardSummary } from "@/src/db/dashboard-overview";
+import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -18,6 +19,7 @@ function exactCents(cents: string, currency: string) {
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
+  if (await isRestrictedJudge(session.user.id)) redirect("/judge");
   const demoMode = process.env.MANDATEGATE_RUNTIME_MODE === "neon-preview" && process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
   const [rows, summary] = await Promise.all([
     listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
