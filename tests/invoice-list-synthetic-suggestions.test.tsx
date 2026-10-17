@@ -58,7 +58,7 @@ describe("signed-in invoice intake discoverability without authority confusion",
     expect(sourceSql).toContain("o.state='ESCALATE' and o.error_code is null");
     expect(sourceSql).toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
     expect(sourceSql).toContain("c.source_sha256=a.sha256");
-    expect(sourceSql).not.toMatch(/\\b(?:insert|update|delete|truncate|drop|alter)\\b/i);
+    expect(sourceSql).not.toMatch(/\b(?:insert|update|delete|truncate|drop|alter)\b/i);
   });
 
   it("keeps missing or failed model fields absent instead of inventing an invoice",async()=>{
