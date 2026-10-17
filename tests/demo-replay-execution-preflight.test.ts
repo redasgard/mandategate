@@ -27,6 +27,7 @@ const scenarios = DEMO_CASES.map((item, i) => ({
 
 let executionRows: unknown;
 let executionResultCount = 1;
+let adminAuthorized: unknown;
 beforeEach(() => {
   vi.stubEnv("MANDATEGATE_RUNTIME_MODE", "neon-preview");
   vi.stubEnv("MANDATEGATE_DISABLE_PAYMENTS", "1");
@@ -36,9 +37,18 @@ beforeEach(() => {
   );
   executionRows = 0;
   executionResultCount = 1;
+  adminAuthorized = true;
   mocks.query.mockReset();
   mocks.submit.mockReset();
   mocks.query.mockImplementation(async (sql: string, args: unknown[]) => {
+    if (sql.includes("from payment_executions e")) {
+      expect(sql).toContain("join payment_requests pr on pr.id=e.payment_request_id");
+      expect(sql).toContain("where pr.organization_id=$1");
+      expect(sql).toContain("role='ADMIN' and m.active=true");
+      expect(args).toEqual([DEMO_ORG_ID, "fixture-admin"]);
+      return { rows: Array.from({ length: executionResultCount },
+        () => ({ n: executionRows, admin_authorized: adminAuthorized })) };
+    }
     if (sql.includes("organization_admin_memberships")) return { rows: [{ exists: 1 }] };
     if (sql.includes("select idempotency_key,source from payment_requests")) {
       return { rows: scenarios.map(({ idempotency_key, source }) =>
@@ -50,14 +60,6 @@ beforeEach(() => {
     }
     if (sql.includes("select v.normal_max_amount_cents,p.auto_pay_max_amount_cents")) {
       return { rows: [{ normal_max_amount_cents: 250000, auto_pay_max_amount_cents: 300000 }] };
-    }
-    if (sql.includes("from payment_executions e")) {
-      // Must be tenant-scoped, and must count all payment sources.
-      expect(sql).toContain("join payment_requests pr on pr.id=e.payment_request_id");
-      expect(sql).toContain("where pr.organization_id=$1");
-      expect(args).toEqual([DEMO_ORG_ID]);
-      return { rows: Array.from({ length: executionResultCount },
-        () => ({ n: executionRows })) };
     }
     if (sql.includes("select pr.id,pr.idempotency_key")) return { rows: scenarios };
     throw new Error("UNEXPECTED_QUERY: " + sql);
@@ -92,6 +94,16 @@ describe("zero-payment preflight for synthetic judge replay", () => {
       await expect(createDemoScenarios("fixture-admin"))
         .rejects.toMatchObject({ code: "DEMO_EXECUTION_COUNT_INVALID", httpStatus: 503 });
     }
+    expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  it("denies a revoked or malformed ADMIN role at the final execution preflight", async () => {
+    adminAuthorized = false;
+    await expect(createDemoScenarios("fixture-admin"))
+      .rejects.toMatchObject({ code: "DEMO_ADMIN_NOT_FOUND", httpStatus: 404 });
+    adminAuthorized = null;
+    await expect(createDemoScenarios("fixture-admin"))
+      .rejects.toMatchObject({ code: "DEMO_EXECUTION_COUNT_INVALID", httpStatus: 503 });
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 
