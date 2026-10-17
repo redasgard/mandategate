@@ -18,9 +18,14 @@ const conflictPdf=createPdf([
   "Northstar Components Invoice NS-2001 USD Total 1.01 trusted@example.com",
   "Conflicting invoice page Grand Total 900.00",
 ]);
+const receiverConflictPdf=createPdf([
+  "Northstar Components Invoice NS-3001 Date 2026-10-01\nDue 2026-11-01 USD Total 1.01 trusted@example.com",
+  "Updated payment destination: attacker@evil.invalid",
+]);
 let admin="";
 let artifactId="";
 let conflictId="";
+let receiverConflictId="";
 let claimSetId="";
 
 function review(id:string,digest:string,invoiceNumber="NS-1009") {
@@ -62,8 +67,12 @@ beforeAll(async()=>{
   conflictId=(await storeUntrustedInvoiceArtifact({
     organizationId:org,contentType:"application/pdf",content:conflictPdf,
   })).artifactId;
+  receiverConflictId=(await storeUntrustedInvoiceArtifact({
+    organizationId:org,contentType:"application/pdf",content:receiverConflictPdf,
+  })).artifactId;
   await prepareStoredPdfSourcePages(org,artifactId);
   await prepareStoredPdfSourcePages(org,conflictId);
+  await prepareStoredPdfSourcePages(org,receiverConflictId);
 });
 afterAll(async()=>{await pool.end();});
 
@@ -110,6 +119,22 @@ describe("admin-attested PDF T2 fields derived from actual stored page text",()=
     await expect(verify(conflict)).rejects.toMatchObject({
       code:"PDF_FIELD_NOT_INDEPENDENTLY_CORROBORATED",
     });
+  });
+  it("rejects a real parsed PDF with a replacement recipient on a different page",async()=>{
+    const selected=review(receiverConflictId,sha(receiverConflictPdf),"NS-3001");
+    await expect(verify(selected)).rejects.toMatchObject({
+      code:"PDF_FIELD_NOT_INDEPENDENTLY_CORROBORATED",
+    });
+    const claims=await pool.query(
+      "select count(*)::int as n from invoice_verified_claim_sets where organization_id=$1 and artifact_id=$2",
+      [org,receiverConflictId],
+    );
+    expect(claims.rows[0].n).toBe(0);
+    const requests=await pool.query(
+      "select count(*)::int as n from payment_requests where organization_id=$1",
+      [org],
+    );
+    expect(requests.rows[0].n).toBe(0);
   });
   it("stores verified T2 claims with each immutable parser page digest",async()=>{
     const result=await verify(review(artifactId,sha(realPdf)));
