@@ -1,0 +1,6 @@
+vendor_name,invoice_number,invoice_date,amount_decimal,currency,status,due_date,paid_at,payment_destination,department,cost_center
+Northstar Components,NS-AP-001,2026-07-07,950.00,USD,PAID,2026-07-21,2026-07-15,,FICTIONAL_DEMO,MOCK_AP_ONLY
+Northstar Components,NS-AP-002,2026-07-14,1000.00,USD,PAID,2026-07-28,2026-07-20,,FICTIONAL_DEMO,MOCK_AP_ONLY
+Northstar Components,NS-AP-003,2026-07-21,1050.00,USD,PAID,2026-08-04,2026-07-28,,FICTIONAL_DEMO,MOCK_AP_ONLY
+Northstar Components,NS-AP-004,2026-07-28,1100.00,USD,PAID,2026-08-11,2026-08-05,,FICTIONAL_DEMO,MOCK_AP_ONLY
+Northstar Components,NS-AP-005,2026-08-04,1150.00,USD,PAID,2026-08-18,2026-08-12,,FICTIONAL_DEMO,MOCK_AP_ONLY

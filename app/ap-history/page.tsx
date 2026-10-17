@@ -8,6 +8,8 @@ import {loadAdminApBaselines} from "@/src/history/baselines";
 export default async function ApHistoryPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
+  const fictionalPreview=process.env.MANDATEGATE_RUNTIME_MODE==="neon-preview" &&
+    process.env.MANDATEGATE_DISABLE_PAYMENTS==="1";
   const [orgs,imports,baselines]=await Promise.all([
     pool.query([
       "select o.id,o.name from organizations o",
@@ -35,6 +37,20 @@ export default async function ApHistoryPage(){
         fingerprint, normalized accepted observations, and quarantined rows.
         A historical CSV can never re-enroll a vendor's payment destination.
       </p>
+      {fictionalPreview?<section className="review-stage" aria-label="Optional fictional AP export">
+        <p className="eyebrow">Optional judge fixture / not real history</p>
+        <h2>Try paid-invoice behavior without a payment</h2>
+        <p className="muted">This static CSV contains five deliberately fictional historical
+          PAID-status entries for Northstar Components. A status inside a fictional
+          CSV is not PayPal settlement evidence, cannot enroll payment destinations
+          and cannot authorize spending. Import only into the demo organization.</p>
+        <p><a href="/demo/northstar-fictional-ap-history.csv" download>
+          Download fictional Northstar AP history CSV →
+        </a></p>
+        <p className="muted">In the three-case lab, load the deterministic decisions
+          before importing history. Imported records affect future risk checks only.
+          Existing decisions are immutable and never retroactively reclassified.</p>
+      </section>:null}
       <ApHistoryImport organizations={orgs.rows.map(r=>({id:r.id as string,name:r.name as string}))}/>
       <section className="review-stage">
         <p className="eyebrow">Deterministic imported history / read only</p>
