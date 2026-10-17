@@ -53,6 +53,12 @@ export class PostgresExecutionStore implements ExecutionStore {
                 and exists (
                   select 1 from payment_escalation_reviews rev
                   where rev.payment_request_id=pr.id and rev.action='ACCEPT'
+                  and exists (
+                    select 1 from organization_admin_memberships m
+                    where m.organization_id=pr.organization_id
+                      and m.user_id=rev.reviewer_user_id
+                      and m.role='ADMIN' and m.active=true
+                  )
                 )
                 then 'APPROVED' else pd.outcome end as effective_outcome,
               vd.destination as current_trusted_destination
