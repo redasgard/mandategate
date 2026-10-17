@@ -72,16 +72,21 @@ async function submitClaimed(
   now: Date,
   beforeSubmit?: () => Promise<void>,
 ): Promise<ExecutionRecord> {
-  const fresh = await store.getAuthoritativePayment(payment.requestId);
+  let fresh: AuthoritativePayment;
   try {
-    if (!fresh || fresh.logicalPaymentId !== payment.logicalPaymentId) {
-      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
-    }
-    assertAuthorized(fresh);
-    if (fresh.amountCents !== payment.amountCents || fresh.currency !== payment.currency || fresh.requestedDestination !== payment.requestedDestination) {
-      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
-    }
+    // The optional actor/pre-submit check can race with policy or recipient
+    // revocation. Run it BEFORE the final authority lookup, so changes made
+    // during that async step are caught before any PayPal POST.
     await beforeSubmit?.();
+    const latest = await store.getAuthoritativePayment(payment.requestId);
+    if (!latest || latest.logicalPaymentId !== payment.logicalPaymentId) {
+      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
+    }
+    assertAuthorized(latest);
+    if (latest.amountCents !== payment.amountCents || latest.currency !== payment.currency || latest.requestedDestination !== payment.requestedDestination) {
+      throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
+    }
+    fresh = latest;
   } catch (error) {
     const code = error instanceof Error ? error.message : "PAYMENT_AUTHORITY_CHANGED";
     const blocked = await store.markBlocked(execution.logicalPaymentId, code, now);
