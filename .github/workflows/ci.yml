@@ -1,8 +1,19 @@
 name: ci
 
 on:
+  # Render auto-deploys integration branch only after its push checks pass.
   push:
+    branches:
+      - main
+      - build/slice-3-invoice-intake
+  # Feature branches are checked through PR runs, not a duplicate push job.
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # Cancel superseded commits for the same ref/event, never cross-event.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
