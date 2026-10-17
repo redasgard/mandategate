@@ -23,6 +23,9 @@ const server=http.createServer(async(req,res)=>{
   }
   if(path.pathname==='/judge' && (!req.headers.cookie || !sessionValid)){res.writeHead(307,{location:'/sign-in?returnTo=%2Fjudge'});return res.end()}
   if(path.pathname==='/judge' && req.headers.cookie && sessionValid){res.writeHead(200,{'content-type':'text/html'});return res.end('judge-only synthetic sandbox; Model observations, not authorization; Recorded earlier PayPal Sandbox payout')}
+  if(path.pathname==='/dashboard' && sessionValid){
+    res.writeHead(307,{location:'/judge'});return res.end();
+  }
   if(path.pathname==='/demo')return respond(404,{error:'NOT_FOUND'});
   if(path.pathname==='/api/admin/experiential-privacy')return respond(403,{error:'REVIEWER_ADMIN_MEMBERSHIP_REQUIRED'});
   if(path.pathname==='/payments/'+fixtureId||path.pathname==='/api/admin/invoice-artifacts/'+fixtureId+'/source')return respond(404,{error:'NOT_FOUND'});
@@ -57,5 +60,5 @@ const rejected=await new Promise(resolve=>{
 });
 assert.notEqual(rejected.code,0,'malicious URL unexpectedly accepted');
 assert.match(rejected.err,/JUDGE_BASE_URL_NOT_ALLOWLISTED/);
-assert.equal(requests.length,18,'foreign-host rejection unexpectedly issued HTTP request');
+assert.equal(requests.length,19,'foreign-host rejection unexpectedly issued HTTP request');
 console.log('FIXTURE_SMOKE_PASS requests='+requests.length+' payment_posts=0 foreign_host=REJECTED');
