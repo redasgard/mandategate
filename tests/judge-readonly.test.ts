@@ -100,26 +100,30 @@ describe("restricted judge replay with no payment authority", () => {
 
   it("checks all demo-org payment sources and fails closed on unavailable count", async () => {
     expect(await readJudgeExecutionCount("judge-user")).toBe(0);
-    mocks.query.mockImplementationOnce(async () => ({rows:[{ok:1}]}))
-      .mockImplementationOnce(async () => ({rows:[{n:"0",reviewer_authorized:true}]}));
+    mocks.query.mockResolvedValueOnce({rows:[{n:"0",reviewer_authorized:true}]});
     await expect(readJudgeExecutionCount("judge-user"))
       .rejects.toMatchObject({ code:"JUDGE_EXECUTION_COUNT_UNAVAILABLE", httpStatus:503 });
   });
 
-  it("refuses a role revoked after the initial membership lookup", async () => {
-    mocks.query.mockImplementationOnce(async () => ({ rows: [{ ok: 1 }] }))
-      .mockImplementationOnce(async () => ({
-        rows: [{ n: 0, reviewer_authorized: false }],
-      }));
+  it("rejects execution-count lookups outside payment-disabled preview without SQL", async () => {
+    vi.stubEnv("MANDATEGATE_DISABLE_PAYMENTS", "0");
+    await expect(readJudgeExecutionCount("judge-user"))
+      .rejects.toMatchObject({ code: "JUDGE_DEMO_DISABLED", httpStatus: 404 });
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it("refuses a role revoked before the combined count and authorization snapshot", async () => {
+    mocks.query.mockResolvedValueOnce({
+      rows: [{ n: 0, reviewer_authorized: false }],
+    });
     await expect(readJudgeExecutionCount("judge-user"))
       .rejects.toMatchObject({ code: "JUDGE_ACCESS_NOT_GRANTED", httpStatus: 404 });
   });
 
   it("does not interpret an unknown authorization status as zero executions", async () => {
-    mocks.query.mockImplementationOnce(async () => ({ rows: [{ ok: 1 }] }))
-      .mockImplementationOnce(async () => ({
-        rows: [{ n: 0, reviewer_authorized: null }],
-      }));
+    mocks.query.mockResolvedValueOnce({
+      rows: [{ n: 0, reviewer_authorized: null }],
+    });
     await expect(readJudgeExecutionCount("judge-user"))
       .rejects.toMatchObject({
         code: "JUDGE_EXECUTION_COUNT_UNAVAILABLE", httpStatus: 503,
