@@ -17,7 +17,7 @@ beforeEach(() => {
   mocks.query.mockImplementation(async (sql: string, args: unknown[]) => {
     const q = sql.trim().toLowerCase();
     expect(q.startsWith("select")).toBe(true); // Never mutate shared DB.
-    if (sql.includes("from organization_admin_memberships")) {
+    if (q.startsWith("select 1 from organization_admin_memberships")) {
       expect(sql).toContain("role='REVIEWER' and active=true");
       expect(args).toEqual(["org_demo", "judge-user"]);
       return { rows: [{ ok: 1 }] };
