@@ -60,15 +60,30 @@ export async function readJudgeExecutionCount(userId: string): Promise<number> {
   return strictExecutionCount(result.rows);
 }
 
-/** Read-only, consent-bound model hints, never invoice or payment authority. */
+/** Only owner-reviewed, exact original SHA fixtures may enter the judge page. */
+export function judgeApprovedSourceShas(env: Record<string, string | undefined>): string[] {
+  const raw = env.JUDGE_SYNTHETIC_SOURCE_SHAS?.trim();
+  if (!raw) return []; // No implicit publication of consent-labeled files.
+  const hashes = raw.split(",").map(value => value.trim());
+  if (hashes.length > 3 || hashes.some(value => !/^[a-f0-9]{64}$/.test(value)) ||
+      new Set(hashes).size !== hashes.length) {
+    throw new JudgeDemoError("JUDGE_SOURCE_ALLOWLIST_INVALID", 503);
+  }
+  return hashes;
+}
+
+/** Read-only, consent-bound and separately allowlisted model hints. */
 export async function readJudgeModelEvidence(userId: string): Promise<JudgeModelEvidence[]> {
   await requireJudgeReadAccess(userId);
+  const allowed = judgeApprovedSourceShas(process.env);
+  if (allowed.length === 0) return [];
   const result = await pool.query([
     "select a.id,a.sha256,o.model,o.extraction,o.reason_codes",
     "from invoice_image_observations o",
     "join invoice_artifacts a on a.id=o.artifact_id",
     "and a.organization_id=o.organization_id and o.input_sha256=a.sha256",
     "where o.organization_id=$1 and o.state='ESCALATE' and o.error_code is null",
+    "and a.sha256=any($3::text[])",
     "and o.reason_codes @> '[\"SYNTHETIC_NON_ZDR_TEST_ONLY\"]'::jsonb",
     "and exists (select 1 from invoice_synthetic_non_zdr_test_consents c",
     "where c.organization_id=a.organization_id and c.artifact_id=a.id",
@@ -77,7 +92,7 @@ export async function readJudgeModelEvidence(userId: string): Promise<JudgeModel
     "where m.organization_id=o.organization_id and m.user_id=$2",
     "and m.role='REVIEWER' and m.active=true)",
     "order by o.finished_at desc,a.id desc limit 3",
-  ].join(" "), [DEMO_ORG_ID, userId]);
+  ].join(" "), [DEMO_ORG_ID, userId, allowed]);
   return result.rows.map(row => {
     const parsed = invoiceExtractionSchema.safeParse(row.extraction);
     const values = parsed.success ? parsed.data : null;
