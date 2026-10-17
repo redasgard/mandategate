@@ -17,7 +17,7 @@ services:
   verify:
     image: node:24.21.0-bookworm
     init: true
-    user: "${MANDATEGATE_CI_UID:?}:${MANDATEGATE_CI_GID:?}"
+    user: "${MANDATEGATE_CI_UID:?set-uid}:${MANDATEGATE_CI_GID:?set-gid}"
     working_dir: /workspace
     entrypoint: ["bash", "scripts/ci-local-run.sh"]
     volumes:
