@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/src/auth/auth-client";
+import { postSignInDestination } from "@/src/auth/signin-target";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function SignInPage() {
       setBusy(false);
       return;
     }
-    router.push("/dashboard");
+    router.push(postSignInDestination(window.location.search));
     router.refresh();
   }
 
