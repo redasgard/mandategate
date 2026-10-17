@@ -26,14 +26,14 @@ export default async function DemoPage(){
     if(e instanceof DemoScenarioError && e.httpStatus===404)notFound();
     throw e;
   }
-  const unsafeReplay=evidence.invoiceExecutionRows>0 ||
+  const unsafeReplay=evidence.organizationExecutionRows>0 ||
     scenarios.some(item=>item.hasExecution ||
       (item.outcome!=null && item.outcome!==item.expectedOutcome));
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
       <p className="eyebrow">MandateGate / synthetic test lab</p>
-      <h1>{unsafeReplay?"Replay halted: unexpected financial state":"Three decisions. Zero payouts."}</h1>
+      <h1>{unsafeReplay?"Replay halted: unexpected financial state":"Three decisions. Zero current demo executions."}</h1>
       {unsafeReplay?<p role="alert" className="error">A synthetic decision or payment execution record is inconsistent. Do not replay until investigated.</p>:null}
       <p className="muted">Use these fictional Northstar Components invoices to explain why an agent
         can request a payment but cannot authorize one. These deterministic decisions are a separate simulation:

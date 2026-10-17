@@ -19,7 +19,8 @@ export type DemoModelFinding = {
 
 export type DemoEvidence = {
   findings: DemoModelFinding[];
-  invoiceExecutionRows: number;
+  /** All local execution rows in the demo org, regardless of request source. */
+  organizationExecutionRows: number;
 };
 
 const compact = (value: unknown, max = 128): string | null =>
@@ -61,12 +62,21 @@ export async function readDemoEvidence(adminUserId: string): Promise<DemoEvidenc
     pool.query([
       "select count(*)::int as n from payment_executions e",
       "join payment_requests pr on pr.id=e.payment_request_id",
-      "where pr.organization_id=$1 and pr.source='verified_invoice'",
+      "where pr.organization_id=$1", 
       "and exists (select 1 from organization_admin_memberships m",
       "  where m.organization_id=pr.organization_id and m.user_id=$2",
       "  and m.role='ADMIN' and m.active=true)",
     ].join(" "), [DEMO_ORG_ID, adminUserId]),
   ]);
+
+  // A count for verified_invoice only could conceal a direct trusted-agent
+  // execution while the page incorrectly claims a zero-payout demo. Fail
+  // closed on any malformed response rather than converting it to zero.
+  const executionCount: unknown = executions.rows.length === 1 ? executions.rows[0]?.n : null;
+  if (typeof executionCount !== "number" ||
+      !Number.isSafeInteger(executionCount) || executionCount < 0) {
+    throw new DemoScenarioError("DEMO_EXECUTION_COUNT_INVALID", 503);
+  }
 
   return {
     findings: observed.rows.map(row => {
@@ -89,6 +99,6 @@ export async function readDemoEvidence(adminUserId: string): Promise<DemoEvidenc
         fieldsSchemaValid: parsed.success,
       };
     }),
-    invoiceExecutionRows: Number(executions.rows[0]?.n ?? 0),
+    organizationExecutionRows: executionCount,
   };
 }
