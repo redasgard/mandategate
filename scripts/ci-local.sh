@@ -64,5 +64,5 @@ cp "$root/scripts/ci-local-run.sh" "$snapshot/repo/scripts/ci-local-run.sh"
   printf 'CI_HOST_ENV_FILES=not_mounted\n'
   docker compose -p "$project" -f "$compose" run --rm verify
 } 2>&1 | tee "$log_file"
-echo "CI_RESULT=PASS"
+echo "CI_RESULT=PASS" | tee -a "$log_file"
 echo "CI_EVIDENCE_LOG=$log_file"
