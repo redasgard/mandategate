@@ -59,7 +59,8 @@ export function InvoiceArtifactUpload({organizations}:{organizations:Organizatio
     <p className="muted">
       Signed-in admin upload, without agent credentials. Original bytes are
       hashed and stored as untrusted source material. No payment request,
-      issuer authentication, or payout is created.
+      issuer authentication, or payout is created. Text-based PDFs are parsed
+      automatically into unverified page evidence; scans remain unverified.
     </p>
     {organizations.length===0?
       <p className="error">No active admin organization membership is available.</p>:
@@ -75,7 +76,7 @@ export function InvoiceArtifactUpload({organizations}:{organizations:Organizatio
             disabled={busy} onChange={e=>setFile(e.target.files?.[0]??null)}/>
         </label>
         <button type="submit" disabled={busy || !file || !organizationId}>
-          {busy?"Storing exact source bytes…":"Store invoice for independent review"}
+          {busy?"Storing and checking PDF source text…":"Store invoice for independent review"}
         </button>
       </form>}
     {result?<div role="status">

@@ -31,9 +31,18 @@ export function InvoiceArtifactReview(props:{
   eligibleChannels:Channel[];initialClaims:Claim[];initialAttestations:Attestation[];
 }) {
   const [pages,setPages]=useState<SourcePage[]>(props.initialPages);
-  const [facts,setFacts]=useState<Facts>(()=>Object.fromEntries(
-    fieldNames.map(name=>[name,{value:"",sourceFragment:"",pageNumber:1}]),
-  ) as Facts);
+  const [facts,setFacts]=useState<Facts>(()=>{
+    const blanks=Object.fromEntries(
+      fieldNames.map(name=>[name,{value:"",sourceFragment:"",pageNumber:1}]),
+    ) as Facts;
+    // Saved, parser-derived text can supply advisory fields on first render.
+    // They remain editable and cannot skip explicit source review or T3/T4.
+    return props.initialPages.length
+      ? mergeSuggestionsWithoutOverwritingReview(
+          blanks,suggestUnverifiedPdfReviewFacts(props.initialPages),
+        )
+      : blanks;
+  });
   const [reason,setReason]=useState("");
   const [claims,setClaims]=useState<Claim[]>(props.initialClaims);
   const [attestations,setAttestations]=useState<Attestation[]>(props.initialAttestations);
