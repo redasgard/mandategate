@@ -5,7 +5,7 @@
 ## Security boundary
 
 - The existing `organization_admin_memberships` schema already allows `REVIEWER`. A judge account receives only active `REVIEWER` membership in `org_demo`, **never `ADMIN`**. No schema migration or public sign-up is needed.
-- `/judge` and `GET /api/judge/scenario?case=normal|anomaly|substitution` require a Better Auth session, exact payments-disabled Neon preview host/profile, and current active role `REVIEWER`. Missing/revoked membership fails closed.
+- `/judge` and `GET /api/judge/scenario?case=normal|anomaly|substitution` require a Better Auth session, exact payments-disabled Neon preview host/profile, current active role `REVIEWER`, and **no active ADMIN membership in any organization**. Missing/revoked or elevated membership fails closed. Reviewer-only visits to `/dashboard` redirect to `/judge` before ordinary dashboard reads.
 - The endpoint runs the real deterministic policy function on **three fixed synthetic scenarios**. It accepts no amount, vendor, recipient, payment instruction or external model text from the request. It makes no canonical payment request, payment-domain write, PayPal call or model request. Better Auth can refresh a login session; this is **not** a guarantee of zero database writes. The three outcomes are a **policy simulation**.
 - Before each policy response and at page render, read the **all-source demo organization execution count**. A nonzero/malformed count blocks replay. This is a read-side safety check, not a transaction-serialization guarantee.
 - The judge page may show previously saved T1 model observations only when **all** conditions hold: explicit organization-bound, source-SHA-bound non-ZDR synthetic consent; model disposition `ESCALATE`; no observation error; and the original artifact SHA appears in the separate operator-reviewed `JUDGE_SYNTHETIC_SOURCE_SHAS` allowlist. The default allowlist is empty. It does not download or expose original document bytes.
@@ -20,6 +20,8 @@ An operator must separately approve account creation and run the one-time script
 - `JUDGE_DEMO_EMAIL`: distinct fictional judge login, not development admin
 - `JUDGE_DEMO_PASSWORD`: secret at least 24 characters, **never committed, echoed or included in CI**
 - Existing Better Auth/Neon demo environment, with `MANDATEGATE_DISABLE_PAYMENTS=1`, `MANDATEGATE_RUNTIME_MODE=neon-preview`, and the exact approved Neon database endpoint
+
+A restricted judge can explicitly end the Better Auth session using the on-page sign-out control. The standalone hosted smoke now checks that logout invalidates the stale cookie on both `/judge` and its policy API, and that `/dashboard` redirects the restricted user to `/judge`. The **byte-matched** portable Node fixture ran 19 synthetic HTTP requests, with six policy GET evaluations and zero payment API POSTs; it also refused an unallowlisted credential destination before network use. The fake HTTP fixture proves the harness, not actual remote app behavior.
 
 The post-login return URL is restricted to `/judge` and `/dashboard`; the judge login handoff uses `/sign-in?returnTo=%2Fjudge`. A byte-identical locally tested redirect helper passed 13/13 cases (duplicate parameters and off-origin targets rejected), plus strict TypeScript syntax. That is **not** a Next.js browser/integration test. A local smoke runner `scripts/verify-judge-hosted.mjs` is prepared for once the instance and account are approved and deployed, and will not submit any payment.
 
