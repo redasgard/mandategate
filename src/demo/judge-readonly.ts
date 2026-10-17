@@ -52,7 +52,7 @@ function strictExecutionCount(rows: Record<string, unknown>[]) {
 
 /** Financial activity always blocks the judge replay, regardless of source. */
 export async function readJudgeExecutionCount(userId: string): Promise<number> {
-  await requireJudgeReadAccess(userId);
+  if (!demoPreviewEnabled(process.env)) throw new JudgeDemoError("JUDGE_DEMO_DISABLED", 404);
   // One PostgreSQL statement/snapshot binds the zero-execution count to
   // CURRENT reviewer authorization. An aggregate with WHERE EXISTS could
   // return zero when membership is revoked, which is not authorization.
