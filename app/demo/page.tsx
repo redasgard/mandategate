@@ -50,6 +50,19 @@ export default async function DemoPage(){
       </nav>
       <DemoVisionEvidence evidence={evidence}/>
       {unsafeReplay?null:<LoadDemoScenarios/>}
+      <section className="review-stage" aria-label="Optional historical AP demonstration">
+        <p className="eyebrow">Optional / historical anomaly detection</p>
+        <h2>Exercise the imported-invoice baseline</h2>
+        <p className="muted">The three decisions below are seeded deterministic
+          examples, not decisions derived from an imported AP history file.
+          The connected demo presently requires an explicitly loaded historical
+          export to show source-backed paid-history anomaly evidence.</p>
+        <p><Link href="/ap-history">Review AP history and import fictional Northstar CSV →</Link></p>
+        <p className="muted">First load the three deterministic cases. Then, in
+          AP history, import the fictional pack. Future requests can be assessed
+          against that imported baseline. The CSV contains no real PayPal
+          settlement records and never updates trusted payment receivers.</p>
+      </section>
       <section id="demo-decisions" className="risk-evidence-list" aria-label="Synthetic demonstration scenarios">
         {scenarios.map((item,index)=><article key={item.id} className="risk-evidence-card">
           <p className="eyebrow">Scenario {index+1} / {item.id}</p>
