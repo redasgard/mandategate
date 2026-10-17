@@ -23,6 +23,8 @@ export function JudgeScenarioReplay({ cases }: { cases: Case[] }) {
     if (busy) return;
     setBusy(item.id);
     setError(null);
+    // A prior ALLOW is never current evidence during a fresh authorization read.
+    setResults({});
     try {
       const response = await fetch("/api/judge/scenario?case=" + encodeURIComponent(item.id), {
         method: "GET",
@@ -48,6 +50,8 @@ export function JudgeScenarioReplay({ cases }: { cases: Case[] }) {
       }
       setResults(previous => ({ ...previous, [item.id]: body as Result }));
     } catch (cause) {
+      // Failed/revoked requests must not leave prior successes on screen.
+      setResults({});
       setError(cause instanceof Error ? cause.message : "JUDGE_SCENARIO_FAILED");
     } finally {
       setBusy(null);
@@ -72,8 +76,9 @@ export function JudgeScenarioReplay({ cases }: { cases: Case[] }) {
         </button>
         {results[item.id] ? <p role="status">
           Server decision: <strong>{results[item.id].outcome}</strong> /{" "}
-          {results[item.id].reasonCodes.join(", ")}. No payout, database mutation or
-          AI-derived authorization.
+          {results[item.id].reasonCodes.join(", ")}. No payout or
+          payment-state mutation. Authentication session metadata can change.
+          No AI-derived authorization.
         </p> : null}
       </article>)}
     </div>
