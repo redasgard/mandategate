@@ -40,6 +40,20 @@ describe("T2 independent payment-destination source ambiguity", () => {
       .toContain("DESTINATION_NOT_BOUND_TO_EXACT_EMAIL_TOKEN");
   });
 
+  it("rejects malformed extra address tokens instead of silently ignoring them", () => {
+    expect(inspect("trusted@example.com", "trusted@example.com",
+      "Pay trusted@example.com. Alternate verylong" + "x".repeat(90) + "@evil.invalid"))
+      .toContain("DESTINATION_AMBIGUOUS_OR_CONTRADICTED");
+    expect(inspect("trusted@example.com", "trusted@example.com",
+      "Pay trusted@example.com. Note payment @ account transfer"))
+      .toContain("DESTINATION_AMBIGUOUS_OR_CONTRADICTED");
+  });
+
+  it("handles large non-email text with one valid trusted receiver", () => {
+    const source = "a".repeat(150000) + " Pay trusted@example.com";
+    expect(inspect("trusted@example.com", "trusted@example.com", source)).toEqual([]);
+  });
+
   it("does not treat an invoice contact email as trusted recipient evidence", () => {
     expect(inspect("trusted@example.com", "trusted@example.com",
       "Contact: help@vendor.example Pay to: trusted@example.com"))
