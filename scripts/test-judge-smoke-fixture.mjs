@@ -16,10 +16,14 @@ const server=http.createServer(async(req,res)=>{
     let body='';for await(const chunk of req)body+=chunk;
     assert(JSON.parse(body).password.length>=24);
     sessionValid=true;
-    return respond(200,{ok:true},{'set-cookie':'better-auth.session_token=ci-token; Path=/; HttpOnly'});
+    return respond(200,{ok:true},{'set-cookie':[
+      'csrf-token=decoy-before-session; Path=/; HttpOnly',
+      '__Secure-better-auth.session_token=ci-token; Path=/; HttpOnly; Secure',
+    ]});
   }
   if(path.pathname==='/api/auth/sign-out' && req.method==='POST') {
-    assert(req.headers.cookie);sessionValid=false;return respond(200,{success:true});
+    assert.equal(req.headers.cookie,'__Secure-better-auth.session_token=ci-token',
+      'Wrong login cookie selected');sessionValid=false;return respond(200,{success:true});
   }
   if(path.pathname==='/judge' && (!req.headers.cookie || !sessionValid)){res.writeHead(307,{location:'/sign-in?returnTo=%2Fjudge'});return res.end()}
   if(path.pathname==='/judge' && req.headers.cookie && sessionValid){res.writeHead(200,{'content-type':'text/html'});return res.end('judge-only synthetic sandbox; Model observations, not authorization; Recorded earlier PayPal Sandbox payout')}
