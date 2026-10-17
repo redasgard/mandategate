@@ -65,7 +65,7 @@ A payment-requesting AI agent is not a payment authority. MandateGate stores and
 
 **Narration:**
 
-> This is MandateGate: AI interprets, deterministic trust controls decide, and PayPal execution remains behind explicit authorization. The complete invoice-derived payment chain is still blocked pending genuine issuer verification, exact approval, and strict provider privacy evidence. The demo shows what is proven, and what is not.
+> MandateGate keeps AI interpretation separate from financial authority. Invoice-derived PayPal payout remains blocked pending real issuer verification, exact approval, and strict privacy proof. Here, each claim is backed by evidence.
 
 **Overlay:** "No model-created payment authority"
 
