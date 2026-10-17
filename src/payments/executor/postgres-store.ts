@@ -5,6 +5,7 @@ import { derivePayPalIds } from "./ids";
 import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
 import { escalationSnapshotDigest } from "../../history/escalation-review";
 import { evaluatePayment } from "../../policy/decision";
+import { assessHistoricalPaymentRisk } from "../../history/anomaly";
 import type {
   AuthoritativePayment,
   ExecutionRecord,
@@ -97,6 +98,21 @@ export class PostgresExecutionStore implements ExecutionStore {
         policyAutoPayMaxAmountCents: policyLimit,
       });
       if (decision.outcome !== "ALLOW") return null;
+      // A paid-history import added after the original ALLOW decision may
+      // reveal a duplicate or abnormal invoice before money leaves.
+      try {
+        const history = await assessHistoricalPaymentRisk({
+          organizationId:row.organization_id,
+          vendorId:row.vendor_id,
+          invoiceNumber:row.invoice_number,
+          amountCents:row.amount_cents,
+          currency:row.currency,
+        });
+        if (history.reasonCodes.length > 0) return null;
+      } catch {
+        // The risk evidence being unavailable never becomes permission to pay.
+        return null;
+      }
     }
     if (row.outcome==="ESCALATE" && row.effective_outcome==="APPROVED") {
       // Original human approval was bound to a frozen request/policy/vendor
