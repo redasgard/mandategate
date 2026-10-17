@@ -65,11 +65,13 @@ export function suggestUnverifiedPdfReviewFacts(
     valueFromMatch: (match: RegExpMatchArray) => string | null,
   ) {
     const candidates: PdfReviewFact[] = [];
+    const rawValues = new Set<string>();
     for (const page of pages) {
       for (const match of page.text.matchAll(regex)) {
         const value = valueFromMatch(match);
         const sourceFragment = match[0].trim();
         if (!value || !sourceFragment || value.length > 320) continue;
+        rawValues.add(value);
         if (verifyFieldEvidenceBinding({
           field, claimedValue: value, quote: sourceFragment,
           pageText: page.text,
@@ -84,7 +86,7 @@ export function suggestUnverifiedPdfReviewFacts(
     const identities = new Set(candidates.map(item => item.value));
     if (identities.size === 1) {
       fields[field] = candidates[0];
-    } else if (identities.size > 1) {
+    } else if (rawValues.size > 1) {
       warnings.push("AMBIGUOUS_" + field.toUpperCase());
     }
   }
