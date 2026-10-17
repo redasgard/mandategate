@@ -61,6 +61,20 @@ describe("payment executor",()=>{
     expect(gateway.posts).toHaveLength(0);
   });
 
+  it("does not permanently block payment after a transient final authority read error",async()=>{
+    const store=new Store(),gateway=new Gateway();
+    const original=store.getAuthoritativePayment.bind(store);
+    let reads=0;
+    store.getAuthoritativePayment=async id=>{
+      if(++reads===2)throw new Error("TRANSIENT_AUTHORITY_READ_FAILURE");
+      return original(id);
+    };
+    await expect(executeAuthorizedPayment("request-1",{store,gateway}))
+      .rejects.toThrow("TRANSIENT_AUTHORITY_READ_FAILURE");
+    expect(store.row?.status).toBe("SUBMITTING");
+    expect(gateway.posts).toHaveLength(0);
+  });
+
   it("lets only one concurrent claimant POST",async()=>{const store=new Store();const gateway=new Gateway();await Promise.all([executeAuthorizedPayment("request-1",{store,gateway}),executeAuthorizedPayment("request-1",{store,gateway})]);expect(gateway.posts).toHaveLength(1);});
   it("reuses all PayPal correlation IDs after a lost response",async()=>{const store=new Store();const gateway=new Gateway();gateway.fail=1;expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-02")})).status).toBe("PAYMENT_UNKNOWN");expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-03")})).status).toBe("PAID");expect(gateway.posts[1]).toMatchObject({paypalRequestId:gateway.posts[0].paypalRequestId,senderBatchId:gateway.posts[0].senderBatchId,senderItemId:gateway.posts[0].senderItemId});});
   it("never retries an unknown outcome after the 30-day PayPal duplicate window",async()=>{const store=new Store();const gateway=new Gateway();await store.getOrCreateExecution(payment);store.row!.status="PAYMENT_UNKNOWN";store.row!.createdAt=new Date("2026-08-01");expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-07")})).status).toBe("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION");expect(gateway.posts).toHaveLength(0);});
