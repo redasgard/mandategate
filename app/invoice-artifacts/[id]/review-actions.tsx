@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import {
+  suggestUnverifiedPdfReviewFacts, mergeSuggestionsWithoutOverwritingReview,
+} from "@/src/invoices/pdf-review-suggestions";
 
 const fieldNames=[
   "vendor_name","invoice_number","currency",
@@ -74,10 +77,15 @@ export function InvoiceArtifactReview(props:{
     catch(e){setError(e instanceof Error?e.message:"REVIEW_REQUEST_FAILED");}
     finally{setBusy(null);}
   }
+  const suggest=(sourcePages:SourcePage[])=>{
+    const suggestions=suggestUnverifiedPdfReviewFacts(sourcePages);
+    setFacts(prev=>mergeSuggestionsWithoutOverwritingReview(prev,suggestions));
+    setNotice(`Suggested ${fieldNames.length-suggestions.missing.length} unverified field(s) from parser-produced text. Compare every fact with the original PDF; nothing has been approved or sent to PayPal.`);
+  };
   const prepare=()=>run("pages",async()=>{
     const result=await send("/pdf-pages");
     setPages(result.pages);
-    setNotice("Parser-produced page texts are ready. Compare with the original PDF.");
+    suggest(result.pages);
   });
   const verify=()=>run("verify",async()=>{
     const result=await send("/verify-pdf-facts",{
@@ -124,12 +132,16 @@ export function InvoiceArtifactReview(props:{
       <h2>Read the source before entering facts</h2>
       {pages.length===0?
         <button type="button" onClick={()=>void prepare()} disabled={busy!==null}>
-          Parse original stored PDF (no AI inference)
+          Parse PDF and suggest unverified facts (no AI inference)
         </button>:
         <div>{pages.map(p=><div className="review-page" key={p.pageNumber}>
           <div className="review-page-header">Page {p.pageNumber} / text SHA-256 {p.textSha256}</div>
           <pre>{p.text}</pre>
         </div>)}</div>}
+      {pages.length>0?<button type="button" onClick={()=>suggest(pages)} disabled={busy!==null}>
+        Suggest missing fields from saved PDF text (no AI)
+      </button>:null}
+      <p className="muted">Suggested fields are editable, unverified parser-text candidates. They do not establish invoice authenticity, vendor identity or authority. Your prior edits are never overwritten. Compare with the original PDF before explicit T2 review.</p>
       <p className="muted">Parsed text is document evidence, not issuer identity. Compare it with the original PDF; hidden layers and clipping may still cause differences. For a scanned PDF without extractable text, the agent analysis API can render a bounded single page for untrusted GLM observation, but that image result always escalates and never satisfies independent T2 evidence. Multi-page scans require manual review.</p>
     </section>
     <section className="review-stage">
