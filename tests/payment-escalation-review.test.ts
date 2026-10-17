@@ -2,6 +2,7 @@ import {randomUUID,createHash} from "node:crypto";
 import {createPdf} from "./helpers/pdf-fixture";
 import {beforeAll,afterAll,describe,expect,it} from "vitest";
 import {pool} from "../src/db/pool";
+import {importApHistory} from "../src/history/store";
 import {postgresExecutionStore} from "../src/payments/executor/postgres-store";
 import {executeAuthorizedPayment} from "../src/payments/executor/service";
 import type {PayoutSubmission,PaymentGateway} from "../src/payments/executor/types";
@@ -9,7 +10,7 @@ import {
   escalationSnapshotDigest,getEscalationSnapshot,recordPaymentEscalationReview,
 } from "../src/history/escalation-review";
 const org="escal_review_"+randomUUID(),vendor="v_"+randomUUID(),dest="d_"+randomUUID();
-const policy="p_"+randomUUID(),payAccept=randomUUID(),payDecline=randomUUID(),payRevoke=randomUUID(),payStale=randomUUID();
+const policy="p_"+randomUUID(),payAccept=randomUUID(),payDecline=randomUUID(),payRevoke=randomUUID(),payStale=randomUUID(),payHistory=randomUUID();
 let actor="";
 beforeAll(async()=>{
   const u=await pool.query('select id from "user" where email=$1',[process.env.DEMO_ADMIN_EMAIL]);
@@ -20,7 +21,7 @@ beforeAll(async()=>{
   await pool.query("insert into vendors(id,organization_id,name,normal_max_amount_cents) values($1,$2,'Review vendor',1000)",[vendor,org]);
   await pool.query("insert into vendor_destinations(id,vendor_id,destination,trusted) values($1,$2,'ap@review.test',true)",[dest,vendor]);
   await pool.query("insert into policies(id,organization_id,name,auto_pay_max_amount_cents,active) values($1,$2,'Policy',1000,true)",[policy,org]);
-  for(const id of [payAccept,payDecline,payRevoke,payStale]){
+  for(const id of [payAccept,payDecline,payRevoke,payStale,payHistory]){
     await pool.query([
       "insert into payment_requests(id,logical_payment_id,organization_id,vendor_id,invoice_number,amount_cents,currency,requested_destination,status,source)",
       "values($1,$2,$3,$4,$5,9999,'USD','ap@review.test','ESCALATED','demo_fixture')",
@@ -104,6 +105,39 @@ describe("bound human escalation decisions",()=>{
     expect(posts).toHaveLength(1);
   });
 
+
+  it("new paid-history evidence invalidates an already accepted escalation before PayPal",async()=>{
+    const snapshot=await getEscalationSnapshot(payHistory,actor);
+    expect(snapshot?.status).toBe("ESCALATED");
+    const approved=await recordPaymentEscalationReview({
+      requestId:payHistory,reviewerId:actor,action:"ACCEPT",
+      expectedSnapshotSha256:snapshot!.snapshotSha256,
+      explanation:"Approved fictional request before any imported paid history",
+    });
+    expect(approved.status).toBe("APPROVED");
+    expect((await postgresExecutionStore.getAuthoritativePayment(payHistory))?.decisionOutcome)
+      .toBe("APPROVED");
+
+    const csv=Buffer.from([
+      "vendor_name,invoice_number,invoice_date,amount_decimal,currency,status,payment_destination",
+      "Review vendor,INV-"+payHistory.slice(0,8)+",2026-09-01,99.99,USD,PAID,ap@review.test",
+    ].join("\n")+"\n");
+    const imported=await importApHistory({organizationId:org,actorUserId:actor,content:csv});
+    expect(imported.accepted).toBe(1);
+    expect(await postgresExecutionStore.getAuthoritativePayment(payHistory)).toBeNull();
+
+    let posts=0;
+    const neverPost:PaymentGateway={
+      createSinglePayout:async()=>{posts++;throw Error("PAYPAL_POST_MUST_BE_BLOCKED");},
+      getBatchItem:async()=>{throw Error("UNEXPECTED_LOOKUP");},
+      getPayoutItem:async()=>{throw Error("UNEXPECTED_LOOKUP");},
+    };
+    await expect(executeAuthorizedPayment(payHistory,{
+      store:postgresExecutionStore,gateway:neverPost,
+    })).rejects.toThrow("PAYMENT_REQUEST_NOT_FOUND");
+    expect(posts).toBe(0);
+    expect((await pool.query("select count(*)::int as n from payment_executions where payment_request_id=$1",[payHistory])).rows[0].n).toBe(0);
+  });
 
   it("revoking/replacing the policy invalidates a previously recorded approval before PayPal",async()=>{
     const snap=await getEscalationSnapshot(payStale,actor);
