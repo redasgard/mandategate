@@ -1,16 +1,16 @@
 # MandateGate Judge Evidence Matrix
 
-**Snapshot:** 2026-10-16 Pacific / 2026-10-17 UTC. **Status:** internal evidence index, NOT release acceptance, independent issuer verification, or Devpost submission confirmation.
-**Current checked branch:** `build/slice-3-invoice-intake`, code SHA `a5586882bf54dd383155722fb18da2cc0fbc99be`.
-**External app:** Render `mandategate-web`, deployment `dep-db9cb8hsrm7s739ei99g` LIVE at exactly this code SHA, 2026-10-17T00:49:18Z.
-**CI at deployed code:** push `38987835124`, PR `38987838738`, both SUCCESS; 63 Vitest files, 351 passing tests, migration/seed idempotence, typecheck, production build and signed-in HTTP smoke with zero payout executions.
-**Time sensitivity:** Counts and hosted state are snapshots. Recheck source commit, Render revision, provider events and org isolation before a final video or judge submission.
+**Snapshot:** October 16 Pacific / October 17 UTC, refreshed after draft PRs #35–#39. **Status:** internal evidence index, NOT release acceptance, independent issuer verification, or Devpost submission confirmation.
+**Current development head:** `build/slice-3-invoice-intake` at `e2506bd42633baa86dd1c845f098d074be525448`, **NOT DEPLOYED**. GitHub Actions push `38994299004` and PR `38994301931` failed before runner assignment with **zero job steps**, including one retry. This is an unverified runner/account failure, not proof of an app-test failure or pass.
+**Latest independently verified LIVE app:** Render `mandategate-web` deployment `dep-db9djvqvcj2c73982edg` at `1c6d1711218d29faeacebbd45c76b46f96378474`, status LIVE; its push CI `38994013185` and PR CI `38994017722` completed SUCCESS. These runs covered migration/seed idempotence, typecheck, tests, production build and HTTP smoke; the previous **351 passing tests at a5586882** is historical evidence, not a fresh current test count.
+**Draft changes:** PRs #35–#39 remain isolated and unmerged. Invoice-list hints and source-SHA match, judge-video script, CI trigger optimization, Devpost/judge-access docs, and stale direct/human payment authority repairs are **NOT deployed or CI-verified**. Draft-only static/read-only evidence must not be presented as release acceptance.
+**Time sensitivity:** Recheck source commit, Render revision, provider events, org isolation, external judge account and video before final submission.
 
 ## What has actually been shown
 
 | Judge-visible moment | Verification class / status | Evidence | Important limitation |
 | --- | --- | --- | --- |
-| Render serves the current application | **OBSERVED** hosted deployment + GitHub CI | Render `dep-db9cb8hsrm7s739ei99g` LIVE; CI `38987835124` and `38987838738` | Authenticated browser **visual** QA not independently witnessed |
+| Render serves the last CI-verified development application | **OBSERVED** hosted deployment + GitHub CI | Render `dep-db9djvqvcj2c73982edg` LIVE at `1c6d171`; CI `38994013185` and `38994017722` both SUCCESS. Current development head `e2506bd` is **not deployed**. | Hosted signed-in browser **visual** QA and safe external judge account not independently witnessed; newer PRs unverified |
 | Real GLM-5.3 Flash observed fictional invoices | **OBSERVED** stored provider request metadata in live demo; **SUPPORTED** prior hosted provider call | `app/demo/vision-evidence.tsx`, `src/demo/evidence.ts`, synthetic consent table, `devpost/decision-log.md`, strict vs synthetic privacy runbook | T1 ESCALATE only; consented non-ZDR route **does not** mean strict account ZDR; invoice source / issuer / payout authority remain unverified |
 | Three deterministic canonical decisions | **VERIFIED** signed-in CI + previous hosted HTTP replay; present in server-rendered demo | `src/demo/scenarios.ts`, `src/demo/scenarios-store.ts`, `scripts/verify-hosted-demo.mjs`; normal ALLOW, unusual amount ESCALATE, altered payee DENY | Synthetic seeded cases, **not** parsed from the GLM PDFs, and `MANDATEGATE_DISABLE_PAYMENTS=1` |
 | Actual document upload, parser and T2 field-review controls | **VERIFIED** isolated authenticated CI; **UNVERIFIED** genuine live invoice/issuer | `scripts/smoke.ts`, `src/invoices/pdf-source-store.ts`, signed-in `/invoice-artifacts` | Parser can quote the PDF but not authenticate sender; T3 actual out-of-band issuer proof absent |
@@ -32,11 +32,24 @@
 
 | Demo organization `org_demo` | Observed |
 | --- | ---: |
-| Saved consented fictional GLM ESCALATE observations | 3 |
+| Stored original invoice artifacts | 4 |
+| Independent PDF parser source pages | 0 |
+| Verified `PDF_TEXT` T2 claim sets | 0 |
+| Active non-synthetic enrolled origin channels | 0 |
+| Current out-of-band human issuer attestations | 0 |
+| T4 `AUTHORIZED` payment bindings | 0 |
+| Original-SHA/consent-matched fictional GLM `ESCALATE` observations | 3 |
 | Invoice-derived payment requests (`source='verified_invoice'`) | 0 |
-| Any local payment-execution rows | 0 |
+| Any local payment-execution rows, all sources | 0 |
 
-The earlier G2 inventory also found 0 verified T2 PDF-text claim sets, 0 active non-synthetic enrolled issuer channels, 0 pre-existing non-synthetic issuer channel × stored-invoice pairs, 0 current T3 authentications, 0 T4 authorized bindings. That snapshot predates later parser automation; it must not be reused as current page-count proof without re-querying. A synthetic `SYNTHETIC_FIXTURE` origin channel does not establish genuine issuer provenance.
+These values came from a new read-only SQL query, not a guessed extrapolation from old screenshots. The synthetic `SYNTHETIC_FIXTURE` channel is not genuine issuer provenance. Real independent T3 and exact T4 authorization are still missing, and strict account-level provider ZDR has not been established. **No new PayPal payout was initiated for this inventory.**
+
+## Current release blockers and draft-only security work
+
+- **External CI blockage:** GitHub-hosted `verify` jobs failed before any runner/steps on `e2506bd` and later draft PRs; no account-level root cause observed by the connectors. Do not buy minutes or change repo visibility without explicit owner action. See `devpost/gates/2026-10-16-actions-runner-blocker.md` in draft PR #37.
+- **Stale payment authority hardening:** Draft PR #39 adds rechecks for an old direct `ALLOW` after policy shutdown/threshold changes/new PAID-history import, and for a human-accepted `ESCALATE` when new PAID-history risk appears or accepting admin membership is revoked. Its PostgreSQL fake-gateway tests are **written but not run**; independent financial/security review is required before merging.
+- **Judge access:** The active login has public sign-up disabled, and signed-in `/demo` currently requires active `ADMIN` membership. There is no independently verified safe judge-only account; publicizing the development admin password is not acceptable. See draft PR #38.
+- **Submission assets:** A five-segment 2:30 recording script exists in draft PR #36 but **no actual public video or Devpost submission** has been observed. Public `main` release, MIT license visibility, judge credentials, clean clone, restoration and release SHA checks remain open.
 
 ## 2:30-minute judge story (subject to actual video capture)
 
