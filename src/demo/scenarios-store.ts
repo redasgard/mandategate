@@ -82,12 +82,19 @@ export async function createDemoScenarios(adminUserId:string) {
   // page. Existing fixtures do not waive it: any payout row must halt replay
   // before submitCanonicalPaymentRequest can touch canonical request state.
   const existingExecutions=await pool.query([
-    "select count(*)::int as n from payment_executions e",
+    "select (select count(*)::int from payment_executions e",
     "join payment_requests pr on pr.id=e.payment_request_id",
-    "where pr.organization_id=$1",
-  ].join(" "),[DEMO_ORG_ID]);
-  const executionCount:unknown=existingExecutions.rows.length===1
-    ? existingExecutions.rows[0]?.n:null;
+    "where pr.organization_id=$1) as n,",
+    "exists (select 1 from organization_admin_memberships m",
+    "where m.organization_id=$1 and m.user_id=$2",
+    "and m.role='ADMIN' and m.active=true) as admin_authorized",
+  ].join(" "),[DEMO_ORG_ID,adminUserId]);
+  const current=existingExecutions.rows.length===1
+    ? existingExecutions.rows[0]:null;
+  const authorized:unknown=current?.admin_authorized;
+  if(authorized===false)fail("DEMO_ADMIN_NOT_FOUND",404);
+  if(authorized!==true)fail("DEMO_EXECUTION_COUNT_INVALID",503);
+  const executionCount:unknown=current?.n;
   if(typeof executionCount!=="number" ||
      !Number.isSafeInteger(executionCount) || executionCount<0)
     fail("DEMO_EXECUTION_COUNT_INVALID",503);
