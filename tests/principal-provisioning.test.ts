@@ -139,4 +139,30 @@ describe("Gate A: machine principal authority separation", () => {
     expect(await auth(invoiceKey, "payment:submit")).toBeNull();
     expect(await auth(paymentKey, "invoice:analyze")).toBeNull();
   });
+
+  it("cannot re-enable revoked payment or invoice principals during startup reseeding", async () => {
+    const rotatedPaymentKey = "mg_payment_rotated_ci_" + randomUUID();
+    await pool.query("update api_principals set active=false where id=$1", [paymentPrincipalId]);
+
+    await provisionSeparatedDemoPrincipals({ ...input, paymentKey: rotatedPaymentKey });
+    const first = await pool.query(
+      "select active from api_principals where id=$1",
+      [paymentPrincipalId],
+    );
+    expect(first.rows[0]?.active).toBe(false);
+    expect(await auth(paymentKey, "payment:submit")).toBeNull();
+    expect(await auth(rotatedPaymentKey, "payment:submit")).toBeNull();
+    expect(await auth(invoiceKey, "invoice:read")).toMatchObject({ organizationId });
+
+    await pool.query("update api_principals set active=false where id=$1", [invoicePrincipalId]);
+    await provisionSeparatedDemoPrincipals({ ...input, paymentKey: rotatedPaymentKey });
+    const states = await pool.query(
+      "select id,active from api_principals where id = any($1::text[])",
+      [[invoicePrincipalId, paymentPrincipalId]],
+    );
+    expect(states.rows).toHaveLength(2);
+    expect(states.rows.every(row => row.active === false)).toBe(true);
+    expect(await auth(invoiceKey, "invoice:read")).toBeNull();
+    expect(await auth(rotatedPaymentKey, "payment:submit")).toBeNull();
+  });
 });
