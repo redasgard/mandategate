@@ -45,14 +45,14 @@ beforeEach(()=>{
   mocks.evidence.mockReset();
   mocks.session.mockResolvedValue({user:{id:"demo-admin"}});
   mocks.scenarios.mockResolvedValue(cases);
-  mocks.evidence.mockResolvedValue({findings:[],invoiceExecutionRows:0});
+  mocks.evidence.mockResolvedValue({findings:[],organizationExecutionRows:0});
 });
 const render=async()=>renderToStaticMarkup(await DemoPage());
 
 describe("judge-facing safe replay guide",()=>{
   it("shows three distinct proof paths without claiming that historical PayPal was invoice-derived",async()=>{
     const html=await render();
-    expect(html).toContain("Three decisions. Zero payouts.");
+    expect(html).toContain("Three decisions. Zero current demo executions.");
     expect(html).toContain("Guided judge demonstration");
     expect(html).toContain('id="demo-ai-observations"');
     expect(html).toContain('id="demo-decisions"');
@@ -77,11 +77,11 @@ describe("judge-facing safe replay guide",()=>{
     expect(html).toContain("inconsistent");
     expect(html).not.toContain("SAFE_DEMO_REPLAY_CONTROL");
   });
-  it("halts replay when any invoice-derived execution row appears elsewhere in demo org",async()=>{
-    mocks.evidence.mockResolvedValue({findings:[],invoiceExecutionRows:1});
+  it("halts replay when any direct or invoice-derived execution row appears elsewhere in demo org",async()=>{
+    mocks.evidence.mockResolvedValue({findings:[],organizationExecutionRows:1});
     const html=await render();
     expect(html).toContain("Replay halted: unexpected financial state");
-    expect(html).toContain("Invoice-derived payout records in this demo database: ");
+    expect(html).toContain( "All local payment execution rows in this demo organization: ");
     expect(html).not.toContain("SAFE_DEMO_REPLAY_CONTROL");
   });
   it("halts replay if the actual outcome deviates from deterministic expectations",async()=>{
