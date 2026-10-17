@@ -48,9 +48,9 @@ const demoPage=await request("/demo",{headers});
 assertHttp(demoPage,200,"HOSTED_DEMO_PAGE");
 const html = await demoPage.text();
 assert(html.includes("Three decisions. Zero current demo executions."),"DEMO_PAGE_MISSING");
-const textContent = html.replace(/<!--[\\s\\S]*?-->/g, "").replace(/<[^>]*>/g, " ")
-  .replace(/\\s+/g, " ");
-assert(/All local payment execution rows in this demo organization:\\s*0\\b/.test(textContent),
+const textContent = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, " ")
+  .replace(/\s+/g, " ");
+assert(/All local payment execution rows in this demo organization:\s*0\b/.test(textContent),
   "DEMO_ORGANIZATION_EXECUTION_COUNT_NOT_ZERO");
 assert(html.includes("Recorded earlier PayPal Sandbox payout") &&
   html.includes("BA7V96FCY8Z64"), "HISTORICAL_PAYPAL_PROVENANCE_MISSING");
