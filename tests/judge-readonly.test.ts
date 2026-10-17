@@ -18,13 +18,15 @@ beforeEach(() => {
     const q = sql.trim().toLowerCase();
     expect(q.startsWith("select")).toBe(true); // Never mutate shared DB.
     if (q.startsWith("select 1 from organization_admin_memberships")) {
-      expect(sql).toContain("role='REVIEWER' and active=true");
+      expect(sql).toContain("m.role='REVIEWER' and m.active=true");
+      expect(sql).toContain("elevated.role='ADMIN'");
       expect(args).toEqual(["org_demo", "judge-user"]);
       return { rows: [{ ok: 1 }] };
     }
     if (sql.includes("from payment_executions")) {
       expect(sql).toContain("where pr.organization_id=$1");
       expect(sql).toContain("role='REVIEWER' and m.active=true");
+      expect(sql).toContain("elevated.role='ADMIN'");
       expect(args).toEqual(["org_demo", "judge-user"]);
       return { rows: [{ n: 0 }] };
     }
