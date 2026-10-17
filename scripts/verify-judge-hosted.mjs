@@ -10,7 +10,15 @@ if (process.env.JUDGE_SMOKE_APPROVED !== "YES")
 const base = process.env.JUDGE_DEMO_BASE_URL ?? "https://mandategate-web.onrender.com";
 const email = process.env.JUDGE_DEMO_EMAIL;
 const password = process.env.JUDGE_DEMO_PASSWORD;
-assert(/^https?:\/\//.test(base) && !base.endsWith("/"), "JUDGE_INVALID_BASE_URL");
+const target = new URL(base);
+const local = target.protocol === "http:" &&
+  ["localhost", "127.0.0.1"].includes(target.hostname);
+assert(
+  base === "https://mandategate-web.onrender.com" ||
+    (local && !target.username && !target.password && target.pathname === "/" &&
+     !target.search && !target.hash && !base.endsWith("/")),
+  "JUDGE_BASE_URL_NOT_ALLOWLISTED",
+);
 assert(email && password && password.length >= 24, "JUDGE_TEST_CREDENTIALS_REQUIRED");
 
 const req = (path, options = {}) => fetch(base + path, {
