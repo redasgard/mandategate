@@ -12,8 +12,15 @@ ref=${1:-HEAD}
 # misleadingly identify HEAD while running locally modified helper scripts.
 harness_sha=$(git -C "$root" rev-parse --verify 'HEAD^{commit}')
 for path in scripts/ci-local.sh scripts/ci-local-run.sh ci/docker-compose.local.yml; do
-  if ! git -C "$root" ls-files --error-unmatch -- "$path" >/dev/null 2>&1 || \
-     ! git -C "$root" diff --quiet HEAD -- "$path"; then
+  expected_blob=$(git -C "$root" rev-parse --verify "HEAD:$path" 2>/dev/null) || {
+    echo "CI_HARNESS_NOT_COMMITTED: $path" >&2
+    exit 2
+  }
+  observed_blob=$(git -C "$root" hash-object "$root/$path" 2>/dev/null) || {
+    echo "CI_HARNESS_UNREADABLE: $path" >&2
+    exit 2
+  }
+  if [[ "$expected_blob" != "$observed_blob" ]]; then
     echo "CI_HARNESS_UNCOMMITTED: $path" >&2
     exit 2
   fi
