@@ -9,7 +9,7 @@ type Result = {
   reasonCodes: string[];
   proofClass: "DETERMINISTIC_POLICY_SIMULATION";
   noPaymentPerformed: true;
-  noDatabaseMutation: true;
+  noPaymentStateMutation: true;
   aiInvoiceDerived: false;
 };
 
@@ -42,7 +42,7 @@ export function JudgeScenarioReplay({ cases }: { cases: Case[] }) {
         !body.reasonCodes.every(x => typeof x === "string") ||
         !("proofClass" in body) || body.proofClass !== "DETERMINISTIC_POLICY_SIMULATION" ||
         !("noPaymentPerformed" in body) || body.noPaymentPerformed !== true ||
-        !("noDatabaseMutation" in body) || body.noDatabaseMutation !== true ||
+        !("noPaymentStateMutation" in body) || body.noPaymentStateMutation !== true ||
         !("aiInvoiceDerived" in body) || body.aiInvoiceDerived !== false) {
         throw new Error("JUDGE_DECISION_EVIDENCE_MISMATCH");
       }
