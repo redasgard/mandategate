@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function JudgePage() {
   if (!demoPreviewEnabled(process.env)) notFound();
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/sign-in");
+  if (!session) redirect("/sign-in?returnTo=%2Fjudge");
 
   let evidence: Awaited<ReturnType<typeof readJudgeModelEvidence>>;
   let executions: number;
