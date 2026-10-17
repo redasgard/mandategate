@@ -8,6 +8,7 @@ on:
       - build/slice-3-invoice-intake
   # Feature branches are checked through PR runs, not a duplicate push job.
   pull_request:
+  # Manual dispatch is available only after default main adopts this workflow.
   workflow_dispatch:
 
 concurrency:
