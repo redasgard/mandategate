@@ -31,6 +31,10 @@ if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
   exit 2
 fi
 
+if [[ "$(id -u)" == 0 ]]; then
+  echo 'CI_USE_NON_ROOT_HOST_USER' >&2
+  exit 2
+fi
 export MANDATEGATE_CI_UID MANDATEGATE_CI_GID
 MANDATEGATE_CI_UID=$(id -u)
 MANDATEGATE_CI_GID=$(id -g)
