@@ -43,8 +43,16 @@ const login = await req("/api/auth/sign-in/email", {
   body: JSON.stringify({ email, password }),
 });
 expectedStatus(login, 200, "JUDGE_SIGNIN");
-const cookie = login.headers.get("set-cookie")?.split(";")[0];
-assert(cookie && cookie.includes("="), "JUDGE_SESSION_COOKIE_MISSING");
+// Better Auth can set more than one cookie (CSRF, session, etc.) and
+// secure hosts may prefix the session cookie with __Secure-. Never send
+// a non-session cookie and mistake a failed login for an authorization bug.
+const setCookies = login.headers.getSetCookie();
+const sessionCookies = setCookies.map(raw => raw.split(";")[0].trim())
+  .filter(value =>
+    /^(?:__Secure-)?better-auth\.session_token=[^;]+$/.test(value) &&
+    !/=$/.test(value));
+assert.equal(sessionCookies.length, 1, "JUDGE_SESSION_COOKIE_MISSING_OR_AMBIGUOUS");
+const cookie = sessionCookies[0];
 const headers = { cookie };
 const page = await req("/judge", { headers });
 expectedStatus(page, 200, "JUDGE_PAGE");
