@@ -10,7 +10,7 @@ const meaning: Record<string,string> = {
 };
 
 export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
-  return <section className="review-stage" aria-label="Saved fictional GLM observation evidence">
+  return <section id="demo-ai-observations" className="review-stage" aria-label="Saved fictional GLM observation evidence">
     <p className="eyebrow">AI evidence / observed, not authorized</p>
     <h2>What GLM observed in fictional invoices</h2>
     <p className="muted">
@@ -56,7 +56,7 @@ export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
             </Link></p>
           </article>)}
       </div>}
-    <section className="risk-evidence-card" aria-label="Separate PayPal execution evidence">
+    <section id="demo-payment-boundary" className="risk-evidence-card" aria-label="Separate PayPal execution evidence">
       <p className="eyebrow">PayPal execution / separately verified boundary</p>
       <h3>Invoice-derived payout records in this demo database: {evidence.invoiceExecutionRows}</h3>
       <p className="muted">
