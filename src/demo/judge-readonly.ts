@@ -139,7 +139,7 @@ export function evaluateJudgeCase(caseId: string) {
     trustedDestinationChanged: requestedDestination !== DEMO_TRUSTED_DESTINATION,
     proofClass: "DETERMINISTIC_POLICY_SIMULATION" as const,
     noPaymentPerformed: true as const,
-    noDatabaseMutation: true as const,
+    noPaymentStateMutation: true as const,
     aiInvoiceDerived: false as const,
   };
 }
