@@ -2,7 +2,7 @@ import { loadLocalEnv } from "../src/env/load";
 import {
   assertNegativeCaseResult,checkBoundedSandboxPayout,
   GateHSandboxError,makeSinglePayoutPostFence,
-  validateGateHSandboxEnvironment,
+  requireSingleGateHCount,validateGateHSandboxEnvironment,
 } from "../src/gate-h/sandbox-proof";
 import { pool } from "../src/db/pool";
 import { prepareInvoicePaymentProposal } from "../src/authority/payment-proposal";
@@ -64,7 +64,7 @@ async function countOrgExecutions(){
     "join payment_requests pr on pr.id=e.payment_request_id",
     "where pr.organization_id=$1",
   ].join(" "),[org]);
-  return Number(r.rows[0]?.n??0);
+  return requireSingleGateHCount(r.rows,"GATE_H_EXECUTION_COUNT_UNAVAILABLE");
 }
 async function assertNoNegativePayments(){
   const result=await pool.query([
@@ -72,7 +72,7 @@ async function assertNoNegativePayments(){
     "join payment_authority_bindings b on b.id=pr.authority_binding_id",
     "where b.organization_id=$1 and b.artifact_id=any($2::text[])",
   ].join(" "),[org,negativeIds]);
-  if(Number(result.rows[0]?.n??0)!==0)
+  if(requireSingleGateHCount(result.rows,"GATE_H_NEGATIVE_REQUEST_COUNT_UNAVAILABLE")!==0)
     throw new GateHSandboxError("GATE_H_NEGATIVE_PAYMENT_REQUEST_EXISTS");
 }
 async function assertNegativeArtifactsOwned(){
@@ -80,7 +80,7 @@ async function assertNegativeArtifactsOwned(){
     "select count(*)::int as n from invoice_artifacts where organization_id=$1 and id=any($2::text[])",
     [org,negativeIds],
   );
-  if(Number(r.rows[0]?.n??0)!==2)
+  if(requireSingleGateHCount(r.rows,"GATE_H_NEGATIVE_ARTIFACT_COUNT_UNAVAILABLE")!==2)
     throw new GateHSandboxError("GATE_H_NEGATIVE_ARTIFACTS_NOT_OWNED");
 }
 async function outcomeChecks(){
@@ -176,7 +176,7 @@ try{
       "join payment_requests pr on pr.id=e.payment_request_id",
       "where pr.authority_binding_id=$1",
     ].join(" "),[bindingId]);
-    if(Number(prior.rows[0]?.n??0)!==0)
+    if(requireSingleGateHCount(prior.rows,"GATE_H_PRIOR_PAYOUT_COUNT_UNAVAILABLE")!==0)
       throw new GateHSandboxError("GATE_H_ALLOW_PAYOUT_ALREADY_ATTEMPTED");
     const claimed=await consumeApprovedInvoiceBinding(bindingId);
     if(claimed.replayed || claimed.decision.outcome!=="ALLOW")
