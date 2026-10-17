@@ -61,7 +61,7 @@ describe("restricted judge replay with no payment authority", () => {
     expect(evaluateJudgeCase("substitution").reasonCodes)
       .toContain("DESTINATION_MISMATCH");
     expect(evaluateJudgeCase("normal")).toMatchObject({
-      noPaymentPerformed: true, noDatabaseMutation: true,
+      noPaymentPerformed: true, noPaymentStateMutation: true,
       aiInvoiceDerived: false, proofClass: "DETERMINISTIC_POLICY_SIMULATION",
     });
     expect(() => evaluateJudgeCase("outside-allowlist"))
