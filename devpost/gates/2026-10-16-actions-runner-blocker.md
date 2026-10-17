@@ -38,7 +38,7 @@ Old workflow: unconditional push and pull_request across all branches. A feature
 Proposed:
 - Keep push CI for main and build/slice-3-invoice-intake, preserving Render checksPass deployment and integration verification.
 - Run feature-branch CI via the pull_request event instead of every unreviewed push.
-- Allow an explicit manual workflow_dispatch for isolated pre-PR testing.
+- Permit explicit workflow_dispatch for isolated pre-PR testing **only after** this workflow is merged into the default main branch. GitHub requires the dispatch trigger in the default branch; it is not an immediate unblock for the current private development branch.
 - Cancel superseded same-event/same-ref CI attempts to avoid burning minutes on stale commits. Do not cancel a push check merely because a PR check for the same commit exists.
 - Keep the exact same verify job, PostgreSQL 18 service, migrations, seed twice, typecheck, tests, production build and smoke. No reduced test coverage is proposed.
 
