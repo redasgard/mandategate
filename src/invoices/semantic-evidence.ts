@@ -17,6 +17,11 @@ const INVOICE_LABEL_PATTERN = /\binvoice(?:\s*(?:number|no\.?|#|id))?\s*(?:[:=#-
 // These explicit tokens are contradictory T2 currency signals anywhere in the
 // independently parsed artifact. Unknown currencies remain unsupported.
 const DOCUMENT_CURRENCY_CODES = /\b(?:USD|EUR|GBP|CAD|AUD|NZD|CHF|JPY|CNY|INR|UAH|MXN|BRL|SEK|NOK|DKK|PLN|HKD|SGD|KRW|ZAR)\b/gi;
+// Less common ISO currencies should also contradict a quoted USD amount when
+// explicitly labeled as a settlement/payment currency. Require label context
+// here: ISO codes such as ALL, TRY and TOP are ordinary English words too.
+const ISO_CURRENCY_CODES = new Set(Intl.supportedValuesOf("currency").map(code => code.toUpperCase()));
+const LABELED_CURRENCY_CODES = /\b(?:(?:invoice|payment|settlement)\s+currency|currency|pay(?:ment)?\s+in|settle\s+in)\s*(?:[:=#-]\s*)?([A-Z]{3})\b/gi;
 
 const DATE_LABELS = {
   invoice_date: /\b(?:invoice\s+date|date\s+issued|date)\s*(?:[:=-]\s*)?(\d{4}-\d{2}-\d{2})\b/gi,
@@ -112,6 +117,10 @@ export function verifyFieldEvidenceBinding(input: {
       const documentCurrencies = new Set(
         [...source.matchAll(DOCUMENT_CURRENCY_CODES)].map((match) => match[0].toUpperCase()),
       );
+      for (const match of source.matchAll(LABELED_CURRENCY_CODES)) {
+        const currencyCode = match[1].toUpperCase();
+        if (ISO_CURRENCY_CODES.has(currencyCode)) documentCurrencies.add(currencyCode);
+      }
       if (source.includes("€")) documentCurrencies.add("EUR");
       if (source.includes("£")) documentCurrencies.add("GBP");
       if (source.includes("¥")) documentCurrencies.add("JPY");
