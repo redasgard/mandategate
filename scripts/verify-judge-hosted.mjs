@@ -55,6 +55,11 @@ assert(html.includes("Recorded earlier PayPal Sandbox payout"), "JUDGE_HISTORICA
 assert(!html.includes("Replay halted:"), "JUDGE_PAYMENT_EXECUTIONS_PRESENT");
 console.log("PASS authenticated reviewer-only judge page and separate evidence paths");
 
+const dashboard = await req("/dashboard", { headers });
+assert([302, 303, 307, 308].includes(dashboard.status),
+  "JUDGE_ADMIN_DASHBOARD_NOT_REDIRECTED");
+assert.equal(new URL(dashboard.headers.get("location") ?? "", base).pathname, "/judge",
+  "JUDGE_DASHBOARD_REDIRECT_TARGET");
 const adminDemo = await req("/demo", { headers });
 expectedStatus(adminDemo, 404, "JUDGE_ADMIN_DEMO_LEAK");
 const privacy = await req("/api/admin/experiential-privacy", { headers });
