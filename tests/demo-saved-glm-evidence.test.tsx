@@ -84,6 +84,7 @@ describe("saved fictional model findings in three-case demo", () => {
     expect(observationSql).toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
     expect(observationSql).toContain("invoice_synthetic_non_zdr_test_consents");
     expect(observationSql).toContain("c.source_sha256=a.sha256");
+    expect(observationSql).toContain("o.input_sha256=a.sha256");
     expect(observationSql).toContain("o.state='ESCALATE'");
     expect(observationSql).toContain("o.error_code is null");
     const paymentSql=mocks.query.mock.calls[2][0] as string;
