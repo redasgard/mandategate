@@ -30,7 +30,7 @@ beforeEach(() => {
   mocks.scenario.mockReturnValue({
     id: "normal", outcome: "ALLOW", reasonCodes: ["WITHIN_TRUSTED_BASELINE"],
     proofClass: "DETERMINISTIC_POLICY_SIMULATION",
-    noPaymentPerformed: true, noDatabaseMutation: true, aiInvoiceDerived: false,
+    noPaymentPerformed: true, noPaymentStateMutation: true, aiInvoiceDerived: false,
   });
 });
 
@@ -57,7 +57,7 @@ describe("signed-in judge GET endpoint", () => {
     expect(response.headers.get("cache-control")).toContain("no-store");
     const body = await response.json();
     expect(body).toMatchObject({
-      outcome: "ALLOW", noPaymentPerformed: true, noDatabaseMutation: true,
+      outcome: "ALLOW", noPaymentPerformed: true, noPaymentStateMutation: true,
       aiInvoiceDerived: false,
     });
     expect(mocks.executions).toHaveBeenCalledWith("judge-user");
