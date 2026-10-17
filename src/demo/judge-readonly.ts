@@ -53,17 +53,23 @@ function strictExecutionCount(rows: Record<string, unknown>[]) {
 /** Financial activity always blocks the judge replay, regardless of source. */
 export async function readJudgeExecutionCount(userId: string): Promise<number> {
   await requireJudgeReadAccess(userId);
+  // One PostgreSQL statement/snapshot binds the zero-execution count to
+  // CURRENT reviewer authorization. An aggregate with WHERE EXISTS could
+  // return zero when membership is revoked, which is not authorization.
   const result = await pool.query([
-    "select count(*)::int as n from payment_executions e",
+    "select (select count(*)::int from payment_executions e",
     "join payment_requests pr on pr.id=e.payment_request_id",
-    "where pr.organization_id=$1",
-    "and exists (select 1 from organization_admin_memberships m",
-    "where m.organization_id=pr.organization_id and m.user_id=$2",
+    "where pr.organization_id=$1) as n,",
+    "exists (select 1 from organization_admin_memberships m",
+    "where m.organization_id=$1 and m.user_id=$2",
     "and m.role='REVIEWER' and m.active=true",
     "and not exists (select 1 from organization_admin_memberships elevated",
     "where elevated.user_id=m.user_id and elevated.role='ADMIN'",
-    "and elevated.active=true))",
+    "and elevated.active=true)) as reviewer_authorized",
   ].join(" "), [DEMO_ORG_ID, userId]);
+  const valid = result.rows.length === 1 ? result.rows[0]?.reviewer_authorized : null;
+  if (valid === false) throw new JudgeDemoError("JUDGE_ACCESS_NOT_GRANTED", 404);
+  if (valid !== true) throw new JudgeDemoError("JUDGE_EXECUTION_COUNT_UNAVAILABLE", 503);
   return strictExecutionCount(result.rows);
 }
 
