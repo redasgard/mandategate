@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
+import { importApHistory } from "../src/history/store";
 import { postgresExecutionStore } from "../src/payments/executor/postgres-store";
 import { executeAuthorizedPayment } from "../src/payments/executor/service";
 import type { PaymentGateway } from "../src/payments/executor/types";
@@ -13,6 +14,7 @@ const requestId = randomUUID();
 const logicalPaymentId = randomUUID();
 
 let outboundPosts = 0;
+let adminId = "";
 const noPostGateway: PaymentGateway = {
   async createSinglePayout() {
     outboundPosts++;
@@ -23,7 +25,14 @@ const noPostGateway: PaymentGateway = {
 };
 
 beforeAll(async () => {
+  const admin = await pool.query('select id from "user" where email=$1', [process.env.DEMO_ADMIN_EMAIL]);
+  if (!admin.rows[0]) throw new Error("CI_DEMO_ADMIN_MISSING");
+  adminId=admin.rows[0].id;
   await pool.query("insert into organizations(id,name) values ($1,'Direct policy revalidation test')", [organizationId]);
+  await pool.query(
+    "insert into organization_admin_memberships(user_id,organization_id,role,active) values($1,$2,'ADMIN',true)",
+    [adminId,organizationId],
+  );
   await pool.query(
     "insert into vendors(id,organization_id,name,normal_max_amount_cents) values($1,$2,'Test vendor',1000)",
     [vendorId,organizationId],
@@ -48,17 +57,9 @@ beforeAll(async () => {
   );
 });
 
-afterAll(async () => {
-  await pool.query("delete from payment_execution_events where logical_payment_id=$1", [logicalPaymentId]);
-  await pool.query("delete from payment_executions where logical_payment_id=$1", [logicalPaymentId]);
-  await pool.query("delete from payment_decisions where payment_request_id=$1", [requestId]);
-  await pool.query("delete from payment_requests where id=$1", [requestId]);
-  await pool.query("delete from policies where id=$1", [policyId]);
-  await pool.query("delete from vendor_destinations where id=$1", [destinationId]);
-  await pool.query("delete from vendors where id=$1", [vendorId]);
-  await pool.query("delete from organizations where id=$1", [organizationId]);
-  await pool.end();
-});
+// As in the AP import suites, the isolated CI database owns this unique
+// fixture: imported paid-history evidence is append-only and not test-deleted.
+afterAll(async () => { await pool.end(); });
 
 async function mustBlockWithoutPosting() {
   expect(await postgresExecutionStore.getAuthoritativePayment(requestId)).toBeNull();
@@ -109,5 +110,17 @@ describe("direct-agent ALLOW authority expires with current policy", () => {
   it("restored policy still allows evaluation but has never posted to PayPal", async () => {
     expect((await postgresExecutionStore.getAuthoritativePayment(requestId))?.decisionOutcome).toBe("ALLOW");
     expect(outboundPosts).toBe(0);
+  });
+
+  it("refuses an earlier ALLOW after a newly imported PAID invoice reveals a duplicate", async () => {
+    const csv=Buffer.from([
+      "vendor_name,invoice_number,invoice_date,amount_decimal,currency,status,payment_destination",
+      "Test vendor,INV-REVALIDATE-01,2026-10-01,9.00,USD,PAID,ap@revalidate.invalid",
+    ].join("\\n") + "\\n");
+    const importResult=await importApHistory({
+      organizationId,actorUserId:adminId,content:csv,
+    });
+    expect(importResult.accepted).toBe(1);
+    await mustBlockWithoutPosting();
   });
 });
