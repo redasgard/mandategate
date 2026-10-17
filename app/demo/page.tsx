@@ -25,8 +25,9 @@ export default async function DemoPage(){
     if(e instanceof DemoScenarioError && e.httpStatus===404)notFound();
     throw e;
   }
-  const unsafeReplay=scenarios.some(item=>item.hasExecution ||
-    (item.outcome!==null && item.outcome!==item.expectedOutcome));
+  const unsafeReplay=evidence.invoiceExecutionRows>0 ||
+    scenarios.some(item=>item.hasExecution ||
+      (item.outcome!=null && item.outcome!==item.expectedOutcome));
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
