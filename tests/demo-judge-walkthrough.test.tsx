@@ -77,6 +77,13 @@ describe("judge-facing safe replay guide",()=>{
     expect(html).toContain("inconsistent");
     expect(html).not.toContain("SAFE_DEMO_REPLAY_CONTROL");
   });
+  it("halts replay when any invoice-derived execution row appears elsewhere in demo org",async()=>{
+    mocks.evidence.mockResolvedValue({findings:[],invoiceExecutionRows:1});
+    const html=await render();
+    expect(html).toContain("Replay halted: unexpected financial state");
+    expect(html).toContain("Invoice-derived payout records in this demo database: ");
+    expect(html).not.toContain("SAFE_DEMO_REPLAY_CONTROL");
+  });
   it("halts replay if the actual outcome deviates from deterministic expectations",async()=>{
     mocks.scenarios.mockResolvedValue(cases.map((s,i)=>({...s,outcome:i===1?"ALLOW":s.outcome})));
     const html=await render();
