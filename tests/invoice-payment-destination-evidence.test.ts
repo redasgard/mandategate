@@ -31,7 +31,7 @@ describe("T2 independent payment-destination source ambiguity", () => {
       .toContain("DESTINATION_NOT_BOUND_TO_EXACT_EMAIL_TOKEN");
     expect(inspect("trusted@example.com", "trusted@example.com",
       "trusted@example.com.evil.invalid"))
-      .toContain("EVIDENCE_QUOTE_MISMATCH");
+      .toContain("DESTINATION_AMBIGUOUS_OR_CONTRADICTED");
   });
 
   it("rejects ungrounded invoice destination text without email token", () => {
