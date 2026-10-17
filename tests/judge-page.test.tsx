@@ -49,7 +49,7 @@ beforeEach(() => {
 describe("read-only signed-in judge presentation", () => {
   it("requires an authenticated session", async () => {
     mocks.session.mockResolvedValue(null);
-    await expect(render()).rejects.toThrow("REDIRECT:/sign-in");
+    await expect(render()).rejects.toThrow("REDIRECT:/sign-in?returnTo=%2Fjudge");
     expect(mocks.evidence).not.toHaveBeenCalled();
   });
 
