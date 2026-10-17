@@ -17,8 +17,12 @@ export async function requireJudgeReadAccess(userId: string): Promise<void> {
   // payments-disabled preview, scoped to the single synthetic organization.
   if (!demoPreviewEnabled(process.env)) throw new JudgeDemoError("JUDGE_DEMO_DISABLED", 404);
   const membership = await pool.query([
-    "select 1 from organization_admin_memberships",
-    "where organization_id=$1 and user_id=$2 and role='REVIEWER' and active=true",
+    "select 1 from organization_admin_memberships m",
+    "where m.organization_id=$1 and m.user_id=$2",
+    "and m.role='REVIEWER' and m.active=true",
+    "and not exists (select 1 from organization_admin_memberships elevated",
+    "where elevated.user_id=m.user_id and elevated.role='ADMIN'",
+    "and elevated.active=true)",
     "limit 1",
   ].join(" "), [DEMO_ORG_ID, userId]);
   if (membership.rows.length !== 1) throw new JudgeDemoError("JUDGE_ACCESS_NOT_GRANTED", 404);
@@ -55,7 +59,10 @@ export async function readJudgeExecutionCount(userId: string): Promise<number> {
     "where pr.organization_id=$1",
     "and exists (select 1 from organization_admin_memberships m",
     "where m.organization_id=pr.organization_id and m.user_id=$2",
-    "and m.role='REVIEWER' and m.active=true)",
+    "and m.role='REVIEWER' and m.active=true",
+    "and not exists (select 1 from organization_admin_memberships elevated",
+    "where elevated.user_id=m.user_id and elevated.role='ADMIN'",
+    "and elevated.active=true))",
   ].join(" "), [DEMO_ORG_ID, userId]);
   return strictExecutionCount(result.rows);
 }
@@ -90,7 +97,10 @@ export async function readJudgeModelEvidence(userId: string): Promise<JudgeModel
     "and c.source_sha256=a.sha256)",
     "and exists (select 1 from organization_admin_memberships m",
     "where m.organization_id=o.organization_id and m.user_id=$2",
-    "and m.role='REVIEWER' and m.active=true)",
+    "and m.role='REVIEWER' and m.active=true",
+    "and not exists (select 1 from organization_admin_memberships elevated",
+    "where elevated.user_id=m.user_id and elevated.role='ADMIN'",
+    "and elevated.active=true))",
     "order by o.finished_at desc,a.id desc limit 3",
   ].join(" "), [DEMO_ORG_ID, userId, allowed]);
   return result.rows.map(row => {
