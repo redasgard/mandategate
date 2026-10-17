@@ -60,6 +60,7 @@ export function JudgeScenarioReplay({ cases }: { cases: Case[] }) {
     <p className="muted">
       These three fixed, fictional cases are evaluated server-side. This does not create
       an invoice record, invoke AI, authenticate an issuer, or contact PayPal.
+      The fixed policy thresholds are fictional inputs, not a read of live organization policy.
     </p>
     <div className="risk-evidence-list">
       {cases.map(item => <article className="risk-evidence-card" key={item.id}>
