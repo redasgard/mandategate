@@ -99,13 +99,29 @@ if(![200,201].includes(adminUpload.status))
   throw new Error(`admin upload failed: ${adminUpload.status} ${await adminUpload.text()}`);
 const adminUploaded=await adminUpload.json() as {
   artifact:{artifactId:string;sha256:string;analysisStatus:string};
-  paymentAuthorized:boolean;paymentExecuted:boolean;trustState:string;
+  sourcePreparation:{state:string;pageCount?:number;replayed?:boolean;parserVersion?:string;reasonCode?:string};
+  sourceVerified:boolean;paymentAuthorized:boolean;paymentExecuted:boolean;trustState:string;
 };
 if(adminUploaded.artifact.analysisStatus!=="STORED_UNTRUSTED" ||
    adminUploaded.trustState!=="STORED_UNTRUSTED" ||
+   adminUploaded.sourceVerified!==false ||
+   adminUploaded.sourcePreparation.state!=="PARSER_TEXT_AVAILABLE_UNVERIFIED" ||
+   adminUploaded.sourcePreparation.pageCount!==1 ||
    adminUploaded.paymentAuthorized!==false ||adminUploaded.paymentExecuted!==false)
   throw new Error("admin upload improperly gained payment authority");
 const adminId=adminUploaded.artifact.artifactId;
+// Parser text is already prepared at upload, but no T2/issuer verification
+// or payment authority is implied by these untrusted source page records.
+const autoPrepared=await fetch(`${adminUploadPath}/${adminId}/pdf-pages`,{
+  headers:{cookie:adminCookie},
+});
+if(autoPrepared.status!==200)throw Error("ADMIN_UPLOAD_DID_NOT_PREPARE_PARSER_SOURCE");
+const autoPayload=await autoPrepared.json() as {
+  pages:Array<{text:string}>;issuerAuthenticated:boolean;paymentAuthorized:boolean;
+};
+if(autoPayload.pages.length!==1 ||!autoPayload.pages[0].text.includes("NS-SMOKE-ADM-01") ||
+   autoPayload.issuerAuthenticated!==false ||autoPayload.paymentAuthorized!==false)
+  throw Error("ADMIN_AUTO_PARSER_WAS_MISREPRESENTED_AS_T2_OR_AUTHORITY");
 const source=await fetch(`${adminUploadPath}/${adminId}/source`,{
   headers:{cookie:adminCookie},
 });
@@ -189,9 +205,13 @@ if(![200,201].includes(scannedUpload.status))
   throw new Error(`scanned PDF upload failed: ${scannedUpload.status} ${await scannedUpload.text()}`);
 const scan=await scannedUpload.json() as {
   artifact:{artifactId:string;sha256:string;analysisStatus:string};
+  sourcePreparation:{state:string;reasonCode?:string};sourceVerified:boolean;
   paymentAuthorized:boolean;paymentExecuted:boolean;
 };
 if(!scan.artifact.artifactId || scan.artifact.analysisStatus!=="STORED_UNTRUSTED" ||
+   scan.sourcePreparation.state!=="NO_INDEPENDENT_PDF_TEXT" ||
+   scan.sourcePreparation.reasonCode!=="PDF_PAGE_TEXT_UNAVAILABLE" ||
+   scan.sourceVerified!==false ||
    scan.paymentAuthorized!==false || scan.paymentExecuted!==false)
   throw new Error("scanned PDF intake was incorrectly trusted or executed");
 const scannedId=scan.artifact.artifactId;
