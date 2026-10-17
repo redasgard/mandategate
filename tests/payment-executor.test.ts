@@ -44,6 +44,23 @@ describe("payment executor",()=>{
     expect(gateway.posts).toHaveLength(0);
   });
 
+  it("rechecks current authority after the async pre-submit step changes payment trust",async()=>{
+    const store=new Store(),gateway=new Gateway();
+    const result=await executeAuthorizedPayment("request-1",{
+      store,gateway,
+      beforeSubmit:async()=>{
+        // A pending async actor check must not let a stale trusted recipient
+        // cross into PayPal if an admin revokes it while that check runs.
+        store.authoritative={
+          ...store.authoritative,currentTrustedDestination:"revoked@example.net",
+        };
+      },
+    });
+    expect(result.status).toBe("PAYMENT_BLOCKED");
+    expect(result.rawPaypalStatus).toBe("TRUSTED_DESTINATION_CHANGED");
+    expect(gateway.posts).toHaveLength(0);
+  });
+
   it("lets only one concurrent claimant POST",async()=>{const store=new Store();const gateway=new Gateway();await Promise.all([executeAuthorizedPayment("request-1",{store,gateway}),executeAuthorizedPayment("request-1",{store,gateway})]);expect(gateway.posts).toHaveLength(1);});
   it("reuses all PayPal correlation IDs after a lost response",async()=>{const store=new Store();const gateway=new Gateway();gateway.fail=1;expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-02")})).status).toBe("PAYMENT_UNKNOWN");expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-03")})).status).toBe("PAID");expect(gateway.posts[1]).toMatchObject({paypalRequestId:gateway.posts[0].paypalRequestId,senderBatchId:gateway.posts[0].senderBatchId,senderItemId:gateway.posts[0].senderItemId});});
   it("never retries an unknown outcome after the 30-day PayPal duplicate window",async()=>{const store=new Store();const gateway=new Gateway();await store.getOrCreateExecution(payment);store.row!.status="PAYMENT_UNKNOWN";store.row!.createdAt=new Date("2026-08-01");expect((await executeAuthorizedPayment("request-1",{store,gateway,now:()=>new Date("2026-10-07")})).status).toBe("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION");expect(gateway.posts).toHaveLength(0);});
