@@ -14,6 +14,10 @@ function collapsed(value: string) {
 
 const TOTAL_LABEL_PATTERN = /(?:^|[^\w])(?:grand\s+total|total\s+(?:amount\s+)?due|amount\s+due|balance\s+due|total\s+payable|total)\s*(?:[:=#-]\s*)?(?:(?:USD|EUR|GBP)\s*)?(?:[$€£]\s*)?(\d[\d,]*\.\d{2})(?![\d.])/gi;
 const INVOICE_LABEL_PATTERN = /\binvoice(?:\s*(?:number|no\.?|#|id))?\s*(?:[:=#-]\s*)?([A-Za-z0-9][A-Za-z0-9._/-]{0,119})\b/gi;
+// These explicit tokens are contradictory T2 currency signals anywhere in the
+// independently parsed artifact. Unknown currencies remain unsupported.
+const DOCUMENT_CURRENCY_CODES = /\b(?:USD|EUR|GBP|CAD|AUD|NZD|CHF|JPY|CNY|INR|UAH|MXN|BRL|SEK|NOK|DKK|PLN|HKD|SGD|KRW|ZAR)\b/gi;
+
 const DATE_LABELS = {
   invoice_date: /\b(?:invoice\s+date|date\s+issued|date)\s*(?:[:=-]\s*)?(\d{4}-\d{2}-\d{2})\b/gi,
   due_date: /\b(?:due\s+date|date\s+due|due)\s*(?:[:=-]\s*)?(\d{4}-\d{2}-\d{2})\b/gi,
@@ -102,6 +106,17 @@ export function verifyFieldEvidenceBinding(input: {
       const explicitCurrencies: string[] = Array.from(quote.match(/\b[A-Z]{3}\b/g) ?? []);
       if (!explicitCurrencies.includes(value)) {
         issues.push("CURRENCY_NOT_SOURCE_GROUNDED");
+      }
+      // A truthful USD quote cannot excuse an EUR/CAD/GBP instruction on
+      // another page. Treat conflicting printed currency or symbols as a hold.
+      const documentCurrencies = new Set(
+        [...source.matchAll(DOCUMENT_CURRENCY_CODES)].map((match) => match[0].toUpperCase()),
+      );
+      if (source.includes("€")) documentCurrencies.add("EUR");
+      if (source.includes("£")) documentCurrencies.add("GBP");
+      if (source.includes("¥")) documentCurrencies.add("JPY");
+      if (documentCurrencies.size !== 1 || !documentCurrencies.has(value)) {
+        issues.push("CURRENCY_AMBIGUOUS_OR_CONTRADICTED");
       }
       return issues;
     }
