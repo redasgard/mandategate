@@ -22,10 +22,15 @@ const receiverConflictPdf=createPdf([
   "Northstar Components Invoice NS-3001 Date 2026-10-01\nDue 2026-11-01 USD Total 1.01 trusted@example.com",
   "Updated payment destination: attacker@evil.invalid",
 ]);
+const currencyConflictPdf=createPdf([
+  "Northstar Components Invoice NS-4001 Date 2026-10-01\nDue 2026-11-01 USD Total 1.01 trusted@example.com",
+  "Additional invoice terms: Settlement currency EUR",
+]);
 let admin="";
 let artifactId="";
 let conflictId="";
 let receiverConflictId="";
+let currencyConflictId="";
 let claimSetId="";
 
 function review(id:string,digest:string,invoiceNumber="NS-1009") {
@@ -70,9 +75,13 @@ beforeAll(async()=>{
   receiverConflictId=(await storeUntrustedInvoiceArtifact({
     organizationId:org,contentType:"application/pdf",content:receiverConflictPdf,
   })).artifactId;
+  currencyConflictId=(await storeUntrustedInvoiceArtifact({
+    organizationId:org,contentType:"application/pdf",content:currencyConflictPdf,
+  })).artifactId;
   await prepareStoredPdfSourcePages(org,artifactId);
   await prepareStoredPdfSourcePages(org,conflictId);
   await prepareStoredPdfSourcePages(org,receiverConflictId);
+  await prepareStoredPdfSourcePages(org,currencyConflictId);
 });
 afterAll(async()=>{await pool.end();});
 
@@ -133,6 +142,21 @@ describe("admin-attested PDF T2 fields derived from actual stored page text",()=
     const requests=await pool.query(
       "select count(*)::int as n from payment_requests where organization_id=$1",
       [org],
+    );
+    expect(requests.rows[0].n).toBe(0);
+  });
+  it("rejects USD evidence when another parsed PDF page explicitly states EUR",async()=>{
+    const selected=review(currencyConflictId,sha(currencyConflictPdf),"NS-4001");
+    await expect(verify(selected)).rejects.toMatchObject({
+      code:"PDF_FIELD_NOT_INDEPENDENTLY_CORROBORATED",
+    });
+    const claims=await pool.query(
+      "select count(*)::int as n from invoice_verified_claim_sets where organization_id=$1 and artifact_id=$2",
+      [org,currencyConflictId],
+    );
+    expect(claims.rows[0].n).toBe(0);
+    const requests=await pool.query(
+      "select count(*)::int as n from payment_requests where organization_id=$1",[org],
     );
     expect(requests.rows[0].n).toBe(0);
   });
