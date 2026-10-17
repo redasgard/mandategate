@@ -4,6 +4,7 @@ import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
 import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
 import { escalationSnapshotDigest } from "../../history/escalation-review";
+import { evaluatePayment } from "../../policy/decision";
 import type {
   AuthoritativePayment,
   ExecutionRecord,
@@ -69,6 +70,34 @@ export class PostgresExecutionStore implements ExecutionStore {
     );
     const row = result.rows[0];
     if (!row) return null;
+    if (row.outcome === "ALLOW" && row.source !== "verified_invoice") {
+      // An old ALLOW decision does not survive a policy shutdown or tighter
+      // vendor/organization limits. Recheck at initial claim and once more
+      // immediately before the protected PayPal POST.
+      if (row.status !== "ALLOWED") return null;
+      const current = await pool.query([
+        "select v.normal_max_amount_cents,p.auto_pay_max_amount_cents",
+        "from vendors v join lateral (",
+        "select auto_pay_max_amount_cents from policies",
+        "where organization_id=v.organization_id and active=true",
+        "order by created_at desc,id desc limit 1",
+        ") p on true where v.id=$1 and v.organization_id=$2",
+      ].join(" "), [row.vendor_id,row.organization_id]);
+      if (current.rows.length !== 1) return null;
+      const vendorLimit = Number(current.rows[0].normal_max_amount_cents);
+      const policyLimit = Number(current.rows[0].auto_pay_max_amount_cents);
+      if (!Number.isSafeInteger(vendorLimit) || vendorLimit < 0 ||
+          !Number.isSafeInteger(policyLimit) || policyLimit < 0) return null;
+      const decision = evaluatePayment({
+        amountCents: row.amount_cents,
+        currency: row.currency,
+        requestedDestination: row.requested_destination,
+        trustedDestination: row.current_trusted_destination,
+        vendorNormalMaxAmountCents: vendorLimit,
+        policyAutoPayMaxAmountCents: policyLimit,
+      });
+      if (decision.outcome !== "ALLOW") return null;
+    }
     if (row.outcome==="ESCALATE" && row.effective_outcome==="APPROVED") {
       // Original human approval was bound to a frozen request/policy/vendor
       // state before the request entered APPROVED. Reconstruct that exact
