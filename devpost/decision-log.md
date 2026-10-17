@@ -140,3 +140,10 @@
 - **Finding:** The client retained a previously displayed `ALLOW` after a subsequent GET returned a revocation/error or a changed policy decision. Even a simulation should not present stale success as current authority. Its status copy also overstated "no database mutation" despite permissible Better Auth session writes.
 - **Repair:** `app/judge/replay-cases.tsx` clears prior simulation results when a new request starts or fails, and explicitly says "no payout or payment-state mutation" rather than claiming no database writes. Fixed outcome labels continue to be simulation-only, not invoice or payment authorization.
 - **Evidence:** Exact updated GitHub blob `d3fac15303a6e67c7a276961e0c6a10c14fe1ca0` was fetched and checked for both new clear paths and corrected copy. React interaction/Vitest/Next live tests are **not executed** here. Remaining release gate unchanged.
+
+## 2026-10-17 PT — PR #42 Vercel CI runner attempt stopped
+
+- Discovered an existing connected Vercel project `mandategate-ci-sandbox` with earlier isolated MandateGate application test and build command records. Those prior successful commands do not verify current PR #42.
+- Created an isolated, payment-disabled sandbox `mandategate-pr42-ci-20261017`, session `sbx_J02da7d97nIeVAEhc5rPpaDUrNch`; observed Node 24.21 and pnpm. Began authenticated GitHub file-to-sandbox reconstruction for exact PR #42 commit `927c08cfbeaf582f43eef1a5fdbe7491da7e8f89`, with npm/node/Ubuntu-only outbound network policy.
+- Infrastructure stopped the sandbox after ~373 seconds during file transfer, returning `410 sandbox_stopped`; checkout was incomplete, not hash-verified, and no package installation, migrations, Vitest, typecheck, production build or hosted smoke executed. The sandbox was nonpersistent and the partial checkout is not a retained test artifact.
+- **Status:** BLOCKED by runner lifetime/access, not passing. Do not infer application CI success from historical Vercel sessions. No Neon DB mutation, Render deploy, account provisioning, model inference or PayPal call was performed.
