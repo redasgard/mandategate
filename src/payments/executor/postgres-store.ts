@@ -143,6 +143,21 @@ export class PostgresExecutionStore implements ExecutionStore {
         outcome:"ESCALATE",status:"ESCALATED",
       });
       if(snapshot!==review.rows[0].request_snapshot_sha256)return null;
+      // Approval predates any later AP-history import. An accepted escalation
+      // must not pay a newly discovered duplicate or risk outlier on the
+      // strength of an older otherwise-valid reviewer snapshot.
+      try {
+        const history=await assessHistoricalPaymentRisk({
+          organizationId:row.organization_id,
+          vendorId:row.vendor_id,
+          invoiceNumber:row.invoice_number,
+          amountCents:row.amount_cents,
+          currency:row.currency,
+        });
+        if(history.reasonCodes.length>0)return null;
+      } catch {
+        return null;
+      }
     }
     if (row.source === "verified_invoice") {
       if (!row.authority_binding_id) return null;
