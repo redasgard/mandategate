@@ -6,6 +6,7 @@ import {
   JudgeDemoError, readJudgeExecutionCount, readJudgeModelEvidence,
 } from "@/src/demo/judge-readonly";
 import { JudgeScenarioReplay } from "./replay-cases";
+import { JudgeSignOut } from "./sign-out";
 import { HistoricalSandboxProof } from "../demo/historical-sandbox-proof";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,7 @@ export default async function JudgePage() {
           </div>}
       </section>
       <HistoricalSandboxProof/>
+      <JudgeSignOut />
       <p role="note" className="muted">
         This access is read-only and revocable. No ADMIN routes, original
         document downloads, model inference endpoints or payment execution
