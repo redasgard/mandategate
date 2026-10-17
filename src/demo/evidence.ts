@@ -49,6 +49,7 @@ export async function readDemoEvidence(adminUserId: string): Promise<DemoEvidenc
       "select a.id,a.sha256,o.model,o.provider_name,o.gateway_request_id,",
       "o.extraction,o.reason_codes from invoice_image_observations o",
       "join invoice_artifacts a on a.id=o.artifact_id and a.organization_id=o.organization_id",
+      "and o.input_sha256=a.sha256",
       "where o.organization_id=$1 and o.state='ESCALATE' and o.error_code is null",
       "and o.reason_codes @> '[\"SYNTHETIC_NON_ZDR_TEST_ONLY\"]'::jsonb",
       "and exists (select 1 from organization_admin_memberships m",
