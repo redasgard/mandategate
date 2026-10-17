@@ -1,0 +1,50 @@
+# Reproduces the GitHub Actions verify job using only disposable containers.
+# The mounted repository is a clean git-archive snapshot, not a live checkout.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mandategate
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mandategate"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [ci]
+
+  verify:
+    image: node:24.21.0-bookworm
+    init: true
+    user: "${MANDATEGATE_CI_UID:?}:${MANDATEGATE_CI_GID:?}"
+    working_dir: /workspace
+    entrypoint: ["bash", "scripts/ci-local-run.sh"]
+    volumes:
+      - ../:/workspace:rw
+    environment:
+      HOME: /tmp
+      CI: "true"
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mandategate
+      BETTER_AUTH_SECRET: ci-only-synthetic-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      DEMO_ADMIN_EMAIL: admin@mandategate.local
+      DEMO_ADMIN_PASSWORD: synthetic-demo-password-2026
+      DEMO_AGENT_API_KEY: mg_demo_ci_only_synthetic_agent_key_2026
+      DEMO_PAYMENT_AGENT_API_KEY: mg_payment_ci_only_synthetic_agent_key_2026
+      NEXT_TELEMETRY_DISABLED: "1"
+    tmpfs:
+      - /tmp:rw,nosuid,size=1024m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [ci]
+
+networks:
+  ci:
+    driver: bridge
