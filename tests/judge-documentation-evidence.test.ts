@@ -41,7 +41,7 @@ describe("judge documentation and evidence-bound claims", () => {
       expect(readme).toContain(name);
     }
     expect(matrix).toContain("**NOT ACCEPTED**");
-    expect(readme).toContain("Architecture");
+    expect(readme).toContain("Inclusion in the architecture");
   });
 
   it("describes reproducible local setup without promising credentials or unguarded hosted replay", () => {
@@ -49,7 +49,8 @@ describe("judge documentation and evidence-bound claims", () => {
     const scope = read("src/auth/principal-provisioning.ts");
     const demo = read("src/demo/scenarios.ts");
     expect(readme).toContain("git switch build/slice-3-invoice-intake");
-    expect(readme).toContain("**set before the first seed**".replace("**set", "**set"));
+    expect(readme).toContain("DEMO_ADMIN_PASSWORD");
+    expect(readme).toContain("set before the first seed");
     expect(readme).toContain("The seed **does not print the password**");
     expect(seed).toContain("demo admin credential material is intentionally not logged");
     expect(scope).toContain("at least 32 characters");
