@@ -28,7 +28,7 @@ beforeEach(() => {
       expect(sql).toContain("role='REVIEWER' and m.active=true");
       expect(sql).toContain("elevated.role='ADMIN'");
       expect(args).toEqual(["org_demo", "judge-user"]);
-      return { rows: [{ n: 0 }] };
+      return { rows: [{ n: 0, reviewer_authorized: true }] };
     }
     if (sql.includes("from invoice_image_observations")) {
       expect(sql).toContain("a.sha256=any($3::text[])");
@@ -101,8 +101,28 @@ describe("restricted judge replay with no payment authority", () => {
   it("checks all demo-org payment sources and fails closed on unavailable count", async () => {
     expect(await readJudgeExecutionCount("judge-user")).toBe(0);
     mocks.query.mockImplementationOnce(async () => ({rows:[{ok:1}]}))
-      .mockImplementationOnce(async () => ({rows:[{n:"0"}]}));
+      .mockImplementationOnce(async () => ({rows:[{n:"0",reviewer_authorized:true}]}));
     await expect(readJudgeExecutionCount("judge-user"))
       .rejects.toMatchObject({ code:"JUDGE_EXECUTION_COUNT_UNAVAILABLE", httpStatus:503 });
+  });
+
+  it("refuses a role revoked after the initial membership lookup", async () => {
+    mocks.query.mockImplementationOnce(async () => ({ rows: [{ ok: 1 }] }))
+      .mockImplementationOnce(async () => ({
+        rows: [{ n: 0, reviewer_authorized: false }],
+      }));
+    await expect(readJudgeExecutionCount("judge-user"))
+      .rejects.toMatchObject({ code: "JUDGE_ACCESS_NOT_GRANTED", httpStatus: 404 });
+  });
+
+  it("does not interpret an unknown authorization status as zero executions", async () => {
+    mocks.query.mockImplementationOnce(async () => ({ rows: [{ ok: 1 }] }))
+      .mockImplementationOnce(async () => ({
+        rows: [{ n: 0, reviewer_authorized: null }],
+      }));
+    await expect(readJudgeExecutionCount("judge-user"))
+      .rejects.toMatchObject({
+        code: "JUDGE_EXECUTION_COUNT_UNAVAILABLE", httpStatus: 503,
+      });
   });
 });
