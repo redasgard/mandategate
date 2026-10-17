@@ -1,4 +1,6 @@
 import { auth } from "@/src/auth/auth";
+import { prepareStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
+import { PdfSourceError } from "@/src/invoices/pdf-text";
 import { isTrustedMutationOrigin } from "@/src/auth/same-origin";
 import { pool } from "@/src/db/pool";
 import {
@@ -46,8 +48,37 @@ export async function POST(request: Request) {
       contentType:request.headers.get("content-type")??"",
       content,
     });
+    // Prepare independent PDF.js source pages directly after storing the
+    // immutable upload. This never upgrades a PDF/model value into VERIFIED
+    // T2, authenticates an issuer, creates a request, or touches PayPal.
+    // Scanned/encrypted/unsupported PDFs remain STORED_UNTRUSTED and require
+    // explicit review; no model result is used as a parser fallback.
+    let sourcePreparation:
+      | {state:"NOT_APPLICABLE"}
+      | {state:"PARSER_TEXT_AVAILABLE_UNVERIFIED";pageCount:number;replayed:boolean;parserVersion:string}
+      | {state:"NO_INDEPENDENT_PDF_TEXT";reasonCode:string} =
+        {state:"NOT_APPLICABLE"};
+    if(artifact.mimeType==="application/pdf") {
+      try {
+        const pages=await prepareStoredPdfSourcePages(organizationId,artifact.artifactId);
+        sourcePreparation=pages
+          ? {
+              state:"PARSER_TEXT_AVAILABLE_UNVERIFIED",
+              pageCount:pages.pages.length,replayed:pages.replayed,
+              parserVersion:pages.parserVersion,
+            }
+          : {state:"NO_INDEPENDENT_PDF_TEXT",reasonCode:"PDF_ARTIFACT_NOT_FOUND"};
+      } catch(error) {
+        if(!(error instanceof PdfSourceError))throw error;
+        sourcePreparation={
+          state:"NO_INDEPENDENT_PDF_TEXT",reasonCode:error.code,
+        };
+      }
+    }
     return Response.json({
       artifact,
+      sourcePreparation,
+      sourceVerified:false,
       reviewPath:"/invoice-artifacts/"+encodeURIComponent(artifact.artifactId),
       trustState:"STORED_UNTRUSTED",
       issuerAuthenticated:false,
