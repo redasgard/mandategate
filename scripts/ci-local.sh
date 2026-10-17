@@ -70,9 +70,23 @@ trap cleanup EXIT
 mkdir -p "$snapshot/repo/ci" "$snapshot/repo/scripts"
 # Archive committed code only. Untracked .env.local and host files never enter CI.
 git -C "$root" archive --format=tar "$sha" | tar -xf - -C "$snapshot/repo"
+# A PR can commit symlinks even on a private branch. Never let host-side
+# helper overlays follow an archived symlink and overwrite an arbitrary file.
+for dir in "$snapshot/repo/ci" "$snapshot/repo/scripts"; do
+  if [[ -L "$dir" || ! -d "$dir" ]]; then
+    echo 'CI_ARCHIVE_UNSAFE_HELPER_DIRECTORY' >&2
+    exit 2
+  fi
+done
+for path in "$compose" "$snapshot/repo/scripts/ci-local-run.sh"; do
+  if [[ -L "$path" ]]; then
+    echo 'CI_ARCHIVE_UNSAFE_HELPER_SYMLINK' >&2
+    exit 2
+  fi
+done
 # The harness can verify an older PR even before this harness is merged.
-cp "$root/ci/docker-compose.local.yml" "$compose"
-cp "$root/scripts/ci-local-run.sh" "$snapshot/repo/scripts/ci-local-run.sh"
+cp -- "$root/ci/docker-compose.local.yml" "$compose"
+cp -- "$root/scripts/ci-local-run.sh" "$snapshot/repo/scripts/ci-local-run.sh"
 
 {
   printf 'CI_SOURCE_SHA=%s\n' "$sha"
