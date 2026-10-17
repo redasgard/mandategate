@@ -57,7 +57,7 @@ describe("judge documentation and evidence-bound claims", () => {
     expect(readme).toContain("MANDATEGATE_DISABLE_PAYMENTS=1");
     expect(demo).toContain('env.MANDATEGATE_DISABLE_PAYMENTS!=="1"');
     expect(readme).toContain("is **not** enabled automatically on an arbitrary local PostgreSQL installation");
-    expect(readme).toContain("Judge login/access is not publicly provisioned yet");
+    expect(readme).toContain("External judge access has not yet been independently verified");
   });
 
   it("uses the owner's October deadline, while explicitly leaving publication incomplete", () => {
