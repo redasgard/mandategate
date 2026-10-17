@@ -60,7 +60,7 @@ export async function provisionSeparatedDemoPrincipals(input: {
         name: "Synthetic Invoice Observer",
         keyHash: hashAgentKey(input.invoiceKey),
         scopes: [...INVOICE_AGENT_SCOPES],
-        active: true,
+        // Existing revocations survive every deployment or seed replay.
       },
     });
 
@@ -77,7 +77,7 @@ export async function provisionSeparatedDemoPrincipals(input: {
         name: "Synthetic Trusted Payment Submitter",
         keyHash: hashAgentKey(input.paymentKey),
         scopes: [...TRUSTED_PAYMENT_AGENT_SCOPES],
-        active: true,
+        // A revoked payment principal cannot be restored by startup seeding.
       },
     });
   });
