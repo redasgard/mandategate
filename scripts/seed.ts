@@ -3,10 +3,9 @@ import { betterAuth } from "better-auth";
 import { loadLocalEnv } from "../src/env/load";
 
 loadLocalEnv();
-const [{ db }, { pool }, schema, { provisionSeparatedDemoPrincipals, validateDemoPrincipalKeys }] = await Promise.all([
-  import("../src/db/db"),
+const [{ pool }, { ensureDemoAuthorityFixture }, { provisionSeparatedDemoPrincipals, validateDemoPrincipalKeys }] = await Promise.all([
   import("../src/db/pool"),
-  import("../src/db/schema"),
+  import("../src/db/demo-seed-authority"),
   import("../src/auth/principal-provisioning"),
 ]);
 
@@ -24,50 +23,14 @@ validateDemoPrincipalKeys({ invoiceKey: configuredAgentKey, paymentKey: configur
 const trustedDestination = process.env.DEMO_PAYPAL_RECEIVER_EMAIL ?? "ap@northstar.example";
 const usingSandboxReceiver = Boolean(process.env.DEMO_PAYPAL_RECEIVER_EMAIL);
 
-await db
-  .insert(schema.organizations)
-  .values({ id: organizationId, name: "MandateGate Demo Org" })
-  .onConflictDoUpdate({ target: schema.organizations.id, set: { name: "MandateGate Demo Org" } });
-
-await db
-  .insert(schema.vendors)
-  .values({
-    id: vendorId,
-    organizationId,
-    name: "Northstar Components",
-    normalMaxAmountCents: 250_000,
-  })
-  .onConflictDoUpdate({
-    target: schema.vendors.id,
-    set: { name: "Northstar Components", normalMaxAmountCents: 250_000 },
-  });
-
-await db
-  .insert(schema.vendorDestinations)
-  .values({
-    id: "dest_northstar_primary",
-    vendorId,
-    destination: trustedDestination,
-    trusted: true,
-  })
-  .onConflictDoUpdate({
-    target: schema.vendorDestinations.id,
-    set: { destination: trustedDestination, trusted: true },
-  });
-
-await db
-  .insert(schema.policies)
-  .values({
-    id: policyId,
-    organizationId,
-    name: "Demo AP authority",
-    autoPayMaxAmountCents: 300_000,
-    active: true,
-  })
-  .onConflictDoUpdate({
-    target: schema.policies.id,
-    set: { name: "Demo AP authority", autoPayMaxAmountCents: 300_000, active: true },
-  });
+// Restart-safe: do not restore revoked receivers, disabled policy or relaxed limits.
+await ensureDemoAuthorityFixture({
+  organizationId,
+  vendorId,
+  destinationId: "dest_northstar_primary",
+  policyId,
+  receiver: trustedDestination,
+});
 
 const [existingAdmin] = await pool.query(
   'select id from "user" where email = $1 limit 1',
