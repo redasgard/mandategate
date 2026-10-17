@@ -37,6 +37,15 @@ export default async function DashboardPage() {
         <div className="identity">{session.user.email}</div>
       </header>
 
+      <section className="panel review-stage" aria-label="Invoice intake">
+        <p className="eyebrow">Invoice intake / source evidence</p>
+        <h2>Upload and review an invoice</h2>
+        <p className="muted">Start with the original PDF, PNG, or JPEG. Uploaded
+          documents remain untrusted; source review and issuer confirmation are
+          separate from payment approval. Nothing on the intake page sends a payout.</p>
+        <p><Link href="/invoice-artifacts">Open invoice intake and stored documents →</Link></p>
+      </section>
+
       {demoMode ? <section className="panel review-stage" aria-label="Demo preview status">
         <p className="eyebrow">Synthetic preview / PayPal execution disabled</p>
         <h2>See why an AI agent cannot authorize spending</h2>
