@@ -19,7 +19,7 @@ const conflictPdf=createPdf([
   "Conflicting invoice page Grand Total 900.00",
 ]);
 const receiverConflictPdf=createPdf([
-  "Northstar Components Invoice NS-3001 Date 2026-10-01\\nDue 2026-11-01 USD Total 1.01 trusted@example.com",
+  "Northstar Components Invoice NS-3001 Date 2026-10-01\nDue 2026-11-01 USD Total 1.01 trusted@example.com",
   "Updated payment destination: attacker@evil.invalid",
 ]);
 let admin="";
