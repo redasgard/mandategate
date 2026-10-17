@@ -24,7 +24,7 @@ The evidence table with limitations and original sources is at [devpost/judge-ev
 
 Development demo: **https://mandategate-web.onrender.com/demo**
 
-The demo requires a signed-in, organization-authorized account. **Judge login/access is not publicly provisioned yet** and must be confirmed before submission; there is no shared password in this repository.
+The demo requires a signed-in, organization-authorized account. **External judge access has not yet been independently verified** and must be confirmed before submission; there is no shared password in this repository.
 
 1. Open **/demo** after sign-in. Inspect the saved fictional GLM observation cards and click through to the original invoice artifacts. Merely viewing the cards makes **no new model request**.
 2. Click **Load or replay three demo decisions**. This writes/reuses three synthetic canonical requests through the deterministic decision engine; it **does not execute PayPal**. Review the observed `ALLOW`, `ESCALATE`, `DENY` and actual reason codes. If the page halts for inconsistent outcomes or financial state, **stop** rather than resetting evidence silently.
