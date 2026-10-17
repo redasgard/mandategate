@@ -78,6 +78,20 @@ Sign in at http://localhost:3000/sign-in and use **/dashboard**, **/invoice-arti
 
 **Important:** the special hosted **/demo** judge lab is intentionally gated to its designated Neon-preview environment with `MANDATEGATE_DISABLE_PAYMENTS=1`. It is **not** enabled automatically on an arbitrary local PostgreSQL installation. This is a payment-safety control, not a missing setup step.
 
+### Temporary CI without paid GitHub Actions minutes
+
+The private GitHub-hosted Actions quota was exhausted on October 16. An isolated, **no-paid-CI** Docker fallback is available in [`scripts/ci-local.sh`](scripts/ci-local.sh); see [the CI recovery notes](devpost/gates/2026-10-16-actions-runner-blocker.md). It requires Docker Engine, Docker Compose v2, Git, and this private repo checkout, but **no host Node, Postgres, PayPal credentials or AI credentials**.
+
+While the fallback remains in draft PR #37, fetch its branch locally:
+
+```sh
+git fetch origin refs/pull/37/head:ci-local-fallback
+git switch ci-local-fallback
+bash scripts/ci-local.sh pr:39
+```
+
+The example verifies the exact source SHA from draft P0 payment PR #39, **without merging or deploying it**. Use `bash scripts/ci-local.sh HEAD` to check the current local commit. The runner archives only committed source into a temporary directory, executes the same GitHub CI stages in disposable Node 24 / PostgreSQL 18 containers, and writes a private `ci-evidence/` log. A green local log still does **not** satisfy Render's `checksPass` trigger, certify financial security, or authorize deployment. The harness has passed static shell/YAML validation, but **no actual Docker run has been observed** yet. An isolated self-hosted GitHub runner can restore automatic free checks after it is registered and secured.
+
 For CI-style checks against an isolated development database:
 
 ```sh
