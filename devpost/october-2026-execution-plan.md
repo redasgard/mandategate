@@ -1,6 +1,6 @@
 # MandateGate | October 29 Low-Touch Execution Plan (v4)
 
-**Status:** PROPOSED / NOT YET APPROVED OR MERGED. Detailed execution contract, not evidence of future work completion.
+**Status:** ACTIVE on the development branch after owner-approved PR #21 merge at `f0eb73ff664227b8178b219e7f4cb57291cf6f70` (2026-10-16). This is an execution contract, **not** evidence that the future work or G0–G9 gates have passed.
 **Snapshot:** 2026-10-16, 16:17 Pacific time.
 **Development baseline:** build/slice-3-invoice-intake at 320531a7e986ea3127a6685e668401d2d5055cab, GitHub Actions 323/323 Vitest tests, Render deploy dep-db97u4m0tbcc73cg7nig LIVE at the same SHA.
 **Original scope:** all 13 slices in devpost/checklist.md remain TARGETED; Slices 1-2 checked complete, 3-7 partial, 8-13 not completed. No silent scope cuts.
