@@ -6,6 +6,7 @@ import {demoPreviewEnabled} from "@/src/demo/scenarios";
 import {listDemoScenarios,DemoScenarioError} from "@/src/demo/scenarios-store";
 import {readDemoEvidence} from "@/src/demo/evidence";
 import {DemoVisionEvidence} from "./vision-evidence";
+import {HistoricalSandboxProof} from "./historical-sandbox-proof";
 import {LoadDemoScenarios} from "./load-button";
 
 const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n/100);
@@ -44,7 +45,7 @@ export default async function DemoPage(){
         <ol>
           <li><a href="#demo-ai-observations">AI interprets fictional documents; it does not authorize payment.</a></li>
           <li><a href="#demo-decisions">Deterministic policy independently ALLOWS, ESCALATES or DENIES synthetic requests.</a></li>
-          <li><a href="#demo-payment-boundary">PayPal execution is separate, with zero invoice-linked demo executions.</a></li>
+          <li><a href="#demo-historical-paypal">Inspect the earlier PayPal Sandbox receipt, separate from the GLM invoices and this demo database.</a></li>
         </ol>
         <p className="muted">The historical direct PayPal Sandbox payout was a different workflow. Do not describe it as a payment caused by these PDFs.</p>
       </nav>
@@ -79,6 +80,7 @@ export default async function DemoPage(){
             :item.requestId?<p className="muted">No payment execution record for this synthetic request.</p>:null}
         </article>)}
       </section>
+      <HistoricalSandboxProof/>
     </section>
   </main>;
 }
