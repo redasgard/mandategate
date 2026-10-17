@@ -25,6 +25,28 @@ export class GateHSandboxError extends Error {
   }
 }
 
+/**
+ * Database COUNT aggregates must return exactly one finite nonnegative integer.
+ * Never convert an absent row, NULL, a malformed string, or an overflow into
+ * zero when that zero can release a financial safety guard.
+ */
+export function requireSingleGateHCount(
+  rows: unknown,
+  errorCode: string,
+): number {
+  if (!Array.isArray(rows) || rows.length !== 1 ||
+      !rows[0] || typeof rows[0] !== "object") {
+    throw new GateHSandboxError(errorCode);
+  }
+  const raw = (rows[0] as {n?: unknown}).n;
+  const count = typeof raw === "string" && /^(0|[1-9][0-9]*)$/.test(raw)
+    ? Number(raw) : raw;
+  if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) {
+    throw new GateHSandboxError(errorCode);
+  }
+  return count;
+}
+
 /** This performs syntactic checks only, NOT proof of external authorization. */
 export function validateGateHSandboxEnvironment(
   env: NodeJS.ProcessEnv,

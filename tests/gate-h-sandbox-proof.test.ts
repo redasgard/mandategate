@@ -2,7 +2,7 @@ import {describe,expect,it} from "vitest";
 import {
  assertNegativeCaseResult,checkBoundedSandboxPayout,
  GateHSandboxError,makeSinglePayoutPostFence,
- validateGateHSandboxEnvironment,
+ requireSingleGateHCount,validateGateHSandboxEnvironment,
 } from "../src/gate-h/sandbox-proof";
 
 const uuid=(s:string)=>s.padEnd(8,"0")+"-1111-4111-8111-111111111111";
@@ -85,6 +85,28 @@ describe("Gate H exact one Sandbox payout guard",()=>{
     expect(()=>assertNegativeCaseResult({
       outcome:"ALLOW",bindingId:uuid("00000009"),paymentAuthorized:false,
     },"DENY")).toThrow(GateHSandboxError);
+  });
+  it("fails closed on missing or corrupt aggregate counts before a payout",()=>{
+    const reason="GATE_H_EXECUTION_COUNT_UNAVAILABLE";
+    expect(requireSingleGateHCount([{n:0}],reason)).toBe(0);
+    expect(requireSingleGateHCount([{n:"0"}],reason)).toBe(0);
+    expect(requireSingleGateHCount([{n:2}],reason)).toBe(2);
+    for(const rows of [
+      undefined,null,[],{},[{}],[{n:null}],
+      [{n:-1}],[{n:NaN}],[{n:Infinity}],[{n:0.2}],
+      [{n:"-1"}],[{n:"01"}],[{n:"0.0"}],[{n:"x"}],
+      [{n:Number.MAX_SAFE_INTEGER+1}],
+      [{n:0},{n:0}],
+    ]) {
+      expect(()=>requireSingleGateHCount(rows,reason))
+        .toThrowError(GateHSandboxError);
+      try {
+        requireSingleGateHCount(rows,reason);
+        throw new Error("COUNT_SHOULD_HAVE_FAILED");
+      } catch(error) {
+        expect(error).toMatchObject({code:reason});
+      }
+    }
   });
   it("allows only one PHYSICAL PayPal Payouts POST, even on transient retry",async()=>{
     const visited:string[]=[];
