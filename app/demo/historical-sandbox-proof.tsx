@@ -8,7 +8,7 @@ export function HistoricalSandboxProof() {
   return <section id="demo-historical-paypal" className="review-stage"
     aria-label="Historical separate PayPal Sandbox payout evidence">
     <p className="eyebrow">PayPal Sandbox / historical evidence</p>
-    <h2>PayPal executed a separately authorized payment</h2>
+    <h2>Recorded earlier PayPal Sandbox payout</h2>
     <p>
       An earlier <strong>direct trusted-agent payment request</strong> reached
       PayPal Sandbox and was reconciled. The saved records show one logical
