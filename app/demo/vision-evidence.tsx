@@ -57,20 +57,21 @@ export function DemoVisionEvidence({ evidence }: { evidence: DemoEvidence }) {
           </article>)}
       </div>}
     <section id="demo-payment-boundary" className="risk-evidence-card" aria-label="Separate PayPal execution evidence">
-      <p className="eyebrow">PayPal execution / separately verified boundary</p>
-      <h3>Invoice-derived payout records in this demo database: {evidence.invoiceExecutionRows}</h3>
+      <p className="eyebrow">PayPal execution / tenant-scoped local record check</p>
+      <h3>All local payment execution rows in this demo organization: {evidence.organizationExecutionRows}</h3>
       <p className="muted">
-        This is a count of local execution rows, not proof of completed PayPal
-        settlement. The three deterministic demo decisions below do not
-        originate from these AI-observed PDFs. Earlier historical Sandbox
-        evidence belongs to a separate workflow and is not an invoice-linked
-        payout in this database.
+        This read-only count covers every local execution record in the demo
+        organization, including trusted-agent and invoice-derived requests.
+        It is not a fresh PayPal query or proof of completed remote settlement.
+        The deterministic demo requests do not originate from the GLM PDFs.
+        The earlier historical Sandbox receipt belongs to another environment.
       </p>
-      {evidence.invoiceExecutionRows > 0
-        ? <p role="alert">Execution records exist. Verify each payment and its webhook
-            before making any payment-success claim.</p>
-        : <p>No invoice-derived payment execution record is present here. No payment
-            is authorized by this AI observation panel.</p>}
+      {evidence.organizationExecutionRows > 0
+        ? <p role="alert">Execution records exist in this demo organization.
+            Stop judge replay and independently reconcile each payment and webhook.</p>
+        : <p>No local payment execution records are present in this demo
+            organization. This does not independently prove remote PayPal
+            settlement state; no payment is authorized by this AI panel.</p>}
     </section>
   </section>;
 }
