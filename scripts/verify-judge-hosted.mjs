@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 /**
  * Restricted judge-browser HTTP acceptance, never an API payment test.
- * Only POST is Better Auth sign-in; all other calls are read-only GETs.
+ * The only POSTs are Better Auth sign-in and sign-out; all business calls are GETs.
  * Run only after owner-approved reviewer provisioning and exact SHA deploy.
  */
 if (process.env.JUDGE_SMOKE_APPROVED !== "YES")
@@ -98,4 +98,15 @@ for (let pass = 1; pass <= 2; pass++) {
 const unknown = await req("/api/judge/scenario?case=nonexistent", { headers });
 expectedStatus(unknown, 404, "JUDGE_UNKNOWN_CASE_MUST_NOT_EXECUTE");
 console.log("PASS six deterministic, read-only policy evaluations and invalid-case denial");
+const signout = await req("/api/auth/sign-out", {
+  method: "POST",
+  headers: { ...headers, origin: base, "content-type": "application/json" },
+  body: "{}",
+});
+expectedStatus(signout, 200, "JUDGE_SIGNOUT");
+const after = await req("/judge", { headers });
+assert([302, 303, 307, 308].includes(after.status), "JUDGE_STALE_SESSION_ACCEPTED");
+const afterApi = await req("/api/judge/scenario?case=normal", { headers });
+expectedStatus(afterApi, 401, "JUDGE_SIGNOUT_API_STILL_AUTHENTICATED");
+console.log("PASS revoked judge session cannot access page or evaluation API");
 console.log("JUDGE_SMOKE_READONLY_PASS (not full CI, external payout verification, or DB restore)");
