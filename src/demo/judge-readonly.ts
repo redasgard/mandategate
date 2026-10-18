@@ -128,6 +128,79 @@ export async function readJudgeModelEvidence(userId: string): Promise<JudgeModel
   });
 }
 
+/**
+ * The saved three-case decision ledger is independent from the button-driven
+ * simulation. Only exact, canonical, explicitly fictional requests are shown.
+ * Neither GLM hints nor this ledger confer invoice/payment authorization.
+ */
+export type JudgeCanonicalDecision = {
+  id: string;
+  requestId: string | null;
+  invoiceNumber: string;
+  status: string | null;
+  outcome: "ALLOW" | "ESCALATE" | "DENY" | null;
+  reasonCodes: string[];
+  hasExecution: false;
+  proofClass: "PERSISTED_SYNTHETIC_CANONICAL_DECISION";
+};
+
+export async function readJudgeCanonicalDecisions(userId: string): Promise<JudgeCanonicalDecision[]> {
+  if (!demoPreviewEnabled(process.env)) throw new JudgeDemoError("JUDGE_DEMO_DISABLED", 404);
+  const keys = DEMO_CASES.map(item =>
+    "mandategate-p0-synthetic-20261015-" + item.id + "-v1");
+  const result = await pool.query([
+    "select pr.id,pr.idempotency_key,pr.invoice_number,pr.source,pr.status,",
+    "pd.outcome,pd.reason_codes,(pe.id is not null) as has_execution",
+    "from payment_requests pr",
+    "join payment_decisions pd on pd.payment_request_id=pr.id",
+    "left join payment_executions pe on pe.payment_request_id=pr.id",
+    "where pr.organization_id=$1 and pr.idempotency_key=any($3::text[])",
+    "and exists (select 1 from organization_admin_memberships m",
+    "where m.organization_id=pr.organization_id and m.user_id=$2",
+    "and m.role='REVIEWER' and m.active=true",
+    "and not exists (select 1 from organization_admin_memberships elevated",
+    "where elevated.user_id=m.user_id and elevated.role='ADMIN'",
+    "and elevated.active=true))",
+  ].join(" "), [DEMO_ORG_ID, userId, keys]);
+
+  const seen = new Map<string, Record<string, unknown>>();
+  for (const row of result.rows) {
+    const key = row.idempotency_key;
+    if (typeof key !== "string" || !keys.includes(key) || seen.has(key) ||
+        row.source !== "demo_fixture" || row.has_execution !== false ||
+        !["ALLOW", "ESCALATE", "DENY"].includes(row.outcome) ||
+        !["ALLOWED", "ESCALATED", "DENIED"].includes(row.status) ||
+        !Array.isArray(row.reason_codes) || !row.reason_codes.every(
+          (reason: unknown) => typeof reason === "string" &&
+          /^[A-Z][A-Z0-9_]{0,119}$/.test(reason))) {
+      throw new JudgeDemoError("JUDGE_CANONICAL_LEDGER_INVALID", 503);
+    }
+    seen.set(key, row);
+  }
+  return DEMO_CASES.map(item => {
+    const key = "mandategate-p0-synthetic-20261015-" + item.id + "-v1";
+    const row = seen.get(key);
+    if (row && (row.outcome !== item.expectedOutcome ||
+        row.invoice_number !== item.invoiceNumber ||
+        row.status !== (
+          item.expectedOutcome === "ALLOW" ? "ALLOWED" :
+          item.expectedOutcome === "DENY" ? "DENIED" : "ESCALATED"
+        ))) {
+      throw new JudgeDemoError("JUDGE_CANONICAL_LEDGER_CHANGED", 503);
+    }
+    return {
+      id: item.id,
+      invoiceNumber: item.invoiceNumber,
+      requestId: row ? String(row.id) : null,
+      status: row ? String(row.status) : null,
+      outcome: row ? row.outcome as "ALLOW" | "ESCALATE" | "DENY" : null,
+      reasonCodes: row ? row.reason_codes as string[] : [],
+      hasExecution: false as const,
+      proofClass: "PERSISTED_SYNTHETIC_CANONICAL_DECISION" as const,
+    };
+  });
+}
+
 export const JUDGE_SCENARIO_IDS = DEMO_CASES.map(item => item.id);
 
 export function evaluateJudgeCase(caseId: string) {
