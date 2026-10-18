@@ -4,6 +4,7 @@ import { auth } from "@/src/auth/auth";
 import { demoPreviewEnabled, DEMO_CASES } from "@/src/demo/scenarios";
 import {
   JudgeDemoError, readJudgeExecutionCount, readJudgeModelEvidence,
+  readJudgeCanonicalDecisions,
 } from "@/src/demo/judge-readonly";
 import { JudgeScenarioReplay } from "./replay-cases";
 import { JudgeSignOut } from "./sign-out";
@@ -18,10 +19,12 @@ export default async function JudgePage() {
   if (!session) redirect("/sign-in?returnTo=%2Fjudge");
 
   let evidence: Awaited<ReturnType<typeof readJudgeModelEvidence>>;
+  let canonical: Awaited<ReturnType<typeof readJudgeCanonicalDecisions>>;
   let executions: number;
   try {
-    [evidence, executions] = await Promise.all([
+    [evidence, canonical, executions] = await Promise.all([
       readJudgeModelEvidence(session.user.id),
+      readJudgeCanonicalDecisions(session.user.id),
       readJudgeExecutionCount(session.user.id),
     ]);
   } catch (error) {
@@ -45,6 +48,31 @@ export default async function JudgePage() {
       </p> : <JudgeScenarioReplay cases={DEMO_CASES.map(item => ({
         id: item.id, title: item.title, expectedOutcome: item.expectedOutcome,
       }))}/>}
+
+      <section className="review-stage" aria-label="Persisted canonical invoice requests">
+        <p className="eyebrow">Database-backed P0 decision ledger</p>
+        <h2>Saved outcomes, not just a simulation</h2>
+        <p className="muted">
+          These records come from tenant-bound payment_requests and payment_decisions
+          rows. They were submitted as synthetic demo fixtures. They are not
+          derived from GLM invoice observations, and none executed PayPal.
+        </p>
+        {blocked ? <p role="alert">Stored decisions are hidden while payment
+          execution records require investigation.</p>
+          : <div className="risk-evidence-list">
+            {canonical.map(record => <article className="risk-evidence-card" key={record.id}>
+              <h3>{record.invoiceNumber}</h3>
+              {record.requestId
+                ? <>
+                  <p><strong>Persisted decision:</strong> {record.outcome} / {record.status}</p>
+                  <p><strong>Recorded reasons:</strong> {record.reasonCodes.join(", ") || "None"}</p>
+                  <p className="mono">Request {record.requestId}</p>
+                  <p className="muted">Fictional canonical request. No PayPal execution.</p>
+                </>
+                : <p className="muted">No saved canonical fixture for this case.</p>}
+            </article>)}
+          </div>}
+      </section>
 
       <section className="review-stage" aria-label="Previously saved fictional AI evidence">
         <p className="eyebrow">GLM-5.3 Flash / consented fictional input</p>
