@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const mocks = vi.hoisted(() => ({
-  session: vi.fn(), evidence: vi.fn(), count: vi.fn(),
+  session: vi.fn(), evidence: vi.fn(), count: vi.fn(), canonical: vi.fn(),
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -26,6 +26,7 @@ vi.mock("../src/demo/judge-readonly", () => ({
   },
   readJudgeExecutionCount: mocks.count,
   readJudgeModelEvidence: mocks.evidence,
+  readJudgeCanonicalDecisions: mocks.canonical,
 }));
 vi.mock("../app/judge/replay-cases", () => ({
   JudgeScenarioReplay: () => "JUDGE_READONLY_REPLAY",
@@ -44,9 +45,16 @@ beforeEach(() => {
   mocks.session.mockReset();
   mocks.evidence.mockReset();
   mocks.count.mockReset();
+  mocks.canonical.mockReset();
   mocks.session.mockResolvedValue({ user: { id: "judge-user" } });
   mocks.evidence.mockResolvedValue([]);
   mocks.count.mockResolvedValue(0);
+  mocks.canonical.mockResolvedValue([{
+    id: 'normal', requestId: 'f9a07271-08c4-4b07-ae92-a506045ec34b',
+    invoiceNumber: 'DEMO-NORMAL-2026', outcome: 'ALLOW', status: 'ALLOWED',
+    reasonCodes: ['WITHIN_TRUSTED_BASELINE'], hasExecution: false,
+    proofClass: 'PERSISTED_SYNTHETIC_CANONICAL_DECISION',
+  }]);
 });
 
 describe("read-only signed-in judge presentation", () => {
@@ -60,6 +68,10 @@ describe("read-only signed-in judge presentation", () => {
     const html = await render();
     expect(html).toContain("JUDGE_READONLY_REPLAY");
     expect(html).toContain("JUDGE_SESSION_END_CONTROL");
+    expect(html).toContain("Saved outcomes, not just a simulation");
+    expect(html).toContain("DEMO-NORMAL-2026");
+    expect(html).toContain("WITHIN_TRUSTED_BASELINE");
+    expect(mocks.canonical).toHaveBeenCalledWith("judge-user");
     expect(html).toContain("ARCHIVED_PAYPAL_SEPARATE_FROM_GLM");
     expect(html).toContain("consented fictional input");
     expect(html).toContain("not independently verified");
@@ -73,5 +85,6 @@ describe("read-only signed-in judge presentation", () => {
     const html = await render();
     expect(html).toContain("Replay halted");
     expect(html).not.toContain("JUDGE_READONLY_REPLAY");
+    expect(html).not.toContain("DEMO-NORMAL-2026");
   });
 });
