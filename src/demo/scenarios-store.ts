@@ -78,9 +78,27 @@ export async function createDemoScenarios(adminUserId:string) {
   if(limits.rows.length!==1||Number(limits.rows[0].normal_max_amount_cents)!==250000||
      Number(limits.rows[0].auto_pay_max_amount_cents)!==300000)
     fail("DEMO_POLICY_CHANGED");
-  const existingExecutions=await pool.query("select count(*)::int as n from payment_executions");
-  if(existingExecutions.rows[0].n!==0 && !allExisting)
-    fail("DEMO_REQUIRES_ZERO_EXECUTIONS");
+  // Enforce the same organization-wide zero-execution invariant as the judge
+  // page. Existing fixtures do not waive it: any payout row must halt replay
+  // before submitCanonicalPaymentRequest can touch canonical request state.
+  const existingExecutions=await pool.query([
+    "select (select count(*)::int from payment_executions e",
+    "join payment_requests pr on pr.id=e.payment_request_id",
+    "where pr.organization_id=$1) as n,",
+    "exists (select 1 from organization_admin_memberships m",
+    "where m.organization_id=$1 and m.user_id=$2",
+    "and m.role='ADMIN' and m.active=true) as admin_authorized",
+  ].join(" "),[DEMO_ORG_ID,adminUserId]);
+  const current=existingExecutions.rows.length===1
+    ? existingExecutions.rows[0]:null;
+  const authorized:unknown=current?.admin_authorized;
+  if(authorized===false)fail("DEMO_ADMIN_NOT_FOUND",404);
+  if(authorized!==true)fail("DEMO_EXECUTION_COUNT_INVALID",503);
+  const executionCount:unknown=current?.n;
+  if(typeof executionCount!=="number" ||
+     !Number.isSafeInteger(executionCount) || executionCount<0)
+    fail("DEMO_EXECUTION_COUNT_INVALID",503);
+  if(executionCount!==0)fail("DEMO_REQUIRES_ZERO_EXECUTIONS");
 
   for(const input of demoRequests(String(vendor.rows[0].destination))){
     const {expectedOutcome,...submission}=input;

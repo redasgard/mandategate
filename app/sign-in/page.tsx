@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/src/auth/auth-client";
+import { postSignInDestination } from "@/src/auth/signin-target";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -17,14 +18,21 @@ export default function SignInPage() {
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
 
-    const result = await authClient.signIn.email({ email, password });
-    if (result.error) {
-      setError(result.error.message ?? "Sign-in failed");
+    try {
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error) {
+        setError(result.error.message ?? "Sign-in failed");
+        return;
+      }
+      router.push(postSignInDestination(window.location.search));
+      router.refresh();
+    } catch {
+      // A sleeping free-tier host or transient network error should leave
+      // the sign-in form usable, without exposing credentials in diagnostics.
+      setError("Sign-in temporarily unavailable. Please retry.");
+    } finally {
       setBusy(false);
-      return;
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -33,7 +41,7 @@ export default function SignInPage() {
         <div className="brand-mark">MG</div>
         <p className="eyebrow">MandateGate</p>
         <h1>Financial authority stays here.</h1>
-        <p className="muted">Synthetic hackathon admin access. Public sign-up is disabled.</p>
+        <p className="muted">Authorized demo and restricted judge access. Public sign-up is disabled.</p>
         <form onSubmit={submit} className="stack">
           <label>
             Email
