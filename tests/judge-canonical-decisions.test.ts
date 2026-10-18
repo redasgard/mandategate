@@ -43,7 +43,7 @@ describe("persisted, source-separated judge canonical evidence", () => {
       expect(sql).toContain("m.user_id=$2");
       expect(sql).toContain("m.role='REVIEWER' and m.active=true");
       expect(sql).toContain("elevated.role='ADMIN'");
-      expect(sql).toContain("from payment_decisions");
+      expect(sql).toContain("join payment_decisions");
       expect(sql).toContain("payment_executions");
       expect(params).toEqual([DEMO_ORG_ID, "judge-user",
         DEMO_CASES.map(item => "mandategate-p0-synthetic-20261015-" + item.id + "-v1")]);
