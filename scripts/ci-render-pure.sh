@@ -58,7 +58,7 @@ fi
 node - <<'NODE'
 const pg=require('pg');
 const client=new pg.Client({connectionString:process.env.DATABASE_URL});
-client.connect().then(async()=>{const r=await client.query("select current_setting('server_version_num')::int as version_num,current_database() as name,inet_server_addr()::text as address");await client.end();if(r.rows.length!==1||r.rows[0].version_num<180000||r.rows[0].version_num>=190000||r.rows[0].name!=='mandategate'||r.rows[0].address!=='127.0.0.1')throw Error('CI_DATABASE_IDENTITY_FAILED');console.log('CI_PG18_LOCAL_VERIFIED')}).catch(e=>{console.error('CI_DATABASE_IDENTITY_FAILED',e.message);process.exit(1)});
+client.connect().then(async()=>{const r=await client.query("select current_setting('server_version_num')::int as version_num,current_database() as name,inet_server_port()::int as port");await client.end();const v=r.rows[0];if(r.rows.length!==1||v.version_num<180000||v.version_num>=190000||v.name!=='mandategate'||v.port!==55432)throw Error('CI_DATABASE_IDENTITY_FAILED '+JSON.stringify(v));console.log('CI_PG18_LOCAL_VERIFIED')}).catch(e=>{console.error('CI_DATABASE_IDENTITY_FAILED',e.message);process.exit(1)});
 NODE
 step migration-1 pnpm db:migrate
 step migration-2 pnpm db:migrate
