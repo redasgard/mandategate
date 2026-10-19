@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   session: vi.fn(),
   recent: vi.fn(),
   summary: vi.fn(),
+  incidents: vi.fn(),
+  obligations: vi.fn(),
 }));
 vi.mock("../src/db/pool", () => ({ pool: { query: mocks.query } }));
 vi.mock("../src/auth/auth", () => ({
@@ -15,6 +17,14 @@ vi.mock("next/navigation", () => ({
   redirect: (path: string) => { throw new Error("REDIRECT:" + path); },
 }));
 vi.mock("../src/db/views", () => ({ listRecentDecisions: mocks.recent }));
+vi.mock("../src/db/dashboard-incidents", () => ({
+  readDashboardIncidents: mocks.incidents,
+  parseIncidentFilter: () => "ALL",
+  INCIDENT_FILTERS: ["ALL","REVIEW","BLOCKED","PAYOUT"],
+}));
+vi.mock("../src/db/imported-obligations", () => ({
+  readImportedObligations: mocks.obligations,
+}));
 vi.mock("../src/db/dashboard-overview", () => ({
   readDashboardSummary: mocks.summary,
 }));
@@ -27,6 +37,12 @@ beforeEach(() => {
   mocks.session.mockReset();
   mocks.recent.mockReset();
   mocks.summary.mockReset();
+  mocks.incidents.mockReset().mockResolvedValue([]);
+  mocks.obligations.mockReset().mockResolvedValue({
+    asOfUtc:"2026-10-19",upcomingHorizon:"2026-11-02",items:[],
+    overdue:{count:0,cents:"0"},upcoming:{count:0,cents:"0"},later:{count:0,cents:"0"},
+    incomplete:false,basis:"UNVERIFIED_IMPORTED_AP_HISTORY",
+  });
   mocks.session.mockResolvedValue({ user: { id: "judge-user" } });
   mocks.recent.mockResolvedValue([]);
   mocks.summary.mockResolvedValue({
