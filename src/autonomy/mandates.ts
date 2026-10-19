@@ -17,7 +17,8 @@ const DAY_MS=86400000;
 type MandateSnapshot={
   id:string;organizationId:string;vendorId:string;
   destinationId:string;destination:string;policyId:string;
-  source:"agent_api";maxAmountCents:number;actorId:string;
+  source:"agent_api";maxAmountCents:number;maxTotalAmountCents:number;
+  maxPaymentCount:number;actorId:string;
   currentPolicyLimitCents:number;currentVendorLimitCents:number;
   createdAt:string;expiresAt:string;
 };
@@ -25,7 +26,8 @@ export function digestMandate(snapshot:MandateSnapshot):string {
   return sha("mandategate/autonomous-grant/v1\0"+JSON.stringify([
     snapshot.id,snapshot.organizationId,snapshot.vendorId,
     snapshot.destinationId,snapshot.destination,snapshot.policyId,
-    snapshot.source,snapshot.maxAmountCents,snapshot.actorId,
+    snapshot.source,snapshot.maxAmountCents,snapshot.maxTotalAmountCents,
+    snapshot.maxPaymentCount,snapshot.actorId,
     snapshot.currentPolicyLimitCents,snapshot.currentVendorLimitCents,
     snapshot.createdAt,snapshot.expiresAt,
   ]));
@@ -84,11 +86,17 @@ const explanationValid=(x:string)=>typeof x==="string"&&
  */
 export async function prepareAutopayMandate(input:{
   organizationId:string;vendorId:string;actorId:string;
-  maxAmountCents:number;validityDays:number;
+  maxAmountCents:number;maxTotalAmountCents:number;
+  maxPaymentCount:number;validityDays:number;
 }) {
   if(!input.organizationId||!input.vendorId||!input.actorId||
     !Number.isSafeInteger(input.maxAmountCents)||input.maxAmountCents<1||
     input.maxAmountCents>2_000_000_000||
+    !Number.isSafeInteger(input.maxTotalAmountCents)||
+    input.maxTotalAmountCents<input.maxAmountCents||
+    input.maxTotalAmountCents>100_000_000_000||
+    !Number.isSafeInteger(input.maxPaymentCount)||
+    input.maxPaymentCount<1||input.maxPaymentCount>1000||
     !Number.isSafeInteger(input.validityDays)||
     input.validityDays<1||input.validityDays>30)
     fail("AUTOPAY_PREPARE_INVALID",422);
@@ -115,6 +123,7 @@ export async function prepareAutopayMandate(input:{
       id,organizationId:input.organizationId,vendorId:input.vendorId,
       destinationId:current.destinationId,destination:current.destination,
       policyId:current.policyId,source:"agent_api",maxAmountCents:input.maxAmountCents,
+      maxTotalAmountCents:input.maxTotalAmountCents,maxPaymentCount:input.maxPaymentCount,
       actorId:input.actorId,currentPolicyLimitCents:current.policyLimitCents,
       currentVendorLimitCents:current.vendorLimitCents,createdAt,expiresAt,
     };
@@ -122,15 +131,18 @@ export async function prepareAutopayMandate(input:{
     await db.query([
       "insert into autopay_mandates",
       "(id,organization_id,vendor_id,destination_id,policy_id,source,",
-      "max_amount_cents,approved_by_user_id,approval_digest,active,expires_at,created_at)",
-      "values($1,$2,$3,$4,$5,'agent_api',$6,$7,$8,false,$9,$10)",
+      "max_amount_cents,max_total_amount_cents,max_payment_count,",
+      "approved_by_user_id,approval_digest,active,expires_at,created_at)",
+      "values($1,$2,$3,$4,$5,'agent_api',$6,$7,$8,$9,$10,false,$11,$12)",
     ].join(" "),[id,input.organizationId,input.vendorId,current.destinationId,
-      current.policyId,input.maxAmountCents,input.actorId,digest,expiresAt,createdAt]);
+      current.policyId,input.maxAmountCents,input.maxTotalAmountCents,
+      input.maxPaymentCount,input.actorId,digest,expiresAt,createdAt]);
     await db.query("commit");
     return {
       id,organizationId:input.organizationId,vendorId:input.vendorId,
       vendorName:current.vendorName,destination:current.destination,
-      maxAmountCents:input.maxAmountCents,expiresAt,
+      maxAmountCents:input.maxAmountCents,
+      maxTotalAmountCents:input.maxTotalAmountCents,maxPaymentCount:input.maxPaymentCount,expiresAt,
       digest,confirmationDeadline:new Date(now.valueOf()+TTL_MS).toISOString(),
       state:"PREPARED" as const,active:false,paymentExecuted:false,
     };
@@ -182,6 +194,8 @@ export async function decideAutopayMandate(input:{
       const scope=await currentScope(db,org,String(row.vendor_id));
       if(row.policy_id!==scope.policyId||
          row.destination_id!==scope.destinationId||
+         (Number(row.max_total_amount_cents)<Number(row.max_amount_cents))||
+         Number(row.max_payment_count)<1||
          Number(row.max_amount_cents)>scope.policyLimitCents||
          Number(row.max_amount_cents)>scope.vendorLimitCents)
         fail("AUTOPAY_SCOPE_CHANGED");
@@ -189,7 +203,9 @@ export async function decideAutopayMandate(input:{
         id:row.id,organizationId:org,vendorId:row.vendor_id,
         destinationId:row.destination_id,destination:scope.destination,
         policyId:row.policy_id,source:"agent_api",
-        maxAmountCents:Number(row.max_amount_cents),actorId:row.approved_by_user_id,
+        maxAmountCents:Number(row.max_amount_cents),
+        maxTotalAmountCents:Number(row.max_total_amount_cents),
+        maxPaymentCount:Number(row.max_payment_count),actorId:row.approved_by_user_id,
         currentPolicyLimitCents:scope.policyLimitCents,
         currentVendorLimitCents:scope.vendorLimitCents,
         createdAt:new Date(row.created_at).toISOString(),
@@ -254,8 +270,13 @@ export async function readAutopayMandateConsole(actorId:string) {
     ].join(" "),[actorId]),
     pool.query([
       "select g.id,g.organization_id,g.vendor_id,v.name as vendor_name,",
-      "d.destination,g.policy_id,g.max_amount_cents,g.approval_digest,",
+      "d.destination,g.policy_id,g.max_amount_cents,g.max_total_amount_cents,",
+      "g.max_payment_count,g.approval_digest,",
       "g.approved_by_user_id,g.active,g.expires_at,g.created_at,g.revoked_at,",
+      "(select count(*)::int from autopay_budget_reservations br",
+      "where br.mandate_id=g.id) as reservation_count,",
+      "(select coalesce(sum(br.amount_cents),0)::text from autopay_budget_reservations br",
+      "where br.mandate_id=g.id) as reserved_cents,",
       "exists(select 1 from autopay_mandate_events e where e.mandate_id=g.id",
       "and e.event_type='GRANTED') as has_grant",
       "from autopay_mandates g",
@@ -277,7 +298,12 @@ export async function readAutopayMandateConsole(actorId:string) {
       id:String(r.id),organizationId:String(r.organization_id),
       vendorId:String(r.vendor_id),vendorName:String(r.vendor_name),
       destination:String(r.destination),policyId:String(r.policy_id),
-      maxAmountCents:Number(r.max_amount_cents),digest:String(r.approval_digest),
+      maxAmountCents:Number(r.max_amount_cents),
+      maxTotalAmountCents:Number(r.max_total_amount_cents),
+      maxPaymentCount:Number(r.max_payment_count),
+      reservedCents:String(r.reserved_cents),
+      reservedCount:Number(r.reservation_count),
+      digest:String(r.approval_digest),
       preparedBy:String(r.approved_by_user_id),
       expiresAt:new Date(r.expires_at).toISOString(),
       createdAt:new Date(r.created_at).toISOString(),storedActive:Boolean(r.active),
