@@ -36,6 +36,16 @@ for (const options of [
     throw Error(`dashboard accepted ${options.label}: ${denied.status} ${destination}`);
   }
 }
+// Autonomous mandates are a real admin feature, never a public payment trigger.
+const unauthMandates=await fetch(baseUrl+"/autopay",{redirect:"manual"});
+if(![302,303,307,308].includes(unauthMandates.status))
+  throw Error("anonymous autopay mandate console was not restricted");
+const mandateScreen=await fetch(baseUrl+"/autopay",{headers:{cookie:adminCookie}});
+if(mandateScreen.status!==200 ||
+    !(await mandateScreen.text()).includes("Delegate authority once. Investigate exceptions."))
+  throw Error("signed-in autopay mandate console not rendered");
+console.log("autopay UI smoke passed: session required, inert grant preparation only, zero payouts");
+
 const signedDashboard=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
 if(signedDashboard.status!==200 ||
    !(await signedDashboard.text()).includes("Current payment risk")) {
