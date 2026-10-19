@@ -21,8 +21,9 @@ export default async function SandboxPayoutPage() {
   );
   if (membership.rows.length !== 1) notFound();
   const enabled = sandboxPayoutEnabled();
+  const invoiceMode=process.env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO==="1";
   let request: Awaited<ReturnType<typeof readSandboxPayout>> = null;
-  if (enabled) {
+  if (enabled && !invoiceMode) {
     try {request = await readSandboxPayout(session.user.id);}
     catch(error) {
       if (error instanceof SandboxPayoutError) throw error;
@@ -34,13 +35,25 @@ export default async function SandboxPayoutPage() {
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
       <p className="eyebrow">PayPal AI Hackathon / actual Sandbox API</p>
-      <h1>One authorized, fictional $1.01 payout</h1>
+      <h1>{invoiceMode?"Reviewed invoice to PayPal Sandbox":"One authorized, fictional $1.01 payout"}</h1>
       <p className="muted">
         This is a separate synthetic canonical payment, not a payout caused by
         GLM invoice extraction. The judge&apos;s three ALLOW/ESCALATE/DENY examples
         remain forever nonpayable. Real PayPal funds are never involved.
       </p>
-      {enabled ? <>
+      {invoiceMode ? <section className="review-stage">
+        <h2>Invoice-linked Sandbox experiment</h2>
+        <p>Begin with the original fictional PDF, independently verified text,
+          an explicitly simulated source assertion, and exact administrator
+          approval. Preparing it creates no payout. Execute is a separate
+          action after the approved binding is consumed.</p>
+        <p><Link href="/invoice-artifacts">Start with fictional invoice intake →</Link></p>
+        <p className="muted">The standalone payment fixture is disabled in
+          this mode. A real PayPal Sandbox payout is not proven until its
+          batch, item and verified webhook reconciliation are observed.</p>
+        {!enabled ? <p role="alert">Sandbox execution credentials and the test
+          recipient are not configured on this deployment.</p>:null}
+      </section> : enabled ? <>
         <dl>
           <div><dt>Payment environment</dt><dd>PayPal Sandbox only</dd></div>
           <div><dt>Exact amount</dt><dd>USD 1.01</dd></div>
