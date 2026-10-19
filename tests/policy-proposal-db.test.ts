@@ -21,6 +21,12 @@ async function cap() {
   return {id:String(r.rows[0].id),limit:Number(r.rows[0].auto_pay_max_amount_cents)};
 }
 beforeAll(async()=>{
+  // These tests intentionally mutate only an isolated local PostgreSQL instance.
+  // Never run against Neon, shared databases or a payout-capable service.
+  const db = new URL(process.env.DATABASE_URL ?? "postgresql://invalid:invalid@invalid/invalid");
+  if(!["localhost","127.0.0.1"].includes(db.hostname) ||
+     process.env.MANDATEGATE_DISABLE_PAYMENTS!=="1" || process.env.CI!=="true")
+    throw Error("POLICY_DB_TEST_REQUIRES_DISPOSABLE_CI");
   const owners=await pool.query('select id from "user" where email=$1',[process.env.DEMO_ADMIN_EMAIL]);
   if(owners.rows.length!==1)throw Error("POLICY_TEST_NEEDS_SYNTHETIC_ADMIN");
   actor=String(owners.rows[0].id);
@@ -29,17 +35,9 @@ beforeAll(async()=>{
   await pool.query("insert into policies(id,organization_id,name,auto_pay_max_amount_cents,active) values($1,$2,'Test auto-pay',50000,true)",[oldPolicy,org]);
   await pool.query("insert into organization_admin_memberships(user_id,organization_id,role,active) values($1,$2,'ADMIN',true)",[actor,org]);
 });
-afterAll(async()=>{
-  await pool.query("delete from policy_proposal_events where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from policy_proposals where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from ap_history_rows where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from ap_imports where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from policies where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from organization_admin_memberships where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from vendors where organization_id=$1",[org]).catch(()=>undefined);
-  await pool.query("delete from organizations where id=$1",[org]).catch(()=>undefined);
-  await pool.end();
-});
+afterAll(async()=>{await pool.end();});
+// PostgreSQL test container is disposable. Immutable proposal events must
+// NOT be deleted as test cleanup or application maintenance.
 describe("S8 consequential policy proposal lifecycle on PostgreSQL 18",()=>{
   it("keeps proposal inert, forces exact digest on edits, activates strictly narrower cap once",async()=>{
     const first=await preparePolicyProposal({
