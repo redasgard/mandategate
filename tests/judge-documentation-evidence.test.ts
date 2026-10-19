@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { demoPreviewEnabled } from "../src/demo/scenarios";
 
 const read = (path: string) => readFileSync(path, "utf8");
 const readme = read("README.md");
@@ -55,7 +56,19 @@ describe("judge documentation and evidence-bound claims", () => {
     expect(seed).toContain("demo admin credential material is intentionally not logged");
     expect(scope).toContain("at least 32 characters");
     expect(readme).toContain("MANDATEGATE_DISABLE_PAYMENTS=1");
-    expect(demo).toContain('env.MANDATEGATE_DISABLE_PAYMENTS!=="1"');
+    // Test the real preview policy instead of pinning the old exact source
+    // expression: neon-sandbox was added later, with a separate judge flag.
+    expect(demo).toContain("allowedNeonHosts.has(url.hostname)");
+    const neonEnv = {
+      DATABASE_URL:"postgresql://test:test@ep-silent-poetry-arjowm4d.c-4.us-west-2.aws.neon.tech/neondb?sslmode=require",
+      MANDATEGATE_RUNTIME_MODE:"neon-preview",
+      MANDATEGATE_DISABLE_PAYMENTS:"1",
+    };
+    expect(demoPreviewEnabled(neonEnv)).toBe(true);
+    expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_DISABLE_PAYMENTS:"0"})).toBe(false);
+    expect(demoPreviewEnabled({...neonEnv,DATABASE_URL:"postgresql://test:test@127.0.0.1:55432/mandategate"})).toBe(false);
+    expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox"})).toBe(false);
+    expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox",MANDATEGATE_JUDGE_PREVIEW_ENABLED:"1"})).toBe(true);
     expect(readme).toContain("is **not** enabled automatically on an arbitrary local PostgreSQL installation");
     expect(readme).toContain("External judge access has not yet been independently verified");
   });
