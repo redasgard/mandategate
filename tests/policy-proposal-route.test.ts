@@ -2,6 +2,7 @@ import {describe,expect,it} from "vitest";
 import {POST as prepare} from "../app/api/admin/policy-proposals/route";
 import {POST as decide} from "../app/api/admin/policy-proposals/[id]/route";
 import {readSmallJson} from "../src/auth/json-small-body";
+import {POST as disablePolicy} from "../app/api/admin/policies/[id]/disable/route";
 
 const base=process.env.BETTER_AUTH_URL??"http://127.0.0.1:3000";
 const request=(path:string,origin:string,body:string)=>new Request(base+path,{
@@ -30,4 +31,18 @@ describe("policy proposal HTTP authority boundary",()=>{
     const good=await readSmallJson(request("/ignored",base,JSON.stringify({ok:true})));
     expect(good).toMatchObject({ok:true,value:{ok:true}});
   });
+  it("requires trusted origin and authentication before policy shutdown",async()=>{
+    const body=JSON.stringify({
+      expectedDigest:"b".repeat(64),
+      explanation:"Synthetic emergency shutdown test, no real policy mutation.",
+      confirmation:"DISABLE",
+    });
+    expect((await disablePolicy(request("/api/admin/policies/policy_demo_default/disable",
+      "https://hostile.invalid",body),
+      {params:Promise.resolve({id:"policy_demo_default"})})).status).toBe(403);
+    expect((await disablePolicy(request("/api/admin/policies/policy_demo_default/disable",
+      base,body),
+      {params:Promise.resolve({id:"policy_demo_default"})})).status).toBe(401);
+  });
+
 });
