@@ -45,6 +45,7 @@ export function classifySandboxPaymentRail(
     p.status!=="ALLOWED"||p.outcome!=="ALLOW"||p.effectiveOutcome!=="ALLOW")
     return null;
   if(p.source==="sandbox_fixture" &&
+    env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO!=="1" &&
     p.organizationId===SANDBOX_ORG_ID &&
     p.vendorId===SANDBOX_VENDOR_ID &&
     p.authorityBindingId===null &&
