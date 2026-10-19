@@ -36,7 +36,7 @@ create table if not exists erp_synthetic_signed_invoice_receipts (
   foreign key (organization_id, artifact_id, artifact_sha256)
     references invoice_artifacts(organization_id, id, sha256),
   unique (organization_id, origin_channel_id, event_id),
-  unique (organization_id, vendor_id, artifact_id, invoice_number)
+  unique (organization_id, vendor_id, invoice_number)
 );
 
 -- Registration keys cannot be replaced or reactivated; revocation is final.
