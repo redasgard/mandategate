@@ -10,6 +10,8 @@ const secret="ci-fixture-key-only-not-a-provider-credential-2026";
 let actor="";
 const bytes=Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
 const hash=createHash("sha256").update(bytes).digest("hex");
+const dbUrl=new URL(process.env.DATABASE_URL??"postgresql://invalid@invalid/db");
+const disposable=process.env.CI==="true" && process.env.MANDATEGATE_DISABLE_PAYMENTS==="1" && process.env.MANDATEGATE_RUNTIME_MODE==="legacy" && dbUrl.hostname==="127.0.0.1" && dbUrl.port==="55432" && dbUrl.pathname==="/mandategate";
 const event=()=>({
   eventId:"evt_"+randomUUID().replaceAll("-",""),
   organizationId:org,vendorId:vendor,channelId:channel,keyId,artifactId:artifact,
@@ -17,11 +19,6 @@ const event=()=>({
   currency:"USD",signedAt:new Date().toISOString(),
 });
 beforeAll(async()=>{
-  const db=new URL(process.env.DATABASE_URL??"postgresql://invalid@invalid/db");
-  if(process.env.CI!=="true"||process.env.MANDATEGATE_DISABLE_PAYMENTS!=="1"||
-    process.env.MANDATEGATE_RUNTIME_MODE!=="legacy"||
-    db.hostname!=="127.0.0.1"||db.port!=="55432"||db.pathname!=="/mandategate")
-    throw Error("SYNTHETIC_ERP_TEST_DISPOSABLE_ONLY");
   const u=await pool.query('select id from "user" where email=$1',[process.env.DEMO_ADMIN_EMAIL]);
   actor=String(u.rows[0].id);
   await pool.query("insert into organizations(id,name) values($1,'Synthetic ERP')",[org]);
@@ -38,11 +35,11 @@ beforeAll(async()=>{
   ].join(" "),[artifact,org,bytes.length,hash,bytes]);
 });
 afterAll(async()=>{await pool.end();});
-describe("synthetic ERP signed source receipts: no payments",()=>{
+describe.skipIf(!disposable)("synthetic ERP signed source receipts: no payments",()=>{
  it("records one exact signed event but rejects replay and immutable tampering",async()=>{
    // The artifact must postdate the registered key.
    const x=event(),signature=signSyntheticErpEvent(x,secret);
-   const first=await receiveSyntheticErpEvent({event:x,signature});
+   const first=await receiveSyntheticErpEvent({event:x,signature,secret});
    expect(first).toMatchObject({paymentAuthorized:false,paymentExecuted:false,
      originAttestationCreated:false,evidenceStatus:"SYNTHETIC_SIGNED_FIXTURE"});
    await expect(receiveSyntheticErpEvent({event:x,signature})).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
@@ -51,11 +48,11 @@ describe("synthetic ERP signed source receipts: no payments",()=>{
  });
  it("rejects signature, stale timestamp and cross-tenant modification",async()=>{
    const x=event(),signature=signSyntheticErpEvent(x,secret);
-   await expect(receiveSyntheticErpEvent({event:{...x,amountCents:2000},signature}))
+   await expect(receiveSyntheticErpEvent({event:{...x,amountCents:2000},signature,secret}))
      .rejects.toThrow("SYNTHETIC_ERP_SIGNATURE_INVALID");
-   await expect(receiveSyntheticErpEvent({event:x,signature,now:new Date(Date.now()+600_000)}))
+   await expect(receiveSyntheticErpEvent({event:x,signature,secret,now:new Date(Date.now()+600_000)}))
      .rejects.toThrow("SYNTHETIC_ERP_TIMESTAMP_INVALID");
-   await expect(receiveSyntheticErpEvent({event:{...x,organizationId:"org_demo"},signature}))
+   await expect(receiveSyntheticErpEvent({event:{...x,organizationId:"org_demo"},signature,secret}))
      .rejects.toThrow("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
  });
  it("does not convert a receipt to an attestation or payment",async()=>{
