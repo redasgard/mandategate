@@ -29,7 +29,7 @@ beforeAll(async()=>{
     "insert into vendor_origin_channels(id,organization_id,vendor_id,kind,enrolled_evidence_sha256,enrolled_by_user_id,created_at)",
     "values($1,$2,$3,'ERP_INTEGRATION',$4,$5,now()-interval '2 days')",
   ].join(" "),[channel,org,vendor,createHash("sha256").update("fixture-channel").digest("hex"),actor]);
-  await registerSyntheticErpKey({actorUserId:actor,organizationId:org,vendorId:vendor,channelId,keyId,secret});
+  await registerSyntheticErpKey({actorUserId:actor,organizationId:org,vendorId:vendor,channelId:channel,keyId,secret});
   await pool.query([
     "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content,created_at)",
     "values($1,$2,'application/pdf',$3,$4,$5,now()+interval '1 second')",
