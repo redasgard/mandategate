@@ -5,6 +5,7 @@ import { isTrustedMutationOrigin } from "@/src/auth/same-origin";
 import { executeAuthorizedPayment, ExecutionRejectedError } from "@/src/payments/executor/service";
 import { postgresExecutionStore } from "@/src/payments/executor/postgres-store";
 import { getPayPalClient } from "@/src/payments/paypal/runtime";
+import { DEMO_ORG_ID } from "@/src/demo/scenarios";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isTrustedMutationOrigin(request)) return Response.json({ error: "INVALID_ORIGIN" }, { status: 403 });
@@ -20,7 +21,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       "where pr.id=$1 and m.user_id=$2 and m.role='ADMIN' and m.active=true",
       "limit 1",
     ].join(" "), [id,session.user.id]);
-    return membership.rows.length===1;
+    if (membership.rows.length !== 1) return false;
+    if (process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox") {
+      const owner = await pool.query(
+        "select 1 from organization_admin_memberships where user_id=$1 and organization_id=$2 and role='ADMIN' and active=true limit 1",
+        [session.user.id, DEMO_ORG_ID],
+      );
+      return owner.rows.length === 1;
+    }
+    return true;
   };
   // Logging in is not authorization to act on another organization's funds.
   if (!(await isAuthorized()))
