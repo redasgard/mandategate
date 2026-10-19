@@ -86,6 +86,7 @@ create table if not exists autopay_payment_bindings (
  mandate_id uuid not null,
  grant_event_id uuid not null references autopay_mandate_events(id),
  vendor_id text not null,
+ invoice_number text not null,
  destination_id text not null,
  policy_id text not null,
  amount_cents integer not null check(amount_cents>0),
@@ -104,6 +105,11 @@ create table if not exists autopay_payment_bindings (
  foreign key(organization_id,policy_id)
    references policies(organization_id,id)
 );
+-- A second idempotency key for the same vendor invoice must not create
+-- another independent unattended-payment entitlement.
+create unique index if not exists autopay_binding_vendor_invoice_uq
+ on autopay_payment_bindings(organization_id,vendor_id,lower(btrim(invoice_number)));
+
 create unique index if not exists autopay_binding_grant_request_uq
  on autopay_payment_bindings(mandate_id,payment_request_id);
 
@@ -142,7 +148,7 @@ begin
      and p.organization_id=g.organization_id and p.active=true
   join vendors v on v.id=g.vendor_id and v.organization_id=g.organization_id
   where pr.id=new.payment_request_id and pr.organization_id=new.organization_id
-   and pr.vendor_id=new.vendor_id
+   and pr.vendor_id=new.vendor_id and pr.invoice_number=new.invoice_number
    and pr.source='agent_api' and pr.status='ALLOWED' and pd.outcome='ALLOW'
    and pr.currency='USD' and pr.currency=new.currency
    and pr.amount_cents=new.amount_cents and pr.amount_cents<=g.max_amount_cents

@@ -144,6 +144,17 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
       "select mandate_id,grant_digest from autopay_payment_bindings where payment_request_id=$1",
       [requestAfterGrant]);
     expect(binding.rows).toMatchObject([{mandate_id:grantId,grant_digest:digest}]);
+    // A different Idempotency-Key must NOT grant a second payment for the
+    // identical vendor invoice. The failed transaction rolls back completely.
+    await expect(submitCanonicalPaymentRequest({
+      organizationId:org,vendorId:vendor,invoiceNumber:"AUTO-TEST-POST-GRANT",
+      amountCents:1000,currency:"USD",paymentDestination:"autopay@test.invalid",
+      idempotencyKey:"another-"+randomUUID(),source:"agent_api",
+    })).rejects.toThrow("AUTOPAY_INVOICE_DUPLICATE");
+    const duplicate=await pool.query(
+      "select count(*)::int as n from payment_requests where organization_id=$1 and invoice_number=$2",
+      [org,"AUTO-TEST-POST-GRANT"]);
+    expect(duplicate.rows[0].n).toBe(1);
     const candidates=await ownCandidates();
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toMatchObject({
