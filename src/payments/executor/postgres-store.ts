@@ -82,6 +82,8 @@ export class PostgresExecutionStore implements ExecutionStore {
           row.organization_id !== SANDBOX_ORG_ID ||
           row.vendor_id !== SANDBOX_VENDOR_ID ||
           row.invoice_number !== SANDBOX_INVOICE ||
+          row.status !== "ALLOWED" ||
+          row.outcome !== "ALLOW" ||
           Number(row.amount_cents) !== SANDBOX_AMOUNT_CENTS ||
           row.currency !== "USD" ||
           row.requested_destination !== process.env.DEMO_PAYPAL_RECEIVER_EMAIL ||
