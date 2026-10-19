@@ -19,6 +19,20 @@ describe("PayPal payout status mapping",()=>{
     expect(canApplyRemoteStatusTransition("PAID","PAYMENT_REVERSED")).toBe(true);
   });
 
+  it("accepts a definite PayPal settlement after manual unknown while refusing another pending retry",()=>{
+    for(const terminal of [
+      "PAID","PAYMENT_FAILED","PAYMENT_BLOCKED",
+      "PAYMENT_RETURNED","PAYMENT_REFUNDED","PAYMENT_REVERSED",
+    ] as const) {
+      expect(canApplyRemoteStatusTransition("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION",terminal))
+        .toBe(true);
+    }
+    for(const nonfinal of ["EXECUTING","PAYMENT_HELD","PAYMENT_UNCLAIMED","PAYMENT_STATUS_UNKNOWN"] as const) {
+      expect(canApplyRemoteStatusTransition("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION",nonfinal))
+        .toBe(false);
+    }
+  });
+
   it("keeps terminal failures terminal",()=>{
     expect(canApplyRemoteStatusTransition("PAYMENT_FAILED","PAID")).toBe(false);
     expect(canApplyRemoteStatusTransition("PAYMENT_BLOCKED","EXECUTING")).toBe(false);
