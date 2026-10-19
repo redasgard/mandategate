@@ -1,35 +1,15 @@
-import {createHash,createHmac,timingSafeEqual} from "node:crypto";
-import {z} from "zod";
+import {createHash} from "node:crypto";
 import {pool} from "../db/pool";
 import {assertDisposableSimulationEnvironment} from "../autonomy/simulated-runner";
+import {
+  signSyntheticErpEnvelopeForFixture,verifySyntheticErpEnvelope,
+} from "./synthetic-erp-envelope";
 
-const hex=z.string().regex(/^[a-f0-9]{64}$/);
-export const syntheticErpEventSchema=z.object({
-  eventId:z.string().regex(/^evt_[A-Za-z0-9_-]{12,100}$/),
-  organizationId:z.string().min(1).max(120),
-  vendorId:z.string().min(1).max(120),
-  channelId:z.string().min(1).max(120),
-  keyId:z.string().regex(/^fixture_[a-z0-9_-]{4,64}$/),
-  artifactId:z.string().uuid(),
-  artifactSha256:hex,
-  invoiceNumber:z.string().min(1).max(120),
-  amountCents:z.number().int().positive().max(2_000_000_000),
-  currency:z.literal("USD"),
-  signedAt:z.string().datetime({offset:true}),
-}).strict();
-type Event=z.infer<typeof syntheticErpEventSchema>;
+export {syntheticErpEventSchema} from "./synthetic-erp-envelope";
 function sha(data:string){return createHash("sha256").update(data).digest("hex");}
-function canonical(input:Event){return JSON.stringify([
-  "mandategate/synthetic-erp-event/v1",
-  input.eventId,input.organizationId,input.vendorId,input.channelId,input.keyId,
-  input.artifactId,input.artifactSha256,input.invoiceNumber,input.amountCents,
-  input.currency,input.signedAt,
-]);}
 export function signSyntheticErpEvent(input:unknown,secret:string){
   assertDisposableSimulationEnvironment();
-  const event=syntheticErpEventSchema.parse(input);
-  if(secret.length<32)throw Error("SYNTHETIC_ERP_KEY_TOO_SHORT");
-  return createHmac("sha256",secret).update(canonical(event)).digest("hex");
+  return signSyntheticErpEnvelopeForFixture(input,secret);
 }
 export async function registerSyntheticErpKey(input:{
   actorUserId:string;organizationId:string;vendorId:string;
@@ -59,18 +39,14 @@ export async function receiveSyntheticErpEvent(input:{
   event:unknown;signature:string;secret:string;now?:Date;
 }){
   assertDisposableSimulationEnvironment();
-  const event=syntheticErpEventSchema.parse(input.event);
+  const verified=verifySyntheticErpEnvelope({
+    event:input.event,signature:input.signature,
+    secret:input.secret,now:input.now??new Date(),
+  });
+  const event=verified.event;
   if(!/^queue_ci_[0-9a-f-]{36}$/i.test(event.organizationId))
     throw Error("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
-  const now=input.now??new Date();
-  const ageMillis=now.valueOf()-Date.parse(event.signedAt);
-  if(!Number.isFinite(ageMillis)||ageMillis < -30_000||ageMillis > 300_000)
-    throw Error("SYNTHETIC_ERP_TIMESTAMP_INVALID");
-  const expected=signSyntheticErpEvent(event,input.secret);
-  if(!hex.safeParse(input.signature).success ||
-    !timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(input.signature,"hex")))
-    throw Error("SYNTHETIC_ERP_SIGNATURE_INVALID");
-  const bodyHash=sha(canonical(event));
+  const bodyHash=verified.bodySha256;
   const client=await pool.connect();
   try{
     await client.query("begin");
@@ -96,7 +72,7 @@ export async function receiveSyntheticErpEvent(input:{
       "on conflict do nothing returning id",
     ].join(" "),[event.organizationId,event.vendorId,event.channelId,event.keyId,
       event.artifactId,event.artifactSha256,event.eventId,event.signedAt,bodyHash,
-      sha(input.signature),event.invoiceNumber,event.amountCents,event.currency]);
+      verified.signatureSha256,event.invoiceNumber,event.amountCents,event.currency]);
     if(inserted.rowCount!==1)throw Error("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
     await client.query("commit");
     return {receiptId:String(inserted.rows[0].id),bodySha256:bodyHash,
