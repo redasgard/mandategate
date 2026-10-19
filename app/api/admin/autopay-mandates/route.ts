@@ -9,6 +9,8 @@ const schema=z.object({
   organizationId:z.string().min(1).max(128),
   vendorId:z.string().min(1).max(128),
   maxAmountCents:z.number().int().min(1).max(2_000_000_000),
+  maxTotalAmountCents:z.number().int().min(1).max(100_000_000_000),
+  maxPaymentCount:z.number().int().min(1).max(1000),
   validityDays:z.number().int().min(1).max(30),
 }).strict();
 

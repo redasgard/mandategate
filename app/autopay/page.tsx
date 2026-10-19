@@ -47,6 +47,10 @@ export default async function AutopayPage(){
             <span className="muted">{g.organizationId}</span></div>
           <h3>{g.vendorName}</h3>
           <p>Maximum per payment: <strong>{money(g.maxAmountCents)}</strong></p>
+          <p>Lifetime budget: <strong>{money(g.maxTotalAmountCents)}</strong>
+            {" · "}Payments: {g.maxPaymentCount}</p>
+          <p className="muted">Reserved: {money(Number(g.reservedCents))}
+            {" · "}{g.reservedCount} payment(s). Reservation is not proof of PayPal submission.</p>
           <p>Trusted recipient: <code>{g.destination}</code></p>
           <p className="muted">Source: <code>agent_api</code> · Expires {g.expiresAt}</p>
           <p className="muted">Exact digest: <code>{g.digest.slice(0,18)}…</code></p>
