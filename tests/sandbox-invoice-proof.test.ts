@@ -9,6 +9,7 @@ const id="2f9a4a41-281c-4c35-b75e-a11c1234abcd";
 const a="a".repeat(64),t="b".repeat(64);
 const receiver="demo-paypal-recipient@example.test";
 const base:NodeJS.ProcessEnv={
+  NODE_ENV:"test",
   MANDATEGATE_RUNTIME_MODE:"neon-sandbox",
   MANDATEGATE_DISABLE_PAYMENTS:"0",
   MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"1",
