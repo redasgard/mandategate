@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
-  sandboxPayoutEnabled, SANDBOX_ORG_ID,
+  sandboxPayoutEnabled, prepareSandboxPayout, SANDBOX_ORG_ID,
   SANDBOX_AMOUNT_CENTS, SANDBOX_INVOICE,
 } from "../src/demo/sandbox-payout";
 
@@ -23,6 +23,11 @@ describe("fixed-amount, separate PayPal Sandbox preparation", () => {
     expect(SANDBOX_AMOUNT_CENTS).toBe(101);
     expect(SANDBOX_INVOICE).toBe("MG-SANDBOX-101-2026");
     expect(sandboxPayoutEnabled(base)).toBe(true);
+  });
+  it("does not bootstrap a separate payment while invoice mode is active",async()=>{
+    vi.stubEnv("MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO","1");
+    await expect(prepareSandboxPayout("admin")).rejects
+      .toThrow("STANDALONE_SANDBOX_FIXTURE_DISABLED_IN_INVOICE_MODE");
   });
   it("refuses production PayPal, a missing receiver or disabled payments", () => {
     for (const patch of [
