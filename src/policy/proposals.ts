@@ -99,8 +99,8 @@ export async function preparePolicyProposal(input:{
       ? await paidEvidence(client,input.organizationId)
       : {sampleCount:0,median:null,evidenceSha256:sha("mandategate/manual-policy/v1\0"+base.id)};
     const proposed=input.origin==="PAID_HISTORY"?evidence.median:input.proposedLimitCents;
-    if(!validLimit(proposed))fail("POLICY_PROPOSAL_MUST_TIGHTEN",422);
-    if(proposed>=base.limitCents)fail("POLICY_PROPOSAL_MUST_TIGHTEN",422);
+    if(!validLimit(proposed))throw new PolicyProposalError("POLICY_PROPOSAL_MUST_TIGHTEN",422);
+    if(proposed>=base.limitCents)throw new PolicyProposalError("POLICY_PROPOSAL_MUST_TIGHTEN",422);
     const id=randomUUID(),expiresAt=new Date(Date.now()+TTL_MS);
     const version=1;
     const digest=digestPolicyProposal({
@@ -171,9 +171,9 @@ export async function decidePolicyProposal(input:{
         fail("POLICY_PROPOSAL_STALE");
       if(input.action==="EDIT") {
         const revised=input.proposedLimitCents;
-        if(!validLimit(revised))fail("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
+        if(!validLimit(revised))throw new PolicyProposalError("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
         if(revised>=current.limitCents||revised===Number(p.proposed_limit_cents))
-          fail("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
+          throw new PolicyProposalError("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
         const version=Number(p.version)+1;
         nextDigest=digestPolicyProposal({
           id:input.id,organizationId:orgId,basePolicyId:current.id,
