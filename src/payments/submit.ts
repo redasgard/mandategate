@@ -202,11 +202,11 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
           await tx.execute(sql`
             insert into autopay_payment_bindings
               (payment_request_id,organization_id,mandate_id,grant_event_id,
-               vendor_id,destination_id,policy_id,amount_cents,currency,
+               vendor_id,invoice_number,destination_id,policy_id,amount_cents,currency,
                request_tuple_sha256,grant_digest)
             values
               (${requestId},${input.organizationId},${row.mandate_id},
-               ${row.grant_event_id},${input.vendorId},${row.destination_id},
+               ${row.grant_event_id},${input.vendorId},${input.invoiceNumber},${row.destination_id},
                ${row.policy_id},${input.amountCents},
                ${input.currency.toUpperCase()},${tupleHash},${row.approval_digest})
           `);
@@ -229,6 +229,9 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
     });
   } catch (error) {
     const pg = error as { code?: string; constraint?: string };
+    if (pg.code === "23505" && pg.constraint === "autopay_binding_vendor_invoice_uq") {
+      throw new Error("AUTOPAY_INVOICE_DUPLICATE");
+    }
     if (pg.code === "23505" && pg.constraint === "payment_requests_org_idempotency_uq") {
       const replay = await findReplay(input);
       if (replay) return replay;

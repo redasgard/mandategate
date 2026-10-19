@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     return Response.json(result, { status: result.replayed ? 200 : 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN";
-    if (message === "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST") return Response.json({ error: message }, { status: 409 });
+    if (["IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST","AUTOPAY_INVOICE_DUPLICATE"].includes(message)) return Response.json({ error: message }, { status: 409 });
     if (["VENDOR_NOT_FOUND", "TRUSTED_DESTINATION_NOT_FOUND", "ACTIVE_POLICY_NOT_FOUND"].includes(message)) {
       return Response.json({ error: message }, { status: 422 });
     }
