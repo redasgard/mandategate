@@ -209,11 +209,13 @@ export async function decidePolicyProposal(input:{
       ].join(" "),[input.id,input.action==="ACTIVATE"?"ACTIVATED":"REJECTED",
         input.actorId,input.explanation.trim(),activatedPolicyId]);
     }
+    const eventType=input.action==="EDIT"?"EDITED":
+      input.action==="ACTIVATE"?"ACTIVATED":"REJECTED";
     await client.query([
       "insert into policy_proposal_events",
       "(proposal_id,organization_id,actor_user_id,event_type,prior_digest,result_digest,explanation)",
       "values($1,$2,$3,$4,$5,$6,$7)",
-    ].join(" "),[input.id,orgId,input.actorId,input.action,prevDigest,nextDigest,input.explanation.trim()]);
+    ].join(" "),[input.id,orgId,input.actorId,eventType,prevDigest,nextDigest,input.explanation.trim()]);
     await client.query("commit");
     return {id:input.id,action:input.action,digest:nextDigest,
       activatedPolicyId,activePolicyChanged:input.action==="ACTIVATE"};
