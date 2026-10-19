@@ -3,6 +3,8 @@ import {afterAll,beforeAll,describe,expect,it} from "vitest";
 import {pool} from "../src/db/pool";
 import {listAutonomousCandidates,previewAutonomousDispatch} from "../src/autonomy/dispatch";
 import {PostgresExecutionStore} from "../src/payments/executor/postgres-store";
+import {submitCanonicalPaymentRequest} from "../src/payments/submit";
+import {inspectAutopayBinding,reserveAutopayBudget} from "../src/autonomy/budget";
 import {AutopayMandateError,decideAutopayMandate,
   prepareAutopayMandate,readAutopayMandateConsole} from "../src/autonomy/mandates";
 
@@ -65,22 +67,23 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     expect(await ownPreview()).toEqual([]);
     await expect(prepareAutopayMandate({
       organizationId:org,vendorId:vendor,actorId:randomUUID(),
-      maxAmountCents:2000,validityDays:7,
+      maxAmountCents:2000,maxTotalAmountCents:2500,maxPaymentCount:2,validityDays:7,
     })).rejects.toMatchObject({code:"AUTOPAY_ORGANIZATION_NOT_FOUND"});
     await expect(prepareAutopayMandate({
       organizationId:org,vendorId:vendor,actorId:actor,
-      maxAmountCents:5001,validityDays:7,
+      maxAmountCents:5001,maxTotalAmountCents:10000,maxPaymentCount:2,validityDays:7,
     })).rejects.toMatchObject({code:"AUTOPAY_CAP_EXCEEDS_CURRENT_AUTHORITY"});
   });
   it("prepares an INERT, scoped, immutable record with no grant event",async()=>{
     const prepared=await prepareAutopayMandate({
       organizationId:org,vendorId:vendor,actorId:actor,
-      maxAmountCents:2000,validityDays:7,
+      maxAmountCents:2000,maxTotalAmountCents:2500,maxPaymentCount:2,validityDays:7,
     });
     expect(prepared).toMatchObject({
       state:"PREPARED",active:false,paymentExecuted:false,
       organizationId:org,vendorId:vendor,
       destination:"autopay@test.invalid",maxAmountCents:2000,
+      maxTotalAmountCents:2500,maxPaymentCount:2,
     });
     grantId=prepared.id;digest=prepared.digest;
     const q=await pool.query("select active,created_at from autopay_mandates where id=$1",[grantId]);
@@ -130,18 +133,17 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     }]);
     // Pre-grant ALLOW must NEVER become payable retroactively.
     expect(await ownCandidates()).toEqual([]);
-    requestAfterGrant=randomUUID();logicalAfterGrant=randomUUID();
-    await pool.query([
-      "insert into payment_requests",
-      "(id,logical_payment_id,organization_id,vendor_id,invoice_number,",
-      "amount_cents,currency,requested_destination,status,source)",
-      "values($1,$2,$3,$4,'AUTO-TEST-POST-GRANT',1000,'USD',",
-      "'autopay@test.invalid','ALLOWED','agent_api')",
-    ].join(" "),[requestAfterGrant,logicalAfterGrant,org,vendor]);
-    await pool.query([
-      "insert into payment_decisions(id,payment_request_id,outcome,reason_codes,evidence)",
-      "values($1,$2,'ALLOW','[\"WITHIN_TRUSTED_BASELINE\"]'::jsonb,'[]'::jsonb)",
-    ].join(" "),[randomUUID(),requestAfterGrant]);
+    const submitted=await submitCanonicalPaymentRequest({
+      organizationId:org,vendorId:vendor,invoiceNumber:"AUTO-TEST-POST-GRANT",
+      amountCents:1000,currency:"USD",paymentDestination:"autopay@test.invalid",
+      idempotencyKey:"auto-"+randomUUID(),source:"agent_api",
+    });
+    expect(submitted.decision.outcome).toBe("ALLOW");
+    requestAfterGrant=submitted.requestId;logicalAfterGrant=submitted.logicalPaymentId;
+    const binding=await pool.query(
+      "select mandate_id,grant_digest from autopay_payment_bindings where payment_request_id=$1",
+      [requestAfterGrant]);
+    expect(binding.rows).toMatchObject([{mandate_id:grantId,grant_digest:digest}]);
     const candidates=await ownCandidates();
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toMatchObject({
@@ -153,6 +155,35 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     expect((await pool.query(
       "select count(*)::int as n from payment_executions where logical_payment_id=$1",[logicalAfterGrant]
     )).rows[0].n).toBe(0);
+  });
+  it("reserves a lifetime budget once and serializes concurrent independent requests",async()=>{
+    const first=await inspectAutopayBinding(requestAfterGrant);
+    expect(first).toMatchObject({mandateId:grantId,existingReservation:false,remainingPayments:2});
+    const reserved=await reserveAutopayBudget(requestAfterGrant);
+    expect(reserved).toMatchObject({existingReservation:true,remainingPayments:1});
+    expect((await reserveAutopayBudget(requestAfterGrant)).remainingCents).toBe(reserved.remainingCents);
+    const mk=async(invoice:string)=>{
+      const x=await submitCanonicalPaymentRequest({
+        organizationId:org,vendorId:vendor,invoiceNumber:invoice,
+        amountCents:1000,currency:"USD",paymentDestination:"autopay@test.invalid",
+        idempotencyKey:"auto-"+randomUUID(),source:"agent_api",
+      });
+      expect(x.decision.outcome).toBe("ALLOW");
+      expect(await inspectAutopayBinding(x.requestId)).toBeTruthy();
+      return x.requestId;
+    };
+    const [b,c]=await Promise.all([mk("POST-GRANT-2"),mk("POST-GRANT-3")]);
+    const settled=await Promise.allSettled([reserveAutopayBudget(b),reserveAutopayBudget(c)]);
+    expect(settled.filter(x=>x.status==="fulfilled")).toHaveLength(1);
+    expect(settled.filter(x=>x.status==="rejected")).toHaveLength(1);
+    const spent=await pool.query(
+      "select sum(amount_cents)::int as cents,count(*)::int as n from autopay_budget_reservations where mandate_id=$1",
+      [grantId]);
+    expect(spent.rows[0]).toMatchObject({cents:2000,n:2});
+    const declined=settled[0].status==="rejected"?b:c;
+    expect((await inspectAutopayBinding(declined))?.remainingPayments).toBe(0);
+    expect((await previewAutonomousDispatch(new Date(),50))
+      .find(x=>x.requestId===declined)?.preview).toBe("HOLD");
   });
   it("drops eligibility after time expiry, admin revocation, policy or receiver change",async()=>{
     const empty=async()=>expect(await ownCandidates()).toEqual([]);
@@ -169,13 +200,13 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     await pool.query("update vendors set normal_max_amount_cents=900 where id=$1",[vendor]);
     await empty();
     await pool.query("update vendors set normal_max_amount_cents=5000 where id=$1",[vendor]);
-    expect(await ownCandidates()).toHaveLength(1);
+    expect((await ownCandidates()).some(x=>x.requestId===requestAfterGrant)).toBe(true);
     // Once an execution identity exists, no second automatic dispatch is selected.
     const store=new PostgresExecutionStore();
     const current=await store.getAuthoritativePayment(requestAfterGrant);
     expect(current?.logicalPaymentId).toBe(logicalAfterGrant);
     await store.getOrCreateExecution(current!);
-    expect(await ownCandidates()).toEqual([]);
+    expect((await ownCandidates()).some(x=>x.requestId===requestAfterGrant)).toBe(false);
     expect((await pool.query(
       "select status from payment_executions where logical_payment_id=$1",[logicalAfterGrant]
     )).rows[0].status).toBe("READY");
