@@ -11,6 +11,7 @@ const destination="destination_"+randomUUID(),policy="policy_"+randomUUID();
 const req=randomUUID(),logical=randomUUID();
 const explanation="Reviewed the exact trusted recipient, vendor and maximum for CI-only tests.";
 let actor="",grantId="",digest="";
+let requestAfterGrant="",logicalAfterGrant="";
 let createdAt="";
 const sha=(s:string)=>createHash("sha256").update(s).digest("hex");
 
@@ -127,14 +128,30 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     expect(event.rows).toMatchObject([{
       event_type:"GRANTED",mandate_digest:digest,actor_user_id:actor,
     }]);
+    // Pre-grant ALLOW must NEVER become payable retroactively.
+    expect(await ownCandidates()).toEqual([]);
+    requestAfterGrant=randomUUID();logicalAfterGrant=randomUUID();
+    await pool.query([
+      "insert into payment_requests",
+      "(id,logical_payment_id,organization_id,vendor_id,invoice_number,",
+      "amount_cents,currency,requested_destination,status,source)",
+      "values($1,$2,$3,$4,'AUTO-TEST-POST-GRANT',1000,'USD',",
+      "'autopay@test.invalid','ALLOWED','agent_api')",
+    ].join(" "),[requestAfterGrant,logicalAfterGrant,org,vendor]);
+    await pool.query([
+      "insert into payment_decisions(id,payment_request_id,outcome,reason_codes,evidence)",
+      "values($1,$2,'ALLOW','[\"WITHIN_TRUSTED_BASELINE\"]'::jsonb,'[]'::jsonb)",
+    ].join(" "),[randomUUID(),requestAfterGrant]);
     const candidates=await ownCandidates();
     expect(candidates).toHaveLength(1);
-    expect(candidates[0]).toMatchObject({requestId:req,authorization:"STANDING_MANDATE",amountCents:1000});
+    expect(candidates[0]).toMatchObject({
+      requestId:requestAfterGrant,authorization:"STANDING_MANDATE",amountCents:1000,
+    });
     expect((await ownPreview())[0]).toMatchObject({
       preview:"WOULD_DISPATCH",reason:"CURRENT_AUTHORITY",
     });
     expect((await pool.query(
-      "select count(*)::int as n from payment_executions where logical_payment_id=$1",[logical]
+      "select count(*)::int as n from payment_executions where logical_payment_id=$1",[logicalAfterGrant]
     )).rows[0].n).toBe(0);
   });
   it("drops eligibility after time expiry, admin revocation, policy or receiver change",async()=>{
@@ -155,12 +172,12 @@ describe("S10 autonomous mandate human-grant lifecycle and payment isolation",()
     expect(await ownCandidates()).toHaveLength(1);
     // Once an execution identity exists, no second automatic dispatch is selected.
     const store=new PostgresExecutionStore();
-    const current=await store.getAuthoritativePayment(req);
-    expect(current?.logicalPaymentId).toBe(logical);
+    const current=await store.getAuthoritativePayment(requestAfterGrant);
+    expect(current?.logicalPaymentId).toBe(logicalAfterGrant);
     await store.getOrCreateExecution(current!);
     expect(await ownCandidates()).toEqual([]);
     expect((await pool.query(
-      "select status from payment_executions where logical_payment_id=$1",[logical]
+      "select status from payment_executions where logical_payment_id=$1",[logicalAfterGrant]
     )).rows[0].status).toBe("READY");
   });
   it("revokes a granted mandate permanently, retaining immutable audit evidence",async()=>{
