@@ -79,12 +79,15 @@ const validationSql=[
   "left join vendor_reverification_resolutions vr on vr.case_id=vc.id",
   "where vc.organization_id=pr.organization_id and vc.vendor_id=pr.vendor_id",
   "and (vr.id is null or vr.resolution='SIMULATED_REVERIFIED'))",
-  "and not exists(select 1 from payment_executions pe",
+  "and (not exists(select 1 from payment_executions pe",
   "where pe.logical_payment_id=pr.logical_payment_id)",
+  "or ($2::boolean and exists(select 1 from payment_executions pe",
+  "where pe.logical_payment_id=pr.logical_payment_id",
+  "and pe.payment_request_id=pr.id and pe.status='SUBMITTING')))",
 ].join(" ");
 
-async function inspect(db:PoolClient,requestId:string):Promise<AutopayBindingState|null> {
-  const results=await db.query(validationSql,[requestId]);
+async function inspect(db:PoolClient,requestId:string,allowClaimed=false):Promise<AutopayBindingState|null> {
+  const results=await db.query(validationSql,[requestId,allowClaimed]);
   if(results.rows.length!==1)return null;
   const x=results.rows[0];
   if(!x.idempotency_key || typeof x.idempotency_key!=="string")return null;
@@ -119,6 +122,17 @@ export async function inspectAutopayBinding(requestId:string):
   Promise<AutopayBindingState|null>{
   const db=await pool.connect();
   try{return await inspect(db,requestId)}
+  finally{db.release()}
+}
+
+/**
+ * Only callable after the durable executor has successfully claimed a single
+ * SUBMITTING payment. A stale or revoked grant cannot cross a simulated POST.
+ */
+export async function inspectClaimedAutopayBinding(requestId:string):
+  Promise<AutopayBindingState|null>{
+  const db=await pool.connect();
+  try{return await inspect(db,requestId,true)}
   finally{db.release()}
 }
 
