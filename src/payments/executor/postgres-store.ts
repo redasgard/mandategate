@@ -4,6 +4,8 @@ import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
 import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
 import { escalationSnapshotDigest } from "../../history/escalation-review";
+import { SANDBOX_ORG_ID, SANDBOX_VENDOR_ID, SANDBOX_DEST_ID,
+  SANDBOX_POLICY_ID, SANDBOX_INVOICE, SANDBOX_AMOUNT_CENTS } from "../../demo/sandbox-payout-constants";
 import type {
   AuthoritativePayment,
   ExecutionRecord,
@@ -69,6 +71,47 @@ export class PostgresExecutionStore implements ExecutionStore {
     );
     const row = result.rows[0];
     if (!row) return null;
+
+    if (process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox") {
+      // This hackathon runtime may submit ONLY the single, explicit 101-cent
+      // synthetic Sandbox invoice. Never release ordinary agent API requests,
+      // judge scenarios or invoice-derived requests into this payment rail.
+      if (process.env.MANDATEGATE_DISABLE_PAYMENTS !== "0" ||
+          process.env.PAYPAL_BASE_URL !== "https://api-m.sandbox.paypal.com" ||
+          row.source !== "sandbox_fixture" ||
+          row.organization_id !== SANDBOX_ORG_ID ||
+          row.vendor_id !== SANDBOX_VENDOR_ID ||
+          row.invoice_number !== SANDBOX_INVOICE ||
+          Number(row.amount_cents) !== SANDBOX_AMOUNT_CENTS ||
+          row.currency !== "USD" ||
+          row.requested_destination !== process.env.DEMO_PAYPAL_RECEIVER_EMAIL ||
+          row.current_trusted_destination !== process.env.DEMO_PAYPAL_RECEIVER_EMAIL) return null;
+      const state = await pool.query([
+        "select v.name,v.normal_max_amount_cents,",
+        "(select count(*)::int from vendor_destinations d",
+        "where d.vendor_id=v.id and d.trusted=true) as trusted_count,",
+        "(select count(*)::int from vendor_destinations d",
+        "where d.vendor_id=v.id and d.id=$2 and d.trusted=true",
+        "and d.destination=$3) as exact_receiver,",
+        "(select count(*)::int from policies p",
+        "where p.id=$4 and p.organization_id=v.organization_id",
+        "and p.active=true and p.auto_pay_max_amount_cents=101) as exact_policy",
+        "from vendors v where v.id=$1 and v.organization_id=$5",
+      ].join(" "), [
+        SANDBOX_VENDOR_ID, SANDBOX_DEST_ID,
+        process.env.DEMO_PAYPAL_RECEIVER_EMAIL, SANDBOX_POLICY_ID,
+        SANDBOX_ORG_ID,
+      ]);
+      const current = state.rows.length === 1 ? state.rows[0] : null;
+      if (!current || current.name !== "Sandbox Test Recipient" ||
+          Number(current.normal_max_amount_cents) !== 101 ||
+          Number(current.trusted_count) !== 1 ||
+          Number(current.exact_receiver) !== 1 ||
+          Number(current.exact_policy) !== 1) return null;
+    } else if (row.source === "sandbox_fixture") {
+      // A future runtime misconfiguration cannot make the test fixture payable.
+      return null;
+    }
     if (row.outcome==="ESCALATE" && row.effective_outcome==="APPROVED") {
       // Original human approval was bound to a frozen request/policy/vendor
       // state before the request entered APPROVED. Reconstruct that exact
