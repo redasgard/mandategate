@@ -100,3 +100,40 @@ export function PolicyReviewForm({proposal}:{proposal:{
     {success?<p role="status" className="review-notice">{success}</p>:null}
   </div>;
 }
+
+export function PolicyDisableForm({policyId,expectedDigest}:{
+  policyId:string;expectedDigest:string;
+}) {
+  const router=useRouter();
+  const [explanation,setExplanation]=useState("");
+  const [confirmation,setConfirmation]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState<string|null>(null);
+  async function disable(){
+    if(confirmation!=="DISABLE"||explanation.trim().length<16) {
+      setError('Enter DISABLE and explain the emergency policy shutdown.');return;
+    }
+    setBusy(true);setError(null);
+    try{
+      await post("/api/admin/policies/"+encodeURIComponent(policyId)+"/disable",{
+        expectedDigest,explanation,confirmation:"DISABLE",
+      });
+      router.refresh();
+    }catch(e){setError(e instanceof Error?e.message:"POLICY_DISABLE_FAILED");}
+    finally{setBusy(false);}
+  }
+  return <details className="review-stage">
+    <summary>Emergency shutdown: disable this policy</summary>
+    <p className="muted">Disabling removes standing auto-pay authority for the organization.
+      This is not reversible from this page. It does not send or cancel a PayPal payout already submitted.</p>
+    <label>Why must this rule be disabled?
+      <textarea value={explanation} onChange={e=>setExplanation(e.target.value)}
+        maxLength={2000} rows={3} placeholder="Document the policy shutdown reason."/></label>
+    <label>Type DISABLE to confirm
+      <input type="text" value={confirmation} onChange={e=>setConfirmation(e.target.value)}
+        maxLength={7} autoComplete="off"/></label>
+    <button type="button" className="policy-outline" disabled={busy}
+      onClick={()=>void disable()}>Disable standing policy</button>
+    {error?<p role="alert" className="error">{error}</p>:null}
+  </details>;
+}

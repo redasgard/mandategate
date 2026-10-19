@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { readPolicyConsole } from "@/src/policy/proposals";
-import { PolicyPrepareForm, PolicyReviewForm } from "./policy-actions";
+import { PolicyPrepareForm, PolicyReviewForm, PolicyDisableForm } from "./policy-actions";
 
 function money(cents:number){
   return "USD "+(cents/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -48,9 +48,22 @@ export default async function PoliciesPage(){
                 currentLimitCents={p.limitCents}
                 historyCount={p.paidHistory.count}
                 historyMedianCents={p.paidHistory.medianCents}/>}
+            <PolicyDisableForm policyId={p.id} expectedDigest={p.shutdownDigest}/>
           </article>;
         })}</div>}
     </section>
+    {data.disabledPolicies.length>0?<section className="panel detail">
+      <p className="eyebrow">Disabled authority</p>
+      <h2>Inactive policies</h2>
+      <p className="muted">These policies do not grant automatic payment authority.</p>
+      <div className="policy-list">{data.disabledPolicies.map(p=>
+        <article key={p.id} className="policy-card">
+          <span className="badge">DISABLED</span>
+          <h3>{p.name}</h3>
+          <p>Previous cap: {money(p.limitCents)}</p>
+          <p className="muted">Organization: {p.organizationId}</p>
+        </article>)}</div>
+    </section>:null}
     <section className="panel detail">
       <p className="eyebrow">Approval queue / separate from AI</p>
       <h2>Prepared policy changes</h2>
