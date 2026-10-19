@@ -44,6 +44,11 @@ export default async function InvoiceArtifactListPage(){
     "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
     "order by o.name,o.id",
   ].join(" "),[session.user.id]);
+  const sandboxFixtureAvailable=
+    process.env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO==="1" &&
+    process.env.MANDATEGATE_RUNTIME_MODE==="neon-sandbox" &&
+    process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com" &&
+    Boolean(process.env.DEMO_PAYPAL_RECEIVER_EMAIL);
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
@@ -54,6 +59,14 @@ export default async function InvoiceArtifactListPage(){
         They may be wrong and do not establish the vendor, issuer, invoice total, or payment
         authority. Viewing this list makes no AI or PayPal request.</p>
       <p><Link href="/vendor-origin-channels">1. Enroll independently known vendor origin channel (before invoice intake)</Link></p>
+      {sandboxFixtureAvailable ? <section className="review-stage">
+        <h2>Fictional PayPal Sandbox invoice</h2>
+        <p>This is test data, not an actual supplier request. First register a simulated
+          Northstar source channel, then download and upload this invoice,
+          verify the exact PDF text, and separately approve its payment tuple.</p>
+        <p><a href="/api/admin/sandbox-invoice-fixture">Download USD 1.01 Sandbox test PDF</a></p>
+        <p className="muted">Downloading, uploading or reviewing cannot send a PayPal payout.</p>
+      </section> : null}
       <p><Link href="/invoice-artifacts/privacy">Check GLM account privacy metadata</Link></p>
       <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
         id:row.id as string,name:row.name as string,
