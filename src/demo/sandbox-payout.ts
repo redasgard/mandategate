@@ -2,13 +2,12 @@ import { pool } from "@/src/db/pool";
 import { submitCanonicalPaymentRequest } from "@/src/payments/submit";
 import { DEMO_ORG_ID } from "./scenarios";
 
-export const SANDBOX_ORG_ID = "org_paypal_sandbox_demo";
-export const SANDBOX_VENDOR_ID = "vendor_paypal_sandbox_demo";
-export const SANDBOX_DEST_ID = "dest_paypal_sandbox_demo";
-export const SANDBOX_POLICY_ID = "policy_paypal_sandbox_demo";
-export const SANDBOX_INVOICE = "MG-SANDBOX-101-2026";
-export const SANDBOX_AMOUNT_CENTS = 101;
-export const SANDBOX_KEY = "mandategate-sandbox-101-20261018-v1";
+import {
+  SANDBOX_ORG_ID, SANDBOX_VENDOR_ID, SANDBOX_DEST_ID, SANDBOX_POLICY_ID,
+  SANDBOX_INVOICE, SANDBOX_AMOUNT_CENTS, SANDBOX_KEY,
+} from "./sandbox-payout-constants";
+export { SANDBOX_ORG_ID, SANDBOX_VENDOR_ID, SANDBOX_DEST_ID,
+  SANDBOX_POLICY_ID, SANDBOX_INVOICE, SANDBOX_AMOUNT_CENTS, SANDBOX_KEY } from "./sandbox-payout-constants";
 
 export class SandboxPayoutError extends Error {
   constructor(public readonly code: string, public readonly httpStatus = 409) {
