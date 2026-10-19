@@ -562,13 +562,24 @@ if(recordedDecline.review.action!=="DECLINE" ||
    recordedDecline.review.executed!==false ||
    recordedDecline.review.approvedForExecution!==false)
   throw Error("historical decline changed payment authority");
+// A second DECLINE exercises the DB's terminal-state check, even when
+// the globally disabled payment rail independently rejects all ACCEPTs.
 const secondReview=await fetch(historicalReviewPath,{
   method:"POST",headers:{cookie:adminCookie,origin:baseUrl,"content-type":"application/json"},
-  body:JSON.stringify({action:"ACCEPT",
+  body:JSON.stringify({action:"DECLINE",
     explanation:"A second review must not rewrite the first terminal action.",
     expectedSnapshotSha256:snap.snapshot.snapshotSha256}),
 });
-if(secondReview.status!==409)throw Error("historical review allowed duplicate terminal action");
+if(secondReview.status!==409)
+  throw Error("historical review allowed duplicate terminal action: "+secondReview.status);
+const rejectedAccept=await fetch(historicalReviewPath,{
+  method:"POST",headers:{cookie:adminCookie,origin:baseUrl,"content-type":"application/json"},
+  body:JSON.stringify({action:"ACCEPT",
+    explanation:"A declined review must not gain payment authority while the rail is disabled.",
+    expectedSnapshotSha256:snap.snapshot.snapshotSha256}),
+});
+if(process.env.MANDATEGATE_DISABLE_PAYMENTS==="1" && rejectedAccept.status!==503)
+  throw Error("disabled payment rail did not reject ACCEPT: "+rejectedAccept.status);
 const trustPage=await fetch(`${baseUrl}/vendors`,{headers:{cookie:adminCookie}});
 if(trustPage.status!==200 ||
    !(await trustPage.text()).includes("Trusted vendors and payment re-verification"))
