@@ -1,5 +1,15 @@
 # MandateGate decision log
 
+## 2026-10-19 PT — Demonstrate actual PayPal Sandbox invoice payout with fictional source
+
+- **Decision:** Implement a bounded end-to-end invoice-derived PayPal **Sandbox** path for the hackathon, rather than treating production-grade external supplier identity or GLM zero-data-retention access as prerequisites to a fictional demo. Preserve honest synthetic provenance: actual PDF bytes + independent parser T2, pre-enrolled **simulated** administrator source assertion T3, and exact human T4 approval. The user expressly reconfirmed PayPal is Sandbox.
+- **Identity/bounds:** Only org `org_demo`, Northstar fixture vendor, invoice `MG-SANDBOX-101-2026`, USD 1.01, configured Sandbox test receiver, immutable reviewed binding and stable idempotency key. Enable via explicit `MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO=1` on a Sandbox-only host. Existing general agent/policy/GLM requests and demo ALLOW/ESCALATE/DENY remain nonpayable. Standalone fixed Sandbox payout disabled while invoice lane is enabled.
+- **Human UX:** Fictional download PDF in intake → PDF.js T2 verification → known fictional source-channel assertion → exact human binding review → separate Prepare (never pays) → explicit Sandbox Execute → batch/item/webhook/reconciliation proof. Same UI semantics as original approval flow.
+- **Authority:** Never use synthetic ERP signed-receipt HMAC or a model's guess to elevate payment authority. The original `inspectCurrentAuthorityBinding` still verifies consumed current approval before a payout. PayPal Payouts client accepts only Sandbox hostname.
+- **Rejected alternatives:** Permanent fake-payment demo; merging issuer and payment authority in a model step; accepting any ALLOW amount or receiver; requiring unaffordable real-vendor source credentials for fictional test; quietly weakening the separate strict Gate H-S controls.
+- **State:** New code/docs/tests added to draft PR #59; CI and actual payout evidence must be associated with exact source SHA separately. No real Sandbox Payouts POST authorized or made by this implementation step. Hosted source-invoice UI not yet deployed to `mandategate-web`.
+- **Affected files:** `src/demo/sandbox-invoice-{rail,proof,pdf}.ts`, `src/payments/executor/postgres-store.ts`, `scripts/verify-sandbox-invoice-demo.ts`, `app/api/admin/invoice-bindings/[id]/prepare-sandbox/route.ts`, intake/reviewer/payment UI, new tests, `devpost/sandbox-invoice-demo-runbook.md`.
+
 ## 2026-10-19 — Autonomous AP executor is the product, not a manual payment console
 
 - **Decision:** Pay a routine safe invoice automatically under an **already activated, revocable standing mandate**. Humans are only interrupted for anomalies, trust gaps, policy exceptions, changed recipients, exceptional one-time approvals, and uncertain settlement.
