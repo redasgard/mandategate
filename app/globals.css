@@ -186,3 +186,12 @@ pre { background: #0e0d0b; border: 1px solid var(--line); padding: 16px; overflo
 button.policy-outline {background:transparent;color:var(--amber);border:1px solid var(--amber);}
 .policy-card code {font-size:12px;overflow-wrap:anywhere;}
 @media(max-width:720px){.policy-card{padding:14px;}.policy-controls button{flex:1 1 100%;}}
+
+
+/* S9 read-only imported AP obligation timeline: no payment mutation controls. */
+.obligation-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0;}
+.obligation-metrics article {border:1px solid var(--line);padding:16px;min-width:0;background:var(--surface-2);}
+.obligation-metrics span {display:block;font-size:12px;color:var(--muted);line-height:1.4;}
+.obligation-metrics strong {display:block;margin:10px 0 0;font-size:28px;}
+.obligation-metrics p {margin:4px 0 0;color:var(--amber);font-variant-numeric:tabular-nums;}
+@media(max-width:720px){.obligation-metrics{grid-template-columns:minmax(0,1fr);}}
