@@ -18,6 +18,7 @@ const event=()=>({
   artifactSha256:hash,invoiceNumber:"ERP-SYNTH-001",amountCents:1000,
   currency:"USD",signedAt:new Date().toISOString(),
 });
+describe.skipIf(!disposable)("synthetic ERP signed source receipts: no payments",()=>{
 beforeAll(async()=>{
   const u=await pool.query('select id from "user" where email=$1',[process.env.DEMO_ADMIN_EMAIL]);
   actor=String(u.rows[0].id);
@@ -35,14 +36,13 @@ beforeAll(async()=>{
   ].join(" "),[artifact,org,bytes.length,hash,bytes]);
 });
 afterAll(async()=>{await pool.end();});
-describe.skipIf(!disposable)("synthetic ERP signed source receipts: no payments",()=>{
- it("records one exact signed event but rejects replay and immutable tampering",async()=>{
+it("records one exact signed event but rejects replay and immutable tampering",async()=>{
    // The artifact must postdate the registered key.
    const x=event(),signature=signSyntheticErpEvent(x,secret);
    const first=await receiveSyntheticErpEvent({event:x,signature,secret});
    expect(first).toMatchObject({paymentAuthorized:false,paymentExecuted:false,
      originAttestationCreated:false,evidenceStatus:"SYNTHETIC_SIGNED_FIXTURE"});
-   await expect(receiveSyntheticErpEvent({event:x,signature})).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
+   await expect(receiveSyntheticErpEvent({event:x,signature,secret})).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
    await expect(pool.query("delete from erp_synthetic_signed_invoice_receipts where id=$1",[first.receiptId]))
      .rejects.toThrow("AUTHORITY_PROVENANCE_IMMUTABLE");
  });
