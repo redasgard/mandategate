@@ -77,9 +77,11 @@ describe("Autonomous AP requires exact, revocable prior standing authority",()=>
   });
   it("cannot dispatch after recipient, grantor, policy or grant expiry changes",async()=>{
     const empty=async()=>expect(await ownCandidates()).toHaveLength(0);
-    await pool.query("update autopay_mandates set expires_at=now()-interval '1 minute' where id=$1",[grant]);
-    await empty();
-    await pool.query("update autopay_mandates set expires_at=now()+interval '1 day' where id=$1",[grant]);
+    // Advance the evaluation clock; don't violate the immutable validity
+    // constraint by backdating a real mandate's expiry before creation.
+    const expired=(await listAutonomousCandidates(new Date(Date.now()+2*24*3600*1000),50))
+      .filter(x=>x.organizationId===org);
+    expect(expired).toHaveLength(0);
     await pool.query("update organization_admin_memberships set active=false where organization_id=$1 and user_id=$2",[org,actor]);
     await empty();
     await pool.query("update organization_admin_memberships set active=true where organization_id=$1 and user_id=$2",[org,actor]);
