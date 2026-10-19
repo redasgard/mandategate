@@ -15,6 +15,13 @@ create table if not exists erp_synthetic_source_keys (
     references vendor_origin_channels(organization_id, vendor_id, id)
 );
 
+
+-- A revoked synthetic signing secret cannot be reintroduced under a new key ID.
+create unique index if not exists erp_synthetic_key_fingerprint_uq
+  on erp_synthetic_source_keys (
+    organization_id, vendor_id, origin_channel_id, key_fingerprint_sha256
+  );
+
 create table if not exists erp_synthetic_signed_invoice_receipts (
   id uuid primary key default gen_random_uuid(),
   organization_id text not null,
