@@ -1064,6 +1064,35 @@ Implements `prd.md > Vendor Trust and Re-verification`.
 
 Owns trusted payment destinations and re-verification state. Invoice-supplied destination changes cannot become trusted through ordinary payment approval.
 
+### Autonomous AP dispatch contract
+
+The product is an autonomous AP executor, not a dashboard that waits for an
+operator to click Execute for every ordinary approved invoice.
+
+- **Standing, revocable scope required.** A general policy cap is not delegated
+  unattended-payment authority. Before the automatic money path, MandateGate
+  requires an explicitly activated, time-bounded, exact-organization/vendor/
+  trusted-destination/policy/source-granular mandate and current admin grantor
+  membership. Default grants are INACTIVE and no grant is seeded.
+- **Document trust first.** An invoice model observation (T1) never grants
+  sender/recipient/amount authority. T2 fields must match independently
+  corroborated source and T3 must come from a genuine pre-enrolled issuer
+  channel. Trusted ERP/issuer integration should ultimately supply this
+  verification without a human on every safe invoice.
+- **Decision triage:** true ALLOW is queued automatically when the mandate
+  is current and no duplicate/anomaly exists. ESCALATE interrupts an admin
+  and cannot self-resolve. DENY never moves money; destination changes require
+  separate vendor verification. One-time exact admin acceptance feeds the
+  same execution queue by default after a fresh authorization read.
+- **Executor boundary:** route through existing durable PostgreSQL claim and
+  PayPal Payouts client, stable PayPal IDs, current source/actor/policy/
+  destination/mandate checks immediately before submission, and verified
+  webhook/direct reconciliation. Never issue a new logical ID for retries.
+- **Current verified limit:** the initial queue reader is a PREVIEW ONLY.
+  The full autonomous verified-invoice T2/T3/standing-T4 flow, action queue,
+  runtime service, due runner, and provider release remain unverified.
+  No cron or live payout is enabled by this decision.
+
 ### Payment Executor
 
 Implements:

@@ -1,5 +1,17 @@
 # MandateGate decision log
 
+## 2026-10-19 — Autonomous AP executor is the product, not a manual payment console
+
+- **Decision:** Pay a routine safe invoice automatically under an **already activated, revocable standing mandate**. Humans are only interrupted for anomalies, trust gaps, policy exceptions, changed recipients, exceptional one-time approvals, and uncertain settlement.
+- **Default behavior:** after T2 source corroboration and genuine T3 issuer/channel authentication, deterministic ALLOW plus a currently valid scoped standing mandate queues immediate execution. Executor revalidates the original tuple, vendor destination, policy, historical risk, grant status and execution idempotency before PayPal. PayPal outcome requires later reconciliation; API submission alone is not PAID.
+- **Exception behavior:** ESCALATE creates an admin case, whose explicit signed-in ACCEPT/reason permits immediate execution by default or separately chosen future schedule; DECLINE means no payout. DENY always blocks; recipient change requires independent vendor re-verification, never a generic override.
+- **Trust separation:** GLM observations remain advisory T1; the machine principal cannot forge T2/T3/T4; a generic active policy amount cap without an independently activated per-vendor delegated mandate is NOT itself consent for unattended payments. Existing human-approved verified-invoice bindings remain a transitional path until a trusted issuer integration and standing-mandate T4 flow are implemented.
+- **Safety/release:** this architectural decision does **not** authorize real or new PayPal Sandbox payouts, production deployment, or automatic enablement. The current `neon-sandbox` host still permits only the fixed $1.01 manual fixture; demo scenarios stay forever nonpayable. New autonomous dispatch first runs as an isolated read-only preview, with zero active mandates seeded. A separate trusted approval/release gate is required before enabling payout jobs.
+- **Implementation kickoff:** `drizzle/0022_autopay_mandates.sql`, `src/autonomy/dispatch.ts`, `scripts/autopay-preview.ts` on a draft branch; no live jobs or provider calls.
+- **Rejected alternative:** all ALLOW payments waiting for an administrator to click Execute, making MandateGate an approval dashboard rather than autonomous AP control.
+- **Affected artifacts:** `devpost/prd.md`, `devpost/spec.md`, `devpost/checklist.md`, code/tests and future independent security review.
+
+
 ## 2026-10-08 — Retire unnecessary paid Render staging
 
 - **Decision:** Use one development/demo environment for the PayPal AI Hackathon. The separate paid Gate H staging PostgreSQL and extra web service are not required.

@@ -20,7 +20,8 @@
     "recover:paypal-webhooks": "tsx scripts/recover-paypal-webhooks.ts",
     "verify:vision:privacy": "tsx scripts/verify-experiential-vision-privacy.ts",
     "gate-h:sandbox": "tsx scripts/verify-gate-h-sandbox.ts",
-    "gate-h:inventory": "tsx scripts/report-gate-h-readiness.ts"
+    "gate-h:inventory": "tsx scripts/report-gate-h-readiness.ts",
+    "jobs:autopay:preview": "tsx scripts/autopay-preview.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.10",
