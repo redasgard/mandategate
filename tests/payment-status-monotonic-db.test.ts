@@ -98,6 +98,26 @@ describe("PostgreSQL payment status may never be downgraded by a stale worker", 
       .toBe("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION");
   });
 
+  it("records a verified late SUCCESS after an unknown payout enters manual review",async()=>{
+    const id=await claimed("LATE-SETTLEMENT");
+    expect((await store.markSubmitted(id,"batch-late",when)).status).toBe("EXECUTING");
+    expect((await store.markUnknown(id,when)).status).toBe("PAYMENT_UNKNOWN");
+    expect((await store.markManualReconciliation(id,when)).status)
+      .toBe("PAYMENT_UNKNOWN_MANUAL_RECONCILIATION");
+
+    // This state is terminal for RETRIES, not a reason to ignore a later
+    // authenticated PayPal status: confirmed money movement wins.
+    const verified=await store.applyRemoteStatus(
+      id,{payoutItemId:"item-late",payoutBatchId:"batch-late",transactionStatus:"SUCCESS"},
+      "PAID",when,
+    );
+    expect(verified.applied).toBe(true);
+    expect(verified.execution).toMatchObject({
+      status:"PAID",paypalPayoutBatchId:"batch-late",paypalPayoutItemId:"item-late",
+    });
+    expect((await store.markUnknown(id,when)).status).toBe("PAID");
+  });
+
   it("preserves valid claiming, submitting, unknown recovery sequence",async()=>{
     const id=await claimed("RECOVER");
     expect((await store.markSubmitted(id,"first-batch",when)).status).toBe("EXECUTING");
