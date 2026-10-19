@@ -590,6 +590,50 @@ if(activityPage.status!==200 ||
    !(await activityPage.text()).includes("Activity and consequential decisions"))
   throw Error("signed-in activity and evidence view unavailable");
 
+// S8 product path: an authenticated admin can prepare an inert proposal and
+// explicitly reject it; no authorization or PayPal POST is created.
+const policiesNoSession=await fetch(baseUrl+"/policies",{redirect:"manual"});
+if(![302,303,307,308].includes(policiesNoSession.status))
+  throw Error("policy console accepted anonymous access");
+const policyPage=await fetch(baseUrl+"/policies",{headers:{cookie:adminCookie}});
+if(policyPage.status!==200 ||
+   !(await policyPage.text()).includes("Policies require a decision"))
+  throw Error("signed-in policy console did not render");
+const proposalOriginHeaders={cookie:adminCookie,origin:baseUrl,"content-type":"application/json"};
+const badPolicyOrigin=await fetch(baseUrl+"/api/admin/policy-proposals",{
+  method:"POST",headers:{...proposalOriginHeaders,origin:"https://hostile.example"},
+  body:JSON.stringify({organizationId:"org_demo",origin:"ADMIN_MANUAL",proposedLimitCents:1}),
+});
+if(badPolicyOrigin.status!==403)throw Error("policy proposal accepted forged origin");
+const preparedPolicy=await fetch(baseUrl+"/api/admin/policy-proposals",{
+  method:"POST",headers:proposalOriginHeaders,
+  body:JSON.stringify({organizationId:"org_demo",origin:"ADMIN_MANUAL",proposedLimitCents:1}),
+});
+if(preparedPolicy.status!==201)
+  throw Error("policy prepare HTTP failed: "+preparedPolicy.status+" "+await preparedPolicy.text());
+const preparedPolicyJson=await preparedPolicy.json() as {
+  proposal:{id:string;digest:string;activePolicyChanged:boolean}
+};
+if(!preparedPolicyJson.proposal.id||preparedPolicyJson.proposal.activePolicyChanged!==false)
+  throw Error("policy proposal granted unexpected authority");
+const stalePolicy=await fetch(baseUrl+"/api/admin/policy-proposals/"+preparedPolicyJson.proposal.id,{
+  method:"POST",headers:proposalOriginHeaders,
+  body:JSON.stringify({action:"ACTIVATE",expectedDigest:"0".repeat(64),
+    explanation:"A stale proposal must never activate spending rules."}),
+});
+if(stalePolicy.status!==409)throw Error("policy accepted stale digest");
+const rejectedPolicy=await fetch(baseUrl+"/api/admin/policy-proposals/"+preparedPolicyJson.proposal.id,{
+  method:"POST",headers:proposalOriginHeaders,
+  body:JSON.stringify({action:"REJECT",expectedDigest:preparedPolicyJson.proposal.digest,
+    explanation:"Rejected synthetic policy fixture after negative confirmation test."}),
+});
+if(rejectedPolicy.status!==200)
+  throw Error("policy rejection failed: "+rejectedPolicy.status+" "+await rejectedPolicy.text());
+const afterPolicy=await fetch(baseUrl+"/policies",{headers:{cookie:adminCookie}});
+if(afterPolicy.status!==200 || !(await afterPolicy.text()).includes("REJECTED"))
+  throw Error("policy proposal review status did not persist");
+console.log("policy smoke passed: authenticated preview, inert prepare, stale confirmation denied, rejection recorded, no payout");
+
 // An active session must lose payment visibility as soon as its ADMIN
 // membership is revoked. CI-only: never alter membership on hosted services.
 if (process.env.CI === "true") {
