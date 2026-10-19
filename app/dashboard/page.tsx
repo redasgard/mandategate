@@ -43,6 +43,7 @@ export default async function DashboardPage({ searchParams }: {
           <p className="muted">{demoMode ? <><Link href="/demo">Three-case demo lab</Link>{" · "}</> : null}<Link href="/invoice-artifacts">Review source invoices</Link>
             {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
             {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
+            {" · "}<Link href="/policies">Policies and proposals</Link>
             {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
         </div>
         <div className="identity">{session.user.email}</div>
