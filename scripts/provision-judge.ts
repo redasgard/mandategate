@@ -1,18 +1,16 @@
 import { betterAuth } from "better-auth";
 import { loadLocalEnv } from "../src/env/load";
+import { DEMO_ORG_ID } from "../src/demo/scenarios";
+import { judgeProvisioningAllowed } from "../src/demo/judge-provision-gate";
 
 loadLocalEnv();
-const [{ pool }, { demoPreviewEnabled, DEMO_ORG_ID }] = await Promise.all([
-  import("../src/db/pool"),
-  import("../src/demo/scenarios"),
-]);
-
-// This script is never part of deployment seed/startup. A separate operator
-// must authorize its one-time shared-DB account mutation.
+// This script never runs in startup/seed. Refuse unapproved or payment-capable
+// modes BEFORE opening a shared database connection or creating an account.
 if (process.env.JUDGE_ACCOUNT_PROVISION_APPROVED !== "YES")
   throw new Error("JUDGE_PROVISION_APPROVAL_REQUIRED");
-if (!demoPreviewEnabled(process.env))
+if (!judgeProvisioningAllowed(process.env))
   throw new Error("JUDGE_REQUIRES_PAYMENT_DISABLED_NEON_PREVIEW");
+const { pool } = await import("../src/db/pool");
 
 const email = process.env.JUDGE_DEMO_EMAIL?.trim().toLowerCase();
 const password = process.env.JUDGE_DEMO_PASSWORD;
