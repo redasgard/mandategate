@@ -15,7 +15,7 @@ export BETTER_AUTH_URL="http://127.0.0.1:3000"
 # Render reserves PORT=10000 for hosted services. This is an ephemeral
 # loopback-only CI process; bind the app to the same port as BETTER_AUTH_URL.
 export PORT="3000"
-export BETTER_AUTH_SECRET="synthetic-ci-only-secret-at-least-32-characters"
+export BETTER_AUTH_SECRET="ci-only-synthetic-secret-at-least-32-characters"
 export DEMO_ADMIN_EMAIL="admin@mandategate.local"
 export DEMO_ADMIN_PASSWORD="synthetic-demo-password-2026"
 export DEMO_AGENT_API_KEY="mg_demo_ci_only_synthetic_agent_key_2026"
@@ -24,6 +24,9 @@ export MANDATEGATE_RUNTIME_MODE="legacy"
 export MANDATEGATE_DISABLE_PAYMENTS="1"
 export NEXT_TELEMETRY_DISABLED="1"
 export CI="true"
+# This flag is only meaningful with the strict database/identity checks in
+# verify-dashboard-cross-org-http.ts. Never apply to a deployed application.
+export MANDATEGATE_EMBEDDED_POSTGRES_CI="1"
 unset NODE_ENV
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_MODE=private-build-disposable-local-postgresql18'
