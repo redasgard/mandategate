@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PayPalPayoutsClient } from "../src/payments/paypal/client";
 
 function jsonResponse(status:number, body:any) {
@@ -8,6 +8,22 @@ function jsonResponse(status:number, body:any) {
 const input={paypalRequestId:"req",senderBatchId:"batch",senderItemId:"item",receiver:"vendor@example.com",amountCents:120000,currency:"USD",note:"invoice"};
 
 describe("PayPal Payouts client",()=>{
+  // The fake fetch transport is deliberate: these tests verify request shaping,
+  // NOT permission to make an external PayPal call. Preserve the CI-wide kill
+  // switch outside this isolated test suite.
+  beforeEach(() => vi.stubEnv("MANDATEGATE_DISABLE_PAYMENTS", "0"));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("refuses all payout transport when the payment kill switch is enabled", async () => {
+    vi.stubEnv("MANDATEGATE_DISABLE_PAYMENTS", "1");
+    const mockFetch = vi.fn<typeof fetch>();
+    const client = new PayPalPayoutsClient({
+      baseUrl:"https://api-m.sandbox.paypal.com",
+      clientId:"ci-id",clientSecret:"ci-secret",fetchImpl:mockFetch,
+    });
+    await expect(client.createSinglePayout(input)).rejects.toThrow("PAYMENTS_DISABLED_FOR_PREVIEW");
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
   it("caches OAuth and sends all deterministic correlation IDs",async()=>{
     const calls:{url:string;init:RequestInit}[]=[]; let tokenCalls=0;
     const fakeFetch:typeof fetch=async(input:any,init:any={})=>{const url=String(input);calls.push({url,init});if(url.endsWith("/v1/oauth2/token")){tokenCalls++;return jsonResponse(200,{access_token:"token",expires_in:3600});}if(url.endsWith("/v1/payments/payouts")&&init.method==="POST")return jsonResponse(201,{batch_header:{payout_batch_id:"BATCH-7"}});if(url.includes("/v1/payments/payouts/BATCH-7"))return jsonResponse(200,{items:[{payout_item_id:"ITEM-7",transaction_status:"SUCCESS"}]});throw new Error(`unexpected ${url}`);};
