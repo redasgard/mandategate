@@ -69,6 +69,17 @@ it("records one exact signed event but rejects replay and immutable tampering",a
    expect(counts.rows[0]).toMatchObject({attestations:0,payments:0});
  });
 
+it("blocks vendor invoice replay through a separately uploaded artifact",async()=>{
+  const copyArtifact=randomUUID();
+  await pool.query([
+    "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content)",
+    "values($1,$2,'application/pdf',$3,$4,$5)",
+  ].join(" "),[copyArtifact,org,bytes.length,hash,bytes]);
+  const x={...event(),artifactId:copyArtifact,invoiceNumber:"ERP-SYNTH-001"};
+  await expect(receiveSyntheticErpEvent({
+    event:x,signature:signSyntheticErpEvent(x,secret),secret,
+  })).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
+});
 it("serializes concurrent exact-event attempts into one immutable receipt",async()=>{
   const x={...event(),invoiceNumber:"ERP-CONCURRENT-001"};
   const signature=signSyntheticErpEvent(x,secret);
