@@ -1,8 +1,8 @@
 import {
   SANDBOX_AMOUNT_CENTS,SANDBOX_INVOICE,
-  SANDBOX_ORG_ID,SANDBOX_VENDOR_ID,
+  SANDBOX_ORG_ID,SANDBOX_VENDOR_ID,SANDBOX_KEY,
 } from "./sandbox-payout-constants";
-import {DEMO_ORG_ID} from "./scenarios";
+import {DEMO_ORG_ID,DEMO_VENDOR_ID} from "./scenarios";
 
 /**
  * PayPal Sandbox only. This classifier never grants payment authority:
@@ -29,7 +29,6 @@ export type SandboxRailEnvelope={
 };
 export type SandboxRailKind="FIXED_MANUAL_FIXTURE"|"EXACT_REVIEWED_INVOICE";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EXACT_DEMO_VENDOR="vendor_northstar";
 
 export function classifySandboxPaymentRail(
   p:SandboxRailEnvelope,env:Record<string,string|undefined>=process.env,
@@ -49,12 +48,12 @@ export function classifySandboxPaymentRail(
     p.organizationId===SANDBOX_ORG_ID &&
     p.vendorId===SANDBOX_VENDOR_ID &&
     p.authorityBindingId===null &&
-    p.idempotencyKey==="mandategate-sandbox-101-20261018-v1")
+    p.idempotencyKey===SANDBOX_KEY)
     return "FIXED_MANUAL_FIXTURE";
   if(p.source==="verified_invoice" &&
     env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO==="1" &&
     p.organizationId===DEMO_ORG_ID &&
-    p.vendorId===EXACT_DEMO_VENDOR &&
+    p.vendorId===DEMO_VENDOR_ID &&
     typeof p.authorityBindingId==="string" &&
     uuid.test(p.authorityBindingId) &&
     p.idempotencyKey==="invoice-verified-binding:"+p.authorityBindingId)
