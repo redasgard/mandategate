@@ -5,6 +5,7 @@ import { auth } from "@/src/auth/auth";
 import { listRecentDecisions } from "@/src/db/views";
 import { readDashboardSummary } from "@/src/db/dashboard-overview";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
+import { demoPreviewEnabled } from "@/src/demo/scenarios";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -20,7 +21,9 @@ export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
-  const demoMode = process.env.MANDATEGATE_RUNTIME_MODE === "neon-preview" && process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
+  const demoMode = demoPreviewEnabled(process.env);
+  const sandboxPayouts = process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox" &&
+    process.env.MANDATEGATE_DISABLE_PAYMENTS === "0";
   const [rows, summary] = await Promise.all([
     listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
   ]);
@@ -49,10 +52,16 @@ export default async function DashboardPage() {
       </section>
 
       {demoMode ? <section className="panel review-stage" aria-label="Demo preview status">
-        <p className="eyebrow">Synthetic preview / PayPal execution disabled</p>
+        <p className="eyebrow">Synthetic policy demonstration / never payable</p>
         <h2>See why an AI agent cannot authorize spending</h2>
-        <p className="muted">Replay three fictional invoice decisions. No payout or real vendor authorization is part of this preview.</p>
+        <p className="muted">Replay three fictional invoice decisions. These three fixtures can never execute PayPal, even when a separate Sandbox payout is enabled.</p>
         <p><Link href="/demo">Open the three-scenario demo →</Link></p>
+      </section> : null}
+      {sandboxPayouts ? <section className="panel review-stage" aria-label="Sandbox payout laboratory">
+        <p className="eyebrow">PayPal Sandbox / actual API</p>
+        <h2>Execute a separately authorized 1.01 USD test payout</h2>
+        <p className="muted">Uses a distinct synthetic organization and a preconfigured Sandbox recipient. No production funds; the three policy-preview cases remain nonpayable.</p>
+        <p><Link href="/sandbox-payout">Open Sandbox payout lab →</Link></p>
       </section> : null}
       <section className="metrics" aria-label="Current payment risk">
         <article className="metric danger"><span>AWAITING REVIEW</span><strong>{summary.pendingReview}</strong></article>
