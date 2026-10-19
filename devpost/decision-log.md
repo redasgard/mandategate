@@ -155,3 +155,5 @@
 - **Evidence:** Render deployment dep-dbaqifmq1p3s73cn6gm0 at 04ed2b8 reported LIVE, connected Neon read-only counts October 19 07:04 UTC: org_demo 3 requests/0 executions, sandbox org 0 requests/0 executions, active REVIEWER 0. UI source names the "Evaluate fictional request" GET action; draft PR #49 combines unmerged source protections and has no full CI pass.
 - **Rejected:** Existing admin credential sharing, synthetic invoice issuer/payment claims, new payout during video, inferred account-level ZDR, and publicity without review.
 - **Artifact:** devpost/judge-release-packet-2026-10-18.md; prior unmerged PR #36/#38 scripts are historical drafts and must not be copied verbatim.
+
+- **Follow-up (October 19 UTC):** Source audit found the isolated runtime dropped JUDGE_SYNTHETIC_SOURCE_SHAS before the restricted viewer read. PR #51 adds exact-SHA-only forwarding and 18 isolated Node22 validation cases, included in unmerged verification PR #49 at a5af755b60a5ddb8775892e0f9c8281a59528ff6. The current LIVE deployment lacks this fix; no saved GLM card visibility or external REVIEWER sign-in is claimed.
