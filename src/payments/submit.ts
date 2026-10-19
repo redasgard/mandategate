@@ -19,7 +19,7 @@ export type CanonicalPaymentRequest = {
   currency: string;
   paymentDestination: string;
   idempotencyKey: string;
-  source: "agent_api" | "demo_fixture";
+  source: "agent_api" | "demo_fixture" | "sandbox_fixture";
 };
 
 async function findReplay(input: CanonicalPaymentRequest) {
