@@ -13,8 +13,7 @@ if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24
 printf 'CI_SOURCE_SHA=%s\n' "$sha"
 echo 'CI_MODE=private-repo-build-no-real-database-no-provider-keys'
 step() { echo "CI_STEP=$1"; shift; "$@"; }
-step corepack corepack enable
-step pnpm-pin corepack prepare pnpm@12.9.1 --activate
+step pnpm-pin pnpm --version
 step install pnpm install --frozen-lockfile
 step static-types pnpm typecheck
 step auth-harness node scripts/test-judge-smoke-fixture.mjs
