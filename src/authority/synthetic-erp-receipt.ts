@@ -63,8 +63,8 @@ export async function receiveSyntheticErpEvent(input:{
   if(!/^queue_ci_[0-9a-f-]{36}$/i.test(event.organizationId))
     throw Error("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
   const now=input.now??new Date();
-  if(!Number.isFinite(now.valueOf())||
-    Math.abs(now.valueOf()-Date.parse(event.signedAt))>300_000)
+  const ageMillis=now.valueOf()-Date.parse(event.signedAt);
+  if(!Number.isFinite(ageMillis)||ageMillis < -30_000||ageMillis > 300_000)
     throw Error("SYNTHETIC_ERP_TIMESTAMP_INVALID");
   const expected=signSyntheticErpEvent(event,input.secret);
   if(!hex.safeParse(input.signature).success ||
@@ -101,6 +101,7 @@ export async function receiveSyntheticErpEvent(input:{
     await client.query("commit");
     return {receiptId:String(inserted.rows[0].id),bodySha256:bodyHash,
       evidenceStatus:"SYNTHETIC_SIGNED_FIXTURE" as const,
+      artifactContentCorroborated:false as const,
       independentlyAuthenticatedIssuer:false as const,
       originAttestationCreated:false as const,
       paymentAuthorized:false as const,paymentExecuted:false as const};
