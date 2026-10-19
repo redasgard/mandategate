@@ -41,7 +41,8 @@ it("records one exact signed event but rejects replay and immutable tampering",a
    const x=event(),signature=signSyntheticErpEvent(x,secret);
    const first=await receiveSyntheticErpEvent({event:x,signature,secret});
    expect(first).toMatchObject({paymentAuthorized:false,paymentExecuted:false,
-     originAttestationCreated:false,evidenceStatus:"SYNTHETIC_SIGNED_FIXTURE"});
+     originAttestationCreated:false,artifactContentCorroborated:false,
+     evidenceStatus:"SYNTHETIC_SIGNED_FIXTURE"});
    await expect(receiveSyntheticErpEvent({event:x,signature,secret})).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
    await expect(pool.query("delete from erp_synthetic_signed_invoice_receipts where id=$1",[first.receiptId]))
      .rejects.toThrow("AUTHORITY_PROVENANCE_IMMUTABLE");
@@ -52,6 +53,10 @@ it("records one exact signed event but rejects replay and immutable tampering",a
      .rejects.toThrow("SYNTHETIC_ERP_SIGNATURE_INVALID");
    await expect(receiveSyntheticErpEvent({event:x,signature,secret,now:new Date(Date.now()+600_000)}))
      .rejects.toThrow("SYNTHETIC_ERP_TIMESTAMP_INVALID");
+   const future={...x,signedAt:new Date(Date.now()+60_000).toISOString()};
+   await expect(receiveSyntheticErpEvent({
+     event:future,signature:signSyntheticErpEvent(future,secret),secret,
+   })).rejects.toThrow("SYNTHETIC_ERP_TIMESTAMP_INVALID");
    await expect(receiveSyntheticErpEvent({event:{...x,organizationId:"org_demo"},signature,secret}))
      .rejects.toThrow("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
  });
