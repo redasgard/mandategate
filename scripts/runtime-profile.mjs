@@ -92,6 +92,22 @@ export function runtimeProfile(env) {
   const invoiceAi = invoiceAiEnvironment(env, mode);
   if (neonMode) {
     // Boolean-only diagnostics; never log or return the API key or any URL.
+    if (env.RENDER_SERVICE_ID === 'srv-db39vmm7bikc73c55nh0') {
+      const receiver = env.DEMO_PAYPAL_RECEIVER_EMAIL?.trim() ?? '';
+      console.info('SANDBOX_READINESS', JSON.stringify({
+        mode,
+        paymentsDisabled: env.MANDATEGATE_DISABLE_PAYMENTS === '1',
+        explicitPayoutGrant: env.MANDATEGATE_SANDBOX_PAYOUTS === '1',
+        sandboxApiSelected: env.PAYPAL_BASE_URL === 'https://api-m.sandbox.paypal.com',
+        clientIdConfigured: typeof env.PAYPAL_CLIENT_ID === 'string' &&
+          env.PAYPAL_CLIENT_ID.length >= 8,
+        clientSecretConfigured: typeof env.PAYPAL_CLIENT_SECRET === 'string' &&
+          env.PAYPAL_CLIENT_SECRET.length >= 8,
+        recipientConfigured: receiver.length <= 254 &&
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver) &&
+          receiver !== 'ap@northstar.example',
+      }));
+    }
     console.info('INVOICE_AI_CONFIG', JSON.stringify({
       optedIn: env.MANDATEGATE_ENABLE_INVOICE_AI === '1',
       renderServiceBound: env.RENDER_SERVICE_ID === 'srv-db39vmm7bikc73c55nh0',
