@@ -285,7 +285,7 @@ export class PostgresExecutionStore implements ExecutionStore {
       `update payment_executions
           set status = 'EXECUTING', paypal_payout_batch_id = $2,
               submitted_at = coalesce(submitted_at, $3), outcome_unknown_since = null, updated_at = $3
-        where logical_payment_id = $1 returning *`,
+        where logical_payment_id = $1 and status = 'SUBMITTING' returning *`,
       [logicalPaymentId, payoutBatchId, now],
     );
   }
@@ -294,7 +294,7 @@ export class PostgresExecutionStore implements ExecutionStore {
     return this.updateOne(
       `update payment_executions
           set status = 'PAYMENT_FAILED', raw_paypal_status = $2, updated_at = $3
-        where logical_payment_id = $1 returning *`,
+        where logical_payment_id = $1 and status = 'SUBMITTING' returning *`,
       [logicalPaymentId, rawStatus.slice(0, 200), now],
     );
   }
@@ -303,7 +303,7 @@ export class PostgresExecutionStore implements ExecutionStore {
     return this.updateOne(
       `update payment_executions
           set status = 'PAYMENT_BLOCKED', raw_paypal_status = $2, updated_at = $3
-        where logical_payment_id = $1 returning *`,
+        where logical_payment_id = $1 and status = 'SUBMITTING' returning *`,
       [logicalPaymentId, reason.slice(0, 200), now],
     );
   }
@@ -312,7 +312,7 @@ export class PostgresExecutionStore implements ExecutionStore {
     return this.updateOne(
       `update payment_executions
           set status = 'PAYMENT_UNKNOWN', outcome_unknown_since = coalesce(outcome_unknown_since, $2), updated_at = $2
-        where logical_payment_id = $1 returning *`,
+        where logical_payment_id = $1 and status in ('SUBMITTING','EXECUTING') returning *`,
       [logicalPaymentId, now],
     );
   }
@@ -321,7 +321,7 @@ export class PostgresExecutionStore implements ExecutionStore {
     return this.updateOne(
       `update payment_executions
           set status = 'PAYMENT_UNKNOWN_MANUAL_RECONCILIATION', updated_at = $2
-        where logical_payment_id = $1 returning *`,
+        where logical_payment_id = $1 and status = 'PAYMENT_UNKNOWN' returning *`,
       [logicalPaymentId, now],
     );
   }
@@ -407,8 +407,11 @@ export class PostgresExecutionStore implements ExecutionStore {
 
   private async updateOne(sql: string, params: unknown[]) {
     const result = await pool.query(sql, params);
-    if (!result.rows[0]) throw new Error("PAYMENT_EXECUTION_NOT_FOUND");
-    return rowToExecution(result.rows[0]);
+    if (result.rows[0]) return rowToExecution(result.rows[0]);
+    // Another worker or verified PayPal webhook may have advanced the row.
+    // Do not overwrite terminal settlement evidence with a late callback.
+    // Return its authoritative current value; a nonexistent ID still throws.
+    return this.getExecution(String(params[0]));
   }
 }
 
