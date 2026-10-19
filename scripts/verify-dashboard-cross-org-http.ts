@@ -6,12 +6,21 @@ import type { Pool } from "pg";
 // Deliberately no PayPal, external model, or privileged payment route.
 export async function verifyDashboardCrossOrgHttp(baseUrl: string, pool: Pool) {
   const db = new URL(process.env.DATABASE_URL ?? "postgres://invalid");
-  if (process.env.CI !== "true" || process.env.GITHUB_ACTIONS !== "true" ||
+  // A disposable CI database can be hosted by GitHub's postgres:18 service
+  // OR an explicitly isolated local PostgreSQL 18 inside a no-provider-key
+  // Render build. Never admit Neon, shared hosts or ordinary Render runtime.
+  const githubRunner = process.env.GITHUB_ACTIONS === "true" && (db.port === "5432" || db.port === "");
+  const embeddedRunner = process.env.MANDATEGATE_EMBEDDED_POSTGRES_CI === "1" &&
+    db.port === "55432" && db.username === "postgres" && db.password === "postgres" &&
+    process.env.MANDATEGATE_DISABLE_PAYMENTS === "1" &&
+    !process.env.PAYPAL_CLIENT_ID && !process.env.PAYPAL_CLIENT_SECRET &&
+    !process.env.EXPLABS_API_KEY;
+  if (process.env.CI !== "true" || (!githubRunner && !embeddedRunner) ||
       baseUrl !== "http://127.0.0.1:3000" || db.hostname !== "127.0.0.1" ||
       db.pathname !== "/mandategate" ||
       process.env.DEMO_ADMIN_EMAIL !== "admin@mandategate.local" ||
       process.env.BETTER_AUTH_SECRET !== "ci-only-synthetic-secret-at-least-32-characters") {
-    throw Error("DASHBOARD_CROSS_ORG_REQUIRES_DISPOSABLE_GITHUB_CI");
+    throw Error("DASHBOARD_CROSS_ORG_REQUIRES_DISPOSABLE_CI");
   }
   const nonce = randomUUID().replace(/-/g,"");
   const orgs = ["ci_http_org_a_"+nonce,"ci_http_org_b_"+nonce];
