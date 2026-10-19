@@ -69,13 +69,17 @@ it("records one exact signed event but rejects replay and immutable tampering",a
    expect(counts.rows[0]).toMatchObject({attestations:0,payments:0});
  });
 
-it("blocks vendor invoice replay through a separately uploaded artifact",async()=>{
+it("blocks vendor invoice replay through a different artifact payload",async()=>{
+  // The underlying artifact store deduplicates identical bytes within an org.
+  // Use distinct bytes to verify the vendor + invoice-number constraint.
   const copyArtifact=randomUUID();
+  const copyBytes=Buffer.concat([bytes,Buffer.from("% alternate source bytes\\n")]);
+  const copyHash=createHash("sha256").update(copyBytes).digest("hex");
   await pool.query([
     "insert into invoice_artifacts(id,organization_id,mime_type,byte_size,sha256,content)",
     "values($1,$2,'application/pdf',$3,$4,$5)",
-  ].join(" "),[copyArtifact,org,bytes.length,hash,bytes]);
-  const x={...event(),artifactId:copyArtifact,invoiceNumber:"ERP-SYNTH-001"};
+  ].join(" "),[copyArtifact,org,copyBytes.length,copyHash,copyBytes]);
+  const x={...event(),artifactId:copyArtifact,artifactSha256:copyHash,invoiceNumber:"ERP-SYNTH-001"};
   await expect(receiveSyntheticErpEvent({
     event:x,signature:signSyntheticErpEvent(x,secret),secret,
   })).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
