@@ -1,4 +1,5 @@
 import './check-invoice-ai-env.mjs';
+import './check-judge-source-allowlist.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -125,5 +126,37 @@ test('migration and seeding skip without importing any database or auth dependen
       });
       assert.match(output, new RegExp(`SKIP ${action}: ${mode}`));
     }
+  }
+});
+
+test('only valid reviewed fictional SHAs reach the isolated judge page',()=>{
+  const first='a'.repeat(64),second='b'.repeat(64);
+  const p=runtimeProfile({...env,JUDGE_SYNTHETIC_SOURCE_SHAS:' '+first+', '+second+' '});
+  assert.equal(p.childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS,first+','+second);
+  assert.equal(runtimeProfile(env).childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS,undefined);
+  const sandbox=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',
+    JUDGE_SYNTHETIC_SOURCE_SHAS:first});
+  assert.equal(sandbox.childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS,first);
+  const render=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'render-preview',
+    JUDGE_SYNTHETIC_SOURCE_SHAS:first});
+  assert.equal(render.childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS,undefined);
+});
+test('current payment-capable Sandbox still forwards ONLY approved source SHAs',()=>{
+  const value='c'.repeat(64);
+  const p=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',
+    MANDATEGATE_DISABLE_PAYMENTS:'0',MANDATEGATE_SANDBOX_PAYOUTS:'1',
+    PAYPAL_BASE_URL:'https://api-m.sandbox.paypal.com',
+    PAYPAL_CLIENT_ID:'sandbox-client-id-123',PAYPAL_CLIENT_SECRET:'sandbox-secret-123',
+    DEMO_PAYPAL_RECEIVER_EMAIL:'sb-test-recipient@example.test',
+    JUDGE_SYNTHETIC_SOURCE_SHAS:value,
+    JUDGE_UNSAFE_SOURCE_BYTES:'never-forward'});
+  assert.equal(p.childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS,value);
+  assert.equal(p.childEnv.JUDGE_UNSAFE_SOURCE_BYTES,undefined);
+  assert.equal(p.childEnv.MANDATEGATE_JUDGE_PREVIEW_ENABLED,'1');
+});
+test('invalid SHA env fails closed before an isolated server launches',()=>{
+  for(const value of ['A'.repeat(64),'bad','a'.repeat(64)+','+'a'.repeat(64)]) {
+    assert.throws(()=>runtimeProfile({...env,JUDGE_SYNTHETIC_SOURCE_SHAS:value}),
+      /RUNTIME_JUDGE_SOURCE_ALLOWLIST_INVALID/);
   }
 });

@@ -1,5 +1,6 @@
 /** A reversible, isolated runtime selection. Never edits process.env. */
 import { invoiceAiEnvironment } from './invoice-ai-env.mjs';
+import { validatedJudgeSourceAllowlist } from './judge-source-allowlist.mjs';
 export const NEON_HOST = 'ep-silent-poetry-arjowm4d.c-4.us-west-2.aws.neon.tech';
 export const RENDER_HOST = 'dpg-db39d5rbc2fs73d1ke70-a';
 const modes = new Set(['legacy', 'neon-preview', 'neon-sandbox', 'render-preview']);
@@ -89,6 +90,11 @@ export function runtimeProfile(env) {
       childEnv.DEMO_PAYPAL_RECEIVER_EMAIL = receiver;
     }
   }
+  // Only independently reviewed, exact original SHA values cross the isolated
+  // process boundary; without this forwarding the judge page silently hides
+  // all saved consented fictional GLM observations.
+  const judgeSources = neonMode ? validatedJudgeSourceAllowlist(env) : undefined;
+  if (judgeSources) childEnv.JUDGE_SYNTHETIC_SOURCE_SHAS = judgeSources;
   const invoiceAi = invoiceAiEnvironment(env, mode);
   if (neonMode) {
     // Boolean-only diagnostics; never log or return the API key or any URL.
@@ -115,6 +121,7 @@ export function runtimeProfile(env) {
       forwardedKeyPresent: typeof invoiceAi.EXPLABS_API_KEY === 'string' && invoiceAi.EXPLABS_API_KEY.length > 0,
       syntheticExceptionEnabled: invoiceAi.MANDATEGATE_SYNTHETIC_NON_ZDR_TEST === '1',
       sandboxPayoutCredentialsForwarded: Boolean(childEnv.PAYPAL_CLIENT_ID && childEnv.PAYPAL_CLIENT_SECRET),
+      judgeSyntheticSourceCount: judgeSources ? judgeSources.split(',').length : 0,
     }));
   }
   Object.assign(childEnv, invoiceAi);
