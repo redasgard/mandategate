@@ -1,5 +1,6 @@
 import { pool } from "../db/pool";
 import { postgresExecutionStore } from "../payments/executor/postgres-store";
+import { inspectAutopayBinding } from "./budget";
 
 export type AutonomousCandidate = {
   requestId: string;
@@ -56,6 +57,11 @@ export async function listAutonomousCandidates(
     "and m.user_id=g.approved_by_user_id and m.role='ADMIN' and m.active=true",
     "where g.organization_id=pr.organization_id and g.vendor_id=pr.vendor_id",
     "and g.destination_id=vd.id and g.policy_id=p.id",
+    "and exists (select 1 from autopay_payment_bindings b",
+    "where b.payment_request_id=pr.id and b.organization_id=pr.organization_id",
+    "and b.mandate_id=g.id and b.destination_id=vd.id and b.policy_id=p.id",
+    "and b.grant_digest=g.approval_digest and b.amount_cents=pr.amount_cents)",
+    "and g.max_total_amount_cents>=pr.amount_cents and g.max_payment_count>0",
     "and g.source='agent_api' and g.active=true and g.revoked_at is null",
     "and exists(select 1 from autopay_mandate_events ev",
     "where ev.mandate_id=g.id and ev.organization_id=g.organization_id",
@@ -106,7 +112,12 @@ export async function previewAutonomousDispatch(
   for(const candidate of candidates) {
     try {
       const current = await postgresExecutionStore.getAuthoritativePayment(candidate.requestId);
-      const valid=Boolean(current &&
+      const budget=candidate.authorization==="STANDING_MANDATE"
+        ?await inspectAutopayBinding(candidate.requestId):null;
+      const budgetOk=candidate.authorization!=="STANDING_MANDATE"||
+        (budget!==null&&(budget.existingReservation||
+          (budget.remainingPayments>0&&BigInt(budget.remainingCents)>=BigInt(candidate.amountCents))));
+      const valid=Boolean(budgetOk && current &&
         current.requestId===candidate.requestId &&
         current.logicalPaymentId===candidate.logicalPaymentId &&
         current.amountCents===candidate.amountCents &&

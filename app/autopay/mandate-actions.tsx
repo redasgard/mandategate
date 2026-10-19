@@ -9,6 +9,8 @@ type VendorOption={
 type MandateRow={
   id:string;vendorName:string;destination:string;maxAmountCents:number;
   digest:string;expiresAt:string;createdAt:string;state:string;
+  maxTotalAmountCents:number;maxPaymentCount:number;
+  reservedCents:string;reservedCount:number;
   preparedBy:string;active:boolean;storedActive:boolean;
 };
 function cents(raw:string):number|null {
@@ -28,22 +30,28 @@ export function MandatePrepareForm({vendors}:{vendors:VendorOption[]}) {
   const router=useRouter();
   const [vendorId,setVendorId]=useState(vendors[0]?.id??"");
   const [amount,setAmount]=useState("");
+  const [total,setTotal]=useState("");
+  const [count,setCount]=useState(10);
   const [days,setDays]=useState(7);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
   const [done,setDone]=useState(false);
   const v=vendors.find(x=>x.id===vendorId);
   async function prepare(){
-    const value=cents(amount);
+    const value=cents(amount),totalValue=cents(total);
     if(!v||value===null||value>v.limitCents){
       setError("The amount must be positive and no higher than the current vendor/policy cap.");return;
+    }
+    if(totalValue===null||totalValue<value||count<1||count>1000){
+      setError("Set a cumulative budget at least as large as one payment and a payment count.");return;
     }
     setBusy(true);setError(null);
     try{
       await mutate("/api/admin/autopay-mandates",{
-        organizationId:v.organizationId,vendorId:v.id,maxAmountCents:value,validityDays:days,
+        organizationId:v.organizationId,vendorId:v.id,maxAmountCents:value,
+        maxTotalAmountCents:totalValue,maxPaymentCount:count,validityDays:days,
       });
-      setAmount("");setDone(true);router.refresh();
+      setAmount("");setTotal("");setDone(true);router.refresh();
     }catch(e){setError(e instanceof Error?e.message:"AUTOPAY_PREPARE_FAILED");}
     finally{setBusy(false);}
   }
@@ -57,6 +65,14 @@ export function MandatePrepareForm({vendors}:{vendors:VendorOption[]}) {
     <label>Maximum unattended payment, USD
       <input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)}
         placeholder="e.g. 50.00" maxLength={11}/></label>
+    <label>Lifetime total spending budget, USD
+      <input inputMode="decimal" value={total} onChange={e=>setTotal(e.target.value)}
+        placeholder="e.g. 300.00" maxLength={13}/></label>
+    <label>Maximum number of automatic payments
+      <input inputMode="numeric" type="number" min={1} max={1000}
+        value={count} onChange={e=>setCount(Number(e.target.value))}/></label>
+    <p className="muted">Both cumulative ceilings are conservative:
+      retries and unknown provider outcomes consume their reservation until independently reconciled.</p>
     <label>Validity, days
       <select value={days} onChange={e=>setDays(Number(e.target.value))}>
         {[1,3,7,14,30].map(d=><option key={d} value={d}>{d} days</option>)}
