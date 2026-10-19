@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "../src/db/pool";
+import {disableActivePolicy,policyShutdownDigest} from "../src/policy/shutdown";
 import {
   decidePolicyProposal, preparePolicyProposal, readPolicyConsole,
 } from "../src/policy/proposals";
@@ -158,4 +159,38 @@ describe("S8 consequential policy proposal lifecycle on PostgreSQL 18",()=>{
     ].join(" "),[org]);
     expect(payout.rows[0].n).toBe(0);
   });
+  it("permanently shuts off active standing authority with exact admin confirmation and immutable evidence",async()=>{
+    const active=await pool.query(
+      "select id,organization_id,auto_pay_max_amount_cents,created_at from policies where organization_id=$1 and active=true",
+      [org]);
+    expect(active.rows.length).toBe(1);
+    const p=active.rows[0], policyId=String(p.id);
+    const digest=policyShutdownDigest({
+      id:policyId,organizationId:org,limitCents:Number(p.auto_pay_max_amount_cents),
+      createdAt:p.created_at,
+    });
+    const params={id:policyId,actorId:actor,expectedDigest:digest,
+      explanation:"Emergency stop while payment data is independently verified.",
+      confirmation:"DISABLE" as const};
+    await expect(disableActivePolicy({...params,expectedDigest:"a".repeat(64)}))
+      .rejects.toThrow("POLICY_SHUTDOWN_SNAPSHOT_CHANGED");
+    await expect(disableActivePolicy({...params,actorId:randomUUID()}))
+      .rejects.toThrow("POLICY_NOT_FOUND");
+    const disabled=await disableActivePolicy(params);
+    expect(disabled).toMatchObject({disabled:true,autoPayEnabled:false,policyId});
+    const after=await pool.query("select count(*)::int as n from policies where organization_id=$1 and active=true",[org]);
+    expect(after.rows[0].n).toBe(0);
+    await expect(disableActivePolicy(params)).rejects.toThrow("POLICY_NOT_ACTIVE");
+    const evidence=await pool.query(
+      "select policy_snapshot_sha256,old_limit_cents,actor_user_id from policy_shutdown_events where policy_id=$1",
+      [policyId]);
+    expect(evidence.rows).toHaveLength(1);
+    expect(evidence.rows[0]).toMatchObject({
+      policy_snapshot_sha256:digest,old_limit_cents:25000,actor_user_id:actor,
+    });
+    const pay=await pool.query(
+      "select count(*)::int as n from payment_requests where organization_id=$1",[org]);
+    expect(pay.rows[0].n).toBe(0);
+  });
+
 });
