@@ -280,7 +280,7 @@ export async function readAutopayMandateConsole(actorId:string) {
       maxAmountCents:Number(r.max_amount_cents),digest:String(r.approval_digest),
       preparedBy:String(r.approved_by_user_id),
       expiresAt:new Date(r.expires_at).toISOString(),
-      createdAt:new Date(r.created_at).toISOString(),
+      createdAt:new Date(r.created_at).toISOString(),storedActive:Boolean(r.active),
       revokedAt:r.revoked_at?new Date(r.revoked_at).toISOString():null,
       state:r.revoked_at?"REVOKED" as const:
         (new Date(r.expires_at).valueOf()<=Date.now()?"EXPIRED" as const:
