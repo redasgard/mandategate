@@ -9,7 +9,7 @@ type VendorOption={
 type MandateRow={
   id:string;vendorName:string;destination:string;maxAmountCents:number;
   digest:string;expiresAt:string;createdAt:string;state:string;
-  preparedBy:string;active:boolean;
+  preparedBy:string;active:boolean;storedActive:boolean;
 };
 function cents(raw:string):number|null {
   if(!/^\d{1,8}(?:\.\d{1,2})?$/.test(raw.trim()))return null;
@@ -76,7 +76,7 @@ export function MandateDecisionForm({mandate,currentUserId}:{
   const [error,setError]=useState<string|null>(null);
   const [success,setSuccess]=useState<string|null>(null);
   const isPrepared=mandate.state==="PREPARED"&&mandate.preparedBy===currentUserId;
-  const mayRevoke=mandate.state==="ACTIVE"||mandate.state==="EXPIRED"&&mandate.active;
+  const mayRevoke=mandate.storedActive;
   if(!isPrepared&&!mayRevoke)return <p className="muted">This record cannot grant further authority.</p>;
   const action=isPrepared?"ACTIVATE" as const:"REVOKE" as const;
   const required=isPrepared?"ENABLE AUTOPAY":"REVOKE";
