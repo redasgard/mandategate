@@ -12,8 +12,8 @@ There are **three separate evidence paths**. They should not be presented as one
 
 | Path | Current evidence | Important limit |
 | --- | --- | --- |
-| **AI interprets a fictional invoice** | Actual saved Experiential Labs GLM-5.3 Flash observations of exact-SHA-allowlisted fictional documents, after recorded admin consent to possible provider retention. The model proposed fields; the result remained **T1 advisory `ESCALATE`**. | This consented synthetic route is **not** strict account-level ZDR. No GLM observation authenticates an issuer or authorizes a payment. |
-| **MandateGate makes deterministic decisions** | An authenticated three-case preview loads normal `ALLOW`, unusual amount `ESCALATE` and destination substitution `DENY`, with source-visible reason codes and payment detail links. It is repeatable and refuses suspicious replay state. | These are synthetic, separate canonical requests, **not** the AI-observed PDFs. No payout occurs through judge replay. |
+| **AI interprets a fictional invoice** | Saved Experiential Labs GLM-5.3 Flash T1 observations of consented fictional documents, with exact original source SHA recorded. Restricted judge-card visibility still requires a separately reviewed allowlist and deployment of the unmerged runtime forwarding fix. The model proposed fields; the result remained **T1 advisory `ESCALATE`**. | This consented synthetic route is **not** strict account-level ZDR. No GLM observation authenticates an issuer or authorizes a payment. |
+| **MandateGate makes deterministic decisions** | Three independently stored synthetic `ALLOW`, `ESCALATE` and `DENY` canonical requests exist. The restricted `/judge` page separately runs GET-only policy evaluations with actual reason codes, while owner-only `/demo` can create or reuse those fixtures. | These are synthetic, separate canonical requests, **not** the AI-observed PDFs. No payout occurs through judge replay. |
 | **PayPal Sandbox executes a protected payout** | In an **earlier Render environment**, the direct trusted-agent Slice 2 path created one real Sandbox payout (batch `BA7V96FCY8Z64`, item `A3R9LWD8XTX72`), then recorded PayPal `SUCCESS`, local `PAID`, verified webhook and reconciliation evidence. The judge page links that archived record. | It was **not** triggered by the AI-reviewed invoices. The current Neon-backed demo has no corresponding payment execution rows. Displaying archived identifiers does not re-verify PayPal settlement today. |
 
 **Full invoice-derived GLM → verified PDF facts (T2) → independently authenticated issuer (T3) → exact human payment authority (T4) → PayPal payout is not complete.** Strict Gate H remains **BLOCKED**: the hosted account did not satisfy the strict full-ZDR preflight, and live independent issuer/payment proof is still missing. Do not treat a seeded or synthetic issuer channel as genuine external issuer verification.
@@ -22,25 +22,32 @@ The evidence table with limitations and original sources is at [devpost/judge-ev
 
 ## Hosted judge walkthrough
 
-Development demo: **https://mandategate-web.onrender.com/demo**
+**Intended restricted reviewer URL:** https://mandategate-web.onrender.com/judge
 
-The demo requires a signed-in, organization-authorized account. **External judge access has not yet been independently verified** and must be confirmed before submission; there is no shared password in this repository.
+The real development deployment uses `neon-sandbox`: the **separate** USD 1.01 PayPal Sandbox payout laboratory may be payment-enabled. This is **not** a globally payments-disabled host. In contrast, the judge-only `/judge` path is authenticated, tenant-scoped, and GET-only for policy simulations. The three named fictional cases are permanently nonpayable; no current-Neon one-cent Sandbox payout has been executed.
 
-1. Open **/demo** after sign-in. Inspect the saved fictional GLM observation cards and click through to the original invoice artifacts. Merely viewing the cards makes **no new model request**.
-2. Click **Load or replay three demo decisions**. This writes/reuses three synthetic canonical requests through the deterministic decision engine; it **does not execute PayPal**. Review the observed `ALLOW`, `ESCALATE`, `DENY` and actual reason codes. If the page halts for inconsistent outcomes or financial state, **stop** rather than resetting evidence silently.
-3. Inspect the **Historical PayPal Sandbox** section and follow the links to the **earlier** payout ledger and critical review. It is a *separate previous workflow*, not the receipt for any GLM-observed invoice.
-4. Optional: use **/ap-history** to explicitly import the fictional AP CSV and explore history-based anomalies. This is a separate history exercise, not the source of the three initially seeded policy decisions.
+**Judge credentials are not ready.** No active REVIEWER membership was found in the demo organization at the latest read-only check on October 19, 2026. A dedicated REVIEWER account with no ADMIN membership must be explicitly approved, provisioned from a temporary payments-disabled preview, and tested in two clean browser sessions before judges are given access. Do not share development admin credentials.
 
-These steps are a scripted **demonstration**, not a claim of production payment readiness. Authenticated local HTTP smoke and Render deployment confirm code and reachability; a separately witnessed hosted browser visual walkthrough remains a release check.
+After account provisioning and deployment of the reviewed source allowlist fix, the restricted walkthrough is:
+
+1. Sign in at **/judge**. Inspect saved fictional GLM observations under **Model observations, not authorization**. The reviewer sees only sanitized fields and a source-SHA prefix, not the original PDF bytes. Saved records are T1 advisory `ESCALATE`, not issuer or payment proof.
+2. Press each **Evaluate fictional request** button for normal, unusual amount and changed destination. These are authenticated **GET** policy simulations, not payment or invoice writes. Verify `ALLOW / WITHIN_TRUSTED_BASELINE`, `ESCALATE / AMOUNT_OUTSIDE_VENDOR_BASELINE`, and `DENY / DESTINATION_MISMATCH`.
+3. Inspect **Saved outcomes, not just a simulation**. These are separately persisted canonical synthetic requests and decisions, not the GLM-observed invoices.
+4. Inspect **Recorded earlier PayPal Sandbox payout**. Its batch, item and webhook evidence belong to an older trusted-agent test in a different deployment. It must never be presented as a payment caused by GLM invoice extraction.
+5. Sign out. The restricted route, its policy API, original invoice downloads and ADMIN/payment controls must remain inaccessible to a revoked or logged-out reviewer.
+
+**Operator-only route:** `/demo` requires ADMIN membership and offers **Load or replay three demo decisions**, which creates or reuses only fixed nonpayable synthetic fixtures. It is not the external judge login. **/sandbox-payout** is a separate owner-only experimental PayPal rail; do not invoke it in judge replay or video recording.
+
+Until hosted reviewer access is independently witnessed, **do not claim the external demo is judge-ready**. The currently unmerged combined security candidate is [PR #49](https://github.com/redasgard/mandategate/pull/49); the current Render app still uses older development source. For a reproducible local non-paying checkout, follow the setup below and keep payment credentials disabled.
 
 ## Implemented versus targeted stack
 
 **Implemented / independently tested to the indicated boundary:**
 
 - Next.js, TypeScript, Node.js, PostgreSQL / Drizzle, Better Auth, authenticated scoped agent ingestion and admin review
-- Render web-hosted development build; Neon-backed isolated payments-disabled judge preview
+- Render development host with explicit `neon-sandbox` isolation: permanently nonpayable judge cases and a separately fenced fixed USD 1.01 Sandbox payout laboratory. Restricted reviewer access remains unprovisioned/unverified.
 - Deterministic payment-policy decisions, tenant-bound invoices and provenance, PDF/image artifact storage, PDF.js source parsing, T2 review controls, historical AP import and destination mismatch guards
-- PayPal Payouts REST Sandbox, permanent idempotency and webhook/reconciliation, with **historical** live Slice 2 proof
+- PayPal Payouts REST Sandbox with persistent logical-payment correlation IDs, bounded duplicate-safe retries, verified webhooks and reconciliation, backed by **historical** Slice 2 proof. New stale-worker and late-settlement guards are in unmerged PR #49.
 - Experiential Labs GLM-5.3 Flash with **consented fictional T1 observations only** on the separate synthetic lane, and strict provider-privacy fail-closed checks
 
 **Targeted but not release-verified:** persistent Assistant, inferred-policy activation, scheduling / Bryntum, AG Grid investigation, tamper-evident Merkle + Base Sepolia anchoring, Elastic, Zapier MCP, Postman demonstration collection, and Qwen / Jev / Laya challenger evaluation. Inclusion in the architecture does **not** mean those integrations are live.
