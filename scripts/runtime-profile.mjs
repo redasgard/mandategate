@@ -73,7 +73,7 @@ export function runtimeProfile(env) {
       for (const key of ['PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET']) {
         const value = env[key];
         if (typeof value !== 'string' || value.length < 8 ||
-            value.length > 4096 || /\\s/.test(value))
+            value.length > 4096 || /\s/.test(value))
           throw Error('RUNTIME_SANDBOX_CREDENTIALS_REQUIRED');
         childEnv[key] = value;
       }
@@ -83,7 +83,7 @@ export function runtimeProfile(env) {
         childEnv.PAYPAL_WEBHOOK_ID = env.PAYPAL_WEBHOOK_ID;
       const receiver = env.DEMO_PAYPAL_RECEIVER_EMAIL?.trim();
       if (!receiver || receiver.length > 254 ||
-          !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(receiver) ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver) ||
           receiver === 'ap@northstar.example')
         throw Error('RUNTIME_SANDBOX_RECEIVER_REQUIRED');
       childEnv.DEMO_PAYPAL_RECEIVER_EMAIL = receiver;
