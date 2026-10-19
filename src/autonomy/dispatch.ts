@@ -27,7 +27,7 @@ export type AutonomousPreviewResult = AutonomousCandidate & {
  * eligible. This function is READ-ONLY: the payment executor is not invoked.
  */
 export async function listAutonomousCandidates(
-  now: Date = new Date(), limit = 20,
+  now: Date = new Date(), limit = 20, organizationId:string|null=null,
 ): Promise<AutonomousCandidate[]> {
   if (!Number.isFinite(now.valueOf())) throw Error("AUTONOMY_CLOCK_INVALID");
   const count = Math.min(50, Math.max(1, Math.trunc(limit) || 20));
@@ -44,6 +44,7 @@ export async function listAutonomousCandidates(
     "where vendor_id=pr.vendor_id and trusted=true",
     "order by created_at desc,id desc limit 1) vd on true",
     "where pr.currency='USD' and pr.amount_cents>0",
+    "and ($3::text is null or pr.organization_id=$3)",
     "and pr.amount_cents <= p.auto_pay_max_amount_cents",
     "and pr.amount_cents <= v.normal_max_amount_cents",
     "and pr.requested_destination=vd.destination",
@@ -85,7 +86,7 @@ export async function listAutonomousCandidates(
     "and m.role='ADMIN' and m.active=true",
     "where r.payment_request_id=pr.id and r.action='ACCEPT')))",
     "order by pr.created_at asc,pr.id asc limit $2",
-  ].join(" "), [now,count]);
+  ].join(" "), [now,count,organizationId]);
   return result.rows.map(r=>({
     requestId:String(r.id),
     logicalPaymentId:String(r.logical_payment_id),
@@ -105,9 +106,9 @@ export async function listAutonomousCandidates(
  * and before crossing the PayPal boundary.
  */
 export async function previewAutonomousDispatch(
-  now: Date = new Date(), limit = 20,
+  now: Date = new Date(), limit = 20, organizationId:string|null=null,
 ): Promise<AutonomousPreviewResult[]> {
-  const candidates = await listAutonomousCandidates(now,limit);
+  const candidates = await listAutonomousCandidates(now,limit,organizationId);
   const results: AutonomousPreviewResult[] = [];
   for(const candidate of candidates) {
     try {
