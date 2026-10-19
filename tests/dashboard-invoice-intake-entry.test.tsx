@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const mocks = vi.hoisted(() => ({
-  session: vi.fn(), decisions: vi.fn(), summary: vi.fn(),
+  session: vi.fn(), decisions: vi.fn(), summary: vi.fn(), incidents: vi.fn(),
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -14,6 +14,11 @@ vi.mock("../src/auth/auth", () => ({
 vi.mock("../src/db/views", () => ({
   listRecentDecisions: mocks.decisions,
 }));
+vi.mock("../src/db/dashboard-incidents", () => ({
+  readDashboardIncidents: mocks.incidents,
+  parseIncidentFilter: (raw: unknown) => raw === "PAYOUT" ? "PAYOUT" : "ALL",
+  INCIDENT_FILTERS: ["ALL","REVIEW","BLOCKED","PAYOUT"],
+}));
 vi.mock("../src/db/dashboard-overview", () => ({
   readDashboardSummary: mocks.summary,
 }));
@@ -23,6 +28,7 @@ beforeEach(() => {
   mocks.session.mockReset();
   mocks.decisions.mockReset();
   mocks.summary.mockReset();
+  mocks.incidents.mockReset().mockResolvedValue([]);
   mocks.session.mockResolvedValue({ user: { id: "reviewer-admin", email: "admin@example.test" } });
   mocks.decisions.mockResolvedValue([]);
   mocks.summary.mockResolvedValue({
@@ -41,6 +47,8 @@ describe("judge and admin invoice-intake discovery", () => {
     expect(html).toContain("separate from payment approval");
     expect(mocks.decisions).toHaveBeenCalledWith("reviewer-admin");
     expect(mocks.summary).toHaveBeenCalledWith("reviewer-admin");
+    expect(mocks.incidents).toHaveBeenCalledWith("reviewer-admin", "ALL");
+    expect(html).toContain('aria-label="Incident investigation"');
   });
 
   it("does not expose the invoice intake to unauthenticated visitors", async () => {
@@ -48,5 +56,6 @@ describe("judge and admin invoice-intake discovery", () => {
     await expect(DashboardPage()).rejects.toThrow("REDIRECT:/sign-in");
     expect(mocks.decisions).not.toHaveBeenCalled();
     expect(mocks.summary).not.toHaveBeenCalled();
+    expect(mocks.incidents).not.toHaveBeenCalled();
   });
 });

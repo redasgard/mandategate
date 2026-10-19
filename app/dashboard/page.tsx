@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { listRecentDecisions } from "@/src/db/views";
 import { readDashboardSummary } from "@/src/db/dashboard-overview";
+import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-incidents";
+import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { demoPreviewEnabled } from "@/src/demo/scenarios";
 
@@ -17,15 +19,19 @@ function exactCents(cents: string, currency: string) {
     (value % 100n).toString().padStart(2, "0");
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: {
+  searchParams?: Promise<{ risk?: string | string[] }>;
+} = {}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
   const demoMode = demoPreviewEnabled(process.env);
   const sandboxPayouts = process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox" &&
     process.env.MANDATEGATE_DISABLE_PAYMENTS === "0";
-  const [rows, summary] = await Promise.all([
+  const incidentFilter = parseIncidentFilter((await searchParams)?.risk);
+  const [rows, summary, incidents] = await Promise.all([
     listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
+    readDashboardIncidents(session.user.id, incidentFilter),
   ]);
 
   return (
@@ -70,6 +76,7 @@ export default async function DashboardPage() {
       </section>
 
       <div className="dashboard-panels">
+        <IncidentInvestigation incidents={incidents} activeFilter={incidentFilter} />
         <section className="panel">
           <div className="panel-head">
             <div><p className="eyebrow">Payment reporting</p><h2>Observed state, not invented balances</h2></div>
