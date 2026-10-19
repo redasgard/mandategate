@@ -37,9 +37,11 @@ export default async function SandboxPayoutPage() {
       <p className="eyebrow">PayPal AI Hackathon / actual Sandbox API</p>
       <h1>{invoiceMode?"Reviewed invoice to PayPal Sandbox":"One authorized, fictional $1.01 payout"}</h1>
       <p className="muted">
-        This is a separate synthetic canonical payment, not a payout caused by
-        GLM invoice extraction. The judge&apos;s three ALLOW/ESCALATE/DENY examples
-        remain forever nonpayable. Real PayPal funds are never involved.
+        {invoiceMode
+          ? "This experiment begins with a genuine test PDF containing a fictional invoice. Its source is simulated, and a human must approve the exact tuple. GLM cannot authorize a payment."
+          : "This is a standalone fictional payment, independent of invoice extraction."}
+        {" "}The three canonical ALLOW/ESCALATE/DENY scenarios remain nonpayable.
+        PayPal Sandbox uses test balances only, never production funds.
       </p>
       {invoiceMode ? <section className="review-stage">
         <h2>Invoice-linked Sandbox experiment</h2>
