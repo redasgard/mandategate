@@ -5,6 +5,10 @@ import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
 import { InvoiceReviewActions } from "./review-actions";
+import {PrepareSandboxInvoiceButton} from "./prepare-sandbox-invoice-button";
+import {DEMO_ORG_ID,DEMO_VENDOR_ID} from "@/src/demo/scenarios";
+import {SANDBOX_INVOICE,SANDBOX_AMOUNT_CENTS} from "@/src/demo/sandbox-payout-constants";
+import {sandboxPayoutEnabled} from "@/src/demo/sandbox-payout";
 
 export default async function InvoiceBindingReviewPage({params}:{params:Promise<{id:string}>}) {
   const session=await auth.api.getSession({headers:await headers()});
@@ -13,7 +17,7 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
   if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
   const result=await pool.query(
     ["select b.id,b.organization_id,b.vendor_id,b.authorization_status,b.tuple_sha256,b.expires_at,b.invoice_number,",
-     "b.amount_cents,b.currency,b.artifact_id,b.artifact_sha256,b.verified_claim_set_id,",
+     "b.amount_cents,b.currency,b.artifact_id,b.artifact_sha256,b.verified_claim_set_id,b.linked_payment_request_id,",
      "b.proposed_reason_codes,b.proposed_outcome,vd.destination as trusted_destination,",
      "v.name as vendor_name,c.verification_status,c.source_kind,a.method as origin_method,",
      "a.independent_evidence_reference,ch.kind as origin_channel",
@@ -50,6 +54,15 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
     }]};
   }
   const historyBlocked=historicalRisk.reasonCodes.length>0;
+  const sandboxInvoiceDemo=
+    process.env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO==="1" &&
+    sandboxPayoutEnabled() &&
+    binding.organization_id===DEMO_ORG_ID &&
+    binding.vendor_id===DEMO_VENDOR_ID &&
+    binding.invoice_number===SANDBOX_INVOICE &&
+    amount===SANDBOX_AMOUNT_CENTS &&
+    binding.currency==="USD" &&
+    binding.trusted_destination===process.env.DEMO_PAYPAL_RECEIVER_EMAIL;
   return <main className="shell narrow">
     <Link href="/dashboard" className="back">← Dashboard</Link>
     <section className="panel detail">
@@ -83,6 +96,19 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
       {binding.authorization_status==="PROPOSED"
         ? <InvoiceReviewActions id={id} expectedTupleSha256={binding.tuple_sha256} approvalBlocked={historyBlocked} />
         : <p>This binding cannot be reviewed again. Its existing authorization is immutable.</p>}
+      {sandboxInvoiceDemo && binding.authorization_status==="AUTHORIZED"
+        ? <PrepareSandboxInvoiceButton bindingId={id}/>
+        : null}
+      {sandboxInvoiceDemo && binding.authorization_status==="CONSUMED" && binding.linked_payment_request_id
+        ? <p><Link href={"/payments/"+encodeURIComponent(binding.linked_payment_request_id)}>
+            Open the prepared fictional Sandbox payment
+          </Link></p>
+        : null}
+      {sandboxInvoiceDemo
+        ? <p className="muted">This is a fictional Sandbox issuer simulation, not verification
+            of an actual supplier. Only the exact reviewed USD 1.01 tuple can use the
+            restricted Sandbox payment rail.</p>
+        : null}
     </section>
   </main>;
 }
