@@ -4,6 +4,8 @@ import { canApplyRemoteStatusTransition } from "../paypal/status";
 import { derivePayPalIds } from "./ids";
 import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../authority/binding-guard";
 import { escalationSnapshotDigest } from "../../history/escalation-review";
+import { evaluatePayment } from "../../policy/decision";
+import { assessHistoricalPaymentRisk } from "../../history/anomaly";
 import { SANDBOX_ORG_ID, SANDBOX_VENDOR_ID, SANDBOX_DEST_ID,
   SANDBOX_POLICY_ID, SANDBOX_INVOICE, SANDBOX_AMOUNT_CENTS } from "../../demo/sandbox-payout-constants";
 import type {
@@ -53,6 +55,12 @@ export class PostgresExecutionStore implements ExecutionStore {
                 and exists (
                   select 1 from payment_escalation_reviews rev
                   where rev.payment_request_id=pr.id and rev.action='ACCEPT'
+                  and exists (
+                    select 1 from organization_admin_memberships m
+                    where m.organization_id=pr.organization_id
+                      and m.user_id=rev.reviewer_user_id
+                      and m.role='ADMIN' and m.active=true
+                  )
                 )
                 then 'APPROVED' else pd.outcome end as effective_outcome,
               vd.destination as current_trusted_destination
@@ -114,6 +122,49 @@ export class PostgresExecutionStore implements ExecutionStore {
       // A future runtime misconfiguration cannot make the test fixture payable.
       return null;
     }
+    if (row.outcome === "ALLOW" && row.source !== "verified_invoice") {
+      // An old ALLOW decision does not survive a policy shutdown or tighter
+      // vendor/organization limits. Recheck at initial claim and once more
+      // immediately before the protected PayPal POST.
+      if (row.status !== "ALLOWED") return null;
+      const current = await pool.query([
+        "select v.normal_max_amount_cents,p.auto_pay_max_amount_cents",
+        "from vendors v join lateral (",
+        "select auto_pay_max_amount_cents from policies",
+        "where organization_id=v.organization_id and active=true",
+        "order by created_at desc,id desc limit 1",
+        ") p on true where v.id=$1 and v.organization_id=$2",
+      ].join(" "), [row.vendor_id,row.organization_id]);
+      if (current.rows.length !== 1) return null;
+      const vendorLimit = Number(current.rows[0].normal_max_amount_cents);
+      const policyLimit = Number(current.rows[0].auto_pay_max_amount_cents);
+      if (!Number.isSafeInteger(vendorLimit) || vendorLimit < 0 ||
+          !Number.isSafeInteger(policyLimit) || policyLimit < 0) return null;
+      const decision = evaluatePayment({
+        amountCents: row.amount_cents,
+        currency: row.currency,
+        requestedDestination: row.requested_destination,
+        trustedDestination: row.current_trusted_destination,
+        vendorNormalMaxAmountCents: vendorLimit,
+        policyAutoPayMaxAmountCents: policyLimit,
+      });
+      if (decision.outcome !== "ALLOW") return null;
+      // A paid-history import added after the original ALLOW decision may
+      // reveal a duplicate or abnormal invoice before money leaves.
+      try {
+        const history = await assessHistoricalPaymentRisk({
+          organizationId:row.organization_id,
+          vendorId:row.vendor_id,
+          invoiceNumber:row.invoice_number,
+          amountCents:row.amount_cents,
+          currency:row.currency,
+        });
+        if (history.reasonCodes.length > 0) return null;
+      } catch {
+        // The risk evidence being unavailable never becomes permission to pay.
+        return null;
+      }
+    }
     if (row.outcome==="ESCALATE" && row.effective_outcome==="APPROVED") {
       // Original human approval was bound to a frozen request/policy/vendor
       // state before the request entered APPROVED. Reconstruct that exact
@@ -143,6 +194,21 @@ export class PostgresExecutionStore implements ExecutionStore {
         outcome:"ESCALATE",status:"ESCALATED",
       });
       if(snapshot!==review.rows[0].request_snapshot_sha256)return null;
+      // Approval predates any later AP-history import. An accepted escalation
+      // must not pay a newly discovered duplicate or risk outlier on the
+      // strength of an older otherwise-valid reviewer snapshot.
+      try {
+        const history=await assessHistoricalPaymentRisk({
+          organizationId:row.organization_id,
+          vendorId:row.vendor_id,
+          invoiceNumber:row.invoice_number,
+          amountCents:row.amount_cents,
+          currency:row.currency,
+        });
+        if(history.reasonCodes.length>0)return null;
+      } catch {
+        return null;
+      }
     }
     if (row.source === "verified_invoice") {
       if (!row.authority_binding_id) return null;

@@ -72,6 +72,25 @@ async function submitClaimed(
   now: Date,
   beforeSubmit?: () => Promise<void>,
 ): Promise<ExecutionRecord> {
+  const blockForRevalidation = async (error: unknown): Promise<ExecutionRecord> => {
+    const code = error instanceof Error ? error.message : "PAYMENT_AUTHORITY_CHANGED";
+    const blocked = await store.markBlocked(execution.logicalPaymentId, code, now);
+    await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMISSION_BLOCKED_BY_REVALIDATION", { reason: code });
+    return blocked;
+  };
+
+  // Finish the optional async actor/pre-submit check BEFORE taking the last
+  // authority snapshot; it can race with a policy, reviewer or recipient
+  // revocation. A failed check must block the claim and never reach PayPal.
+  try {
+    await beforeSubmit?.();
+  } catch (error) {
+    return blockForRevalidation(error);
+  }
+
+  // Keep read failures outside the policy-rejection catch. A transient DB
+  // outage must not permanently convert a retryable SUBMITTING claim into
+  // PAYMENT_BLOCKED merely because revalidation was unavailable.
   const fresh = await store.getAuthoritativePayment(payment.requestId);
   try {
     if (!fresh || fresh.logicalPaymentId !== payment.logicalPaymentId) {
@@ -81,12 +100,8 @@ async function submitClaimed(
     if (fresh.amountCents !== payment.amountCents || fresh.currency !== payment.currency || fresh.requestedDestination !== payment.requestedDestination) {
       throw new ExecutionRejectedError("PAYMENT_AUTHORITY_CHANGED");
     }
-    await beforeSubmit?.();
   } catch (error) {
-    const code = error instanceof Error ? error.message : "PAYMENT_AUTHORITY_CHANGED";
-    const blocked = await store.markBlocked(execution.logicalPaymentId, code, now);
-    await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMISSION_BLOCKED_BY_REVALIDATION", { reason: code });
-    return blocked;
+    return blockForRevalidation(error);
   }
 
   await store.appendEvent(execution.logicalPaymentId, "PAYPAL_SUBMITTING", {
