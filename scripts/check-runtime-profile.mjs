@@ -1,4 +1,5 @@
 import './check-invoice-ai-env.mjs';
+import './check-judge-source-allowlist.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
