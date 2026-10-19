@@ -228,7 +228,12 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
       return { requestId, logicalPaymentId, status, decision, paymentExecuted: false, replayed: false };
     });
   } catch (error) {
-    const pg = error as { code?: string; constraint?: string };
+    // Drizzle's query wrapper carries PostgreSQL's SQLSTATE and constraint
+    // on cause. Preserve the intended deterministic 409 boundary.
+    const wrapped=error as {code?:string;constraint?:string;cause?:{
+      code?:string;constraint?:string;
+    }};
+    const pg=wrapped.cause?.code ? wrapped.cause : wrapped;
     if (pg.code === "23505" && pg.constraint === "autopay_binding_vendor_invoice_uq") {
       throw new Error("AUTOPAY_INVOICE_DUPLICATE");
     }
