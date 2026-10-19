@@ -41,6 +41,17 @@ export function canApplyRemoteStatusTransition(
     ]).has(next);
   }
 
+  // Manual reconciliation blocks automatic retries, not truthful settlement
+  // evidence. A later authenticated PayPal lookup or verified webhook may
+  // resolve an unknown payout into a definitive terminal result. Never move
+  // it back to an executable or still-pending state.
+  if (current === "PAYMENT_UNKNOWN_MANUAL_RECONCILIATION") {
+    return new Set<ExecutionStatus>([
+      "PAID", "PAYMENT_FAILED", "PAYMENT_BLOCKED",
+      "PAYMENT_RETURNED", "PAYMENT_REFUNDED", "PAYMENT_REVERSED",
+    ]).has(next);
+  }
+
   if (isTerminalExecutionStatus(current)) return false;
 
   return !new Set<ExecutionStatus>([
