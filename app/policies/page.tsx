@@ -28,6 +28,7 @@ export default async function PoliciesPage(){
     <section className="panel detail">
       <p className="eyebrow">Active policy authority</p>
       <h2>Standing auto-pay limits</h2>
+      <p><Link href="/autopay">Manage autonomous standing mandates →</Link></p>
       <p className="muted">This stage supports <strong>stricter limits only</strong>.
         Raising auto-pay authority is deliberately excluded from this console.</p>
       {data.policies.length===0?<p className="empty">No active policies for an organization you administer.</p>:
