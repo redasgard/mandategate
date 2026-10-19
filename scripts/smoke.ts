@@ -580,6 +580,19 @@ const rejectedAccept=await fetch(historicalReviewPath,{
 });
 if(process.env.MANDATEGATE_DISABLE_PAYMENTS==="1" && rejectedAccept.status!==503)
   throw Error("disabled payment rail did not reject ACCEPT: "+rejectedAccept.status);
+const obligationsDenied=await fetch(baseUrl+"/obligations",{redirect:"manual"});
+if(![302,303,307,308].includes(obligationsDenied.status))
+  throw Error("anonymous imported AP obligations view was not restricted");
+const obligationsPage=await fetch(baseUrl+"/obligations",{headers:{cookie:adminCookie}});
+if(obligationsPage.status!==200 || !(await obligationsPage.text())
+  .includes("Time to act on outstanding invoices."))
+  throw Error("signed-in imported AP obligations view not rendered");
+const obligationsDashboard=await fetch(baseUrl+"/dashboard",{headers:{cookie:adminCookie}});
+if(obligationsDashboard.status!==200 ||
+   !(await obligationsDashboard.text()).includes("Imported AP obligations"))
+  throw Error("dashboard did not show imported obligations without payout scheduling");
+console.log("obligation smoke passed: signed-in imported AP view and dashboard, anonymous denied, no payouts");
+
 const trustPage=await fetch(`${baseUrl}/vendors`,{headers:{cookie:adminCookie}});
 if(trustPage.status!==200 ||
    !(await trustPage.text()).includes("Trusted vendors and payment re-verification"))
