@@ -18,7 +18,7 @@ Source: `scope.md > The Core Loop`, `scope.md > What "Working" Looks Like`.
    - ALLOW
    - ESCALATE
    - DENY
-4. Allowed payments move into execution.
+4. Allowed payments with independently verified trust and a currently valid standing mandate move into **automatic execution**, without a per-invoice admin click. The normal operational mode is exception-only.
 5. Escalated payments appear prominently for admin review.
 6. Blocked/denied payments remain stopped and show why.
 7. The admin can inspect the evidence, detection source, and reasoning behind any consequential decision.
