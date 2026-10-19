@@ -9,7 +9,7 @@ import {AutopayBudgetError,inspectAutopayBinding,
  * integration. Fake gateway only; no production credentials or providers.
  * NEVER call this method from a web route or a shared/Neon database.
  */
-function assertDisposableSimulationEnvironment(){
+export function assertDisposableSimulationEnvironment(){
   const url=new URL(process.env.DATABASE_URL??"postgresql://invalid@invalid/db");
   if(process.env.CI!=="true"||
      process.env.MANDATEGATE_DISABLE_PAYMENTS!=="1"||
