@@ -70,6 +70,7 @@ step migration-1 pnpm db:migrate
 step migration-2 pnpm db:migrate
 step seed-1 pnpm demo:seed
 step seed-2 pnpm demo:seed
+step autonomous-preview pnpm jobs:autopay:preview
 step judge-smoke-fixture node scripts/test-judge-smoke-fixture.mjs
 step typecheck pnpm typecheck
 step complete-unit-and-database-tests pnpm test
