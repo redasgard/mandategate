@@ -4,6 +4,7 @@ const SANDBOX = 'https://api-m.sandbox.paypal.com';
 export function invoiceAiEnvironment(env, mode) {
   if (!['neon-preview','neon-sandbox'].includes(mode) ||
       env.MANDATEGATE_ENABLE_INVOICE_AI !== '1' ||
+      (mode === 'neon-preview' && env.MANDATEGATE_DISABLE_PAYMENTS !== '1') ||
       env.RENDER_SERVICE_ID !== SERVICE) return {};
   // The non-ZDR fictional exception is never available while the Sandbox
   // payout rail is active. Strict GLM privacy preflight stays unchanged.
