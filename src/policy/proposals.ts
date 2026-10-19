@@ -225,7 +225,7 @@ export async function decidePolicyProposal(input:{
   } finally {client.release();}
 }
 export async function readPolicyConsole(actorId:string) {
-  const [active,proposals,samples]=await Promise.all([
+  const [active,proposals,samples,disabled]=await Promise.all([
     pool.query([
       "select p.id,p.organization_id,o.name as organization_name,p.name as policy_name,",
       "p.auto_pay_max_amount_cents,p.created_at",
@@ -258,6 +258,14 @@ export async function readPolicyConsole(actorId:string) {
       "percentile_disc(0.5) within group (order by amount_cents)::int as median_cents",
       "from dedup group by organization_id",
     ].join(" "),[actorId]),
+    pool.query([
+      "select p.id,p.organization_id,p.name as policy_name,p.auto_pay_max_amount_cents,p.created_at",
+      "from policies p",
+      "where p.active=false and exists (select 1 from organization_admin_memberships m",
+      "where m.organization_id=p.organization_id and m.user_id=$1",
+      "and m.role='ADMIN' and m.active=true)",
+      "order by p.created_at desc limit 30",
+    ].join(" "),[actorId]),
   ]);
   const stats=new Map(samples.rows.map(r=>[
     String(r.organization_id),{count:Number(r.n),medianCents:Number(r.median_cents)},
@@ -267,7 +275,16 @@ export async function readPolicyConsole(actorId:string) {
       id:String(p.id),organizationId:String(p.organization_id),
       organizationName:String(p.organization_name),name:String(p.policy_name),
       limitCents:Number(p.auto_pay_max_amount_cents),
+      shutdownDigest:sha("mandategate/policy-shutdown/v1\0"+JSON.stringify([
+        String(p.id),String(p.organization_id),
+        Number(p.auto_pay_max_amount_cents),new Date(p.created_at).toISOString(),
+      ])),
       paidHistory:stats.get(String(p.organization_id))??{count:0,medianCents:0},
+    })),
+    disabledPolicies:disabled.rows.map(p=>({
+      id:String(p.id),organizationId:String(p.organization_id),
+      name:String(p.policy_name),limitCents:Number(p.auto_pay_max_amount_cents),
+      disabledAt:"Inactive policy (activation history preserved)",
     })),
     proposals:proposals.rows.map(p=>({
       id:String(p.id),organizationId:String(p.organization_id),
