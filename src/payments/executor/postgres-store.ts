@@ -6,6 +6,7 @@ import { inspectCurrentAuthorityBinding, AuthorityBindingRejected } from "../../
 import { escalationSnapshotDigest } from "../../history/escalation-review";
 import { evaluatePayment } from "../../policy/decision";
 import { assessHistoricalPaymentRisk } from "../../history/anomaly";
+import {classifySandboxPaymentRail} from "../../demo/sandbox-invoice-rail";
 import { SANDBOX_ORG_ID, SANDBOX_VENDOR_ID, SANDBOX_DEST_ID,
   SANDBOX_POLICY_ID, SANDBOX_INVOICE, SANDBOX_AMOUNT_CENTS } from "../../demo/sandbox-payout-constants";
 import type {
@@ -47,6 +48,7 @@ export class PostgresExecutionStore implements ExecutionStore {
               pr.invoice_number,
               pr.status,
               pr.source,
+              pr.idempotency_key,
               pr.authority_binding_id,
               pr.vendor_id,
               pr.organization_id,
@@ -81,22 +83,28 @@ export class PostgresExecutionStore implements ExecutionStore {
     if (!row) return null;
 
     if (process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox") {
-      // This hackathon runtime may submit ONLY the single, explicit 101-cent
-      // synthetic Sandbox invoice. Never release ordinary agent API requests,
-      // judge scenarios or invoice-derived requests into this payment rail.
-      if (process.env.MANDATEGATE_DISABLE_PAYMENTS !== "0" ||
-          process.env.PAYPAL_BASE_URL !== "https://api-m.sandbox.paypal.com" ||
-          row.source !== "sandbox_fixture" ||
-          row.organization_id !== SANDBOX_ORG_ID ||
-          row.vendor_id !== SANDBOX_VENDOR_ID ||
-          row.invoice_number !== SANDBOX_INVOICE ||
-          row.status !== "ALLOWED" ||
-          row.outcome !== "ALLOW" ||
-          Number(row.amount_cents) !== SANDBOX_AMOUNT_CENTS ||
-          row.currency !== "USD" ||
-          row.requested_destination !== process.env.DEMO_PAYPAL_RECEIVER_EMAIL ||
-          row.current_trusted_destination !== process.env.DEMO_PAYPAL_RECEIVER_EMAIL) return null;
-      const state = await pool.query([
+      // The only two permissible demo identities use fixed fictional USD 1.01
+      // and the configured PayPal Sandbox receiver. An invoice-derived payout
+      // requires a consumed, current T4 human-approved PDF source binding;
+      // its independent validation below is not replaced by this envelope.
+      const rail=classifySandboxPaymentRail({
+        source:row.source,
+        organizationId:row.organization_id,
+        vendorId:row.vendor_id,
+        invoiceNumber:row.invoice_number,
+        amountCents:Number(row.amount_cents),
+        currency:row.currency,
+        requestedDestination:row.requested_destination,
+        currentTrustedDestination:row.current_trusted_destination,
+        authorityBindingId:row.authority_binding_id??null,
+        idempotencyKey:row.idempotency_key??null,
+        status:row.status,
+        outcome:row.outcome,
+        effectiveOutcome:row.effective_outcome,
+      });
+      if(!rail) return null;
+      if(rail==="FIXED_MANUAL_FIXTURE"){
+        const state = await pool.query([
         "select v.name,v.normal_max_amount_cents,",
         "(select count(*)::int from vendor_destinations d",
         "where d.vendor_id=v.id and d.trusted=true) as trusted_count,",
@@ -118,6 +126,7 @@ export class PostgresExecutionStore implements ExecutionStore {
           Number(current.trusted_count) !== 1 ||
           Number(current.exact_receiver) !== 1 ||
           Number(current.exact_policy) !== 1) return null;
+      }
     } else if (row.source === "sandbox_fixture") {
       // A future runtime misconfiguration cannot make the test fixture payable.
       return null;
