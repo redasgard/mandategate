@@ -10,6 +10,7 @@ import {
 } from "@/src/db/schema";
 import { evaluatePayment } from "@/src/policy/decision";
 import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
+import {SANDBOX_ORG_ID,SANDBOX_VENDOR_ID,SANDBOX_INVOICE,SANDBOX_AMOUNT_CENTS,SANDBOX_KEY} from "@/src/demo/sandbox-payout-constants";
 
 export type CanonicalPaymentRequest = {
   organizationId: string;
@@ -19,7 +20,7 @@ export type CanonicalPaymentRequest = {
   currency: string;
   paymentDestination: string;
   idempotencyKey: string;
-  source: "agent_api" | "demo_fixture";
+  source: "agent_api" | "demo_fixture" | "sandbox_fixture";
 };
 
 async function findReplay(input: CanonicalPaymentRequest) {
@@ -61,6 +62,16 @@ async function findReplay(input: CanonicalPaymentRequest) {
 }
 
 export async function submitCanonicalPaymentRequest(input: CanonicalPaymentRequest) {
+  if(input.source==="sandbox_fixture" && (
+    process.env.MANDATEGATE_RUNTIME_MODE!=="neon-sandbox" ||
+    input.organizationId!==SANDBOX_ORG_ID ||
+    input.vendorId!==SANDBOX_VENDOR_ID ||
+    input.invoiceNumber!==SANDBOX_INVOICE ||
+    input.amountCents!==SANDBOX_AMOUNT_CENTS ||
+    input.currency!=="USD" ||
+    input.idempotencyKey!==SANDBOX_KEY ||
+    input.paymentDestination!==process.env.DEMO_PAYPAL_RECEIVER_EMAIL))
+    throw new Error("SANDBOX_FIXTURE_REQUEST_INVALID");
   const existing = await findReplay(input);
   if (existing) return existing;
 
@@ -86,20 +97,28 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
       // Imported AP history can only raise risk, never grant a destination,
       // increase a policy threshold or change a DENY into an ALLOW.
       let history: Awaited<ReturnType<typeof assessHistoricalPaymentRisk>>;
-      try {
-        history = await assessHistoricalPaymentRisk({
-          organizationId:input.organizationId,
-          vendorId:input.vendorId,
-          invoiceNumber:input.invoiceNumber,
-          amountCents:input.amountCents,
-          currency:input.currency,
-        });
-      } catch {
-        history = {
-          reasonCodes:["AP_HISTORY_UNAVAILABLE"],
-          evidence:[{code:"AP_HISTORY_UNAVAILABLE",source:"ap_history.provenance",
-            observed:"unavailable"}],
-        };
+      if(input.source==="sandbox_fixture") {
+        // The dedicated 101-cent payout is synthetic, explicitly authorized
+        // through its fixed identity. There is deliberately no imported
+        // historical AP record for this one-time fictional test recipient.
+        // Never exempt ordinary agent_api or verified_invoice requests.
+        history={reasonCodes:[],evidence:[]};
+      } else {
+        try {
+          history = await assessHistoricalPaymentRisk({
+            organizationId:input.organizationId,
+            vendorId:input.vendorId,
+            invoiceNumber:input.invoiceNumber,
+            amountCents:input.amountCents,
+            currency:input.currency,
+          });
+        } catch {
+          history = {
+            reasonCodes:["AP_HISTORY_UNAVAILABLE"],
+            evidence:[{code:"AP_HISTORY_UNAVAILABLE",source:"ap_history.provenance",
+              observed:"unavailable"}],
+          };
+        }
       }
       const historyReasons=history.reasonCodes;
       const decision = historyReasons.length===0 ? baseDecision : {

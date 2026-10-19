@@ -1,8 +1,8 @@
-/** A reversible, payment-disabled runtime selection. Never edits process.env. */
+/** A reversible, isolated runtime selection. Never edits process.env. */
 import { invoiceAiEnvironment } from './invoice-ai-env.mjs';
 export const NEON_HOST = 'ep-silent-poetry-arjowm4d.c-4.us-west-2.aws.neon.tech';
 export const RENDER_HOST = 'dpg-db39d5rbc2fs73d1ke70-a';
-const modes = new Set(['legacy', 'neon-preview', 'render-preview']);
+const modes = new Set(['legacy', 'neon-preview', 'neon-sandbox', 'render-preview']);
 const passthrough = ['PATH', 'HOME', 'LANG', 'TZ', 'TMPDIR', 'NODE_ENV',
   'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'RENDER_GIT_COMMIT'];
 function parseDatabase(value) {
@@ -26,10 +26,16 @@ export function runtimeProfile(env) {
     }
     return { mode, isolated: false };
   }
-  if (env.MANDATEGATE_DISABLE_PAYMENTS !== '1') throw Error('RUNTIME_PAYMENT_SWITCH_REQUIRED');
-  const value = mode === 'neon-preview' ? env.NEON_PREVIEW_DATABASE_URL : env.DATABASE_URL;
+  // The one payment-capable mode is explicit. Every other preview retains its
+  // global kill switch. No shortcut through the broad legacy environment.
+  if (mode !== 'neon-sandbox' && env.MANDATEGATE_DISABLE_PAYMENTS !== '1')
+    throw Error('RUNTIME_PAYMENT_SWITCH_REQUIRED');
+  if (mode === 'neon-sandbox' && !['0','1'].includes(env.MANDATEGATE_DISABLE_PAYMENTS))
+    throw Error('RUNTIME_PAYMENT_SWITCH_REQUIRED');
+  const neonMode = mode === 'neon-preview' || mode === 'neon-sandbox';
+  const value = neonMode ? env.NEON_PREVIEW_DATABASE_URL : env.DATABASE_URL;
   const url = parseDatabase(value);
-  if (mode === 'neon-preview') {
+  if (neonMode) {
     if (![NEON_HOST, NEON_HOST.replace('arjowm4d.', 'arjowm4d-pooler.')].includes(url.hostname) || url.pathname !== '/neondb') throw Error('RUNTIME_NEON_TARGET_MISMATCH');
     if (!['require', 'verify-full', 'verify-ca'].includes(url.searchParams.get('sslmode'))) {
       throw Error('RUNTIME_NEON_TLS_REQUIRED');
@@ -54,9 +60,37 @@ export function runtimeProfile(env) {
   for (const key of passthrough) if (env[key] !== undefined) childEnv[key] = env[key];
   Object.assign(childEnv, { DATABASE_URL: value, BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: auth.origin, PORT: port, PREVIEW_HOST: host,
-    MANDATEGATE_DISABLE_PAYMENTS: '1', MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
+    MANDATEGATE_DISABLE_PAYMENTS: mode === 'neon-sandbox' ? env.MANDATEGATE_DISABLE_PAYMENTS : '1',
+    MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
+  if (mode === 'neon-sandbox') {
+    // A reviewer may replay the forever-nonpayable synthetic demo even while
+    // a separate trusted request uses PayPal Sandbox. No reviewer is ADMIN.
+    childEnv.MANDATEGATE_JUDGE_PREVIEW_ENABLED = '1';
+    if (env.MANDATEGATE_DISABLE_PAYMENTS === '0') {
+      if (env.MANDATEGATE_SANDBOX_PAYOUTS !== '1' ||
+          env.PAYPAL_BASE_URL !== 'https://api-m.sandbox.paypal.com')
+        throw Error('RUNTIME_SANDBOX_PAYOUT_GRANT_REQUIRED');
+      for (const key of ['PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET']) {
+        const value = env[key];
+        if (typeof value !== 'string' || value.length < 8 ||
+            value.length > 4096 || /\s/.test(value))
+          throw Error('RUNTIME_SANDBOX_CREDENTIALS_REQUIRED');
+        childEnv[key] = value;
+      }
+      childEnv.PAYPAL_BASE_URL = 'https://api-m.sandbox.paypal.com';
+      if (typeof env.PAYPAL_WEBHOOK_ID === 'string' &&
+          /^[A-Za-z0-9-]{8,128}$/.test(env.PAYPAL_WEBHOOK_ID))
+        childEnv.PAYPAL_WEBHOOK_ID = env.PAYPAL_WEBHOOK_ID;
+      const receiver = env.DEMO_PAYPAL_RECEIVER_EMAIL?.trim();
+      if (!receiver || receiver.length > 254 ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver) ||
+          receiver === 'ap@northstar.example')
+        throw Error('RUNTIME_SANDBOX_RECEIVER_REQUIRED');
+      childEnv.DEMO_PAYPAL_RECEIVER_EMAIL = receiver;
+    }
+  }
   const invoiceAi = invoiceAiEnvironment(env, mode);
-  if (mode === 'neon-preview') {
+  if (neonMode) {
     // Boolean-only diagnostics; never log or return the API key or any URL.
     console.info('INVOICE_AI_CONFIG', JSON.stringify({
       optedIn: env.MANDATEGATE_ENABLE_INVOICE_AI === '1',
@@ -64,10 +98,11 @@ export function runtimeProfile(env) {
       parentKeyPresent: typeof env.EXPLABS_API_KEY === 'string' && env.EXPLABS_API_KEY.length > 0,
       forwardedKeyPresent: typeof invoiceAi.EXPLABS_API_KEY === 'string' && invoiceAi.EXPLABS_API_KEY.length > 0,
       syntheticExceptionEnabled: invoiceAi.MANDATEGATE_SYNTHETIC_NON_ZDR_TEST === '1',
+      sandboxPayoutCredentialsForwarded: Boolean(childEnv.PAYPAL_CLIENT_ID && childEnv.PAYPAL_CLIENT_SECRET),
     }));
   }
   Object.assign(childEnv, invoiceAi);
-  // Invoice AI is separately opt-in. Payment keys, rotation/proof flags,
-  // NODE_OPTIONS, and the alternate database connection never reach the server.
+  // Invoice AI is separately opt-in. Only explicitly approved Sandbox keys
+  // cross in neon-sandbox; agent keys, host overrides and alternate DB stay out.
   return { mode, isolated: true, childEnv };
 }

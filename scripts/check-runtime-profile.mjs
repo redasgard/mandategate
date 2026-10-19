@@ -52,6 +52,56 @@ test('backout selection uses preserved original target without seeding or paymen
   assert.equal(p.isolated, true);
   assert.equal(p.childEnv.MANDATEGATE_DISABLE_PAYMENTS, '1');
 });
+test('isolated Neon Sandbox forwards only explicitly approved PayPal Sandbox credentials',()=>{
+  const configured=runtimeProfile({...env,
+    MANDATEGATE_RUNTIME_MODE:'neon-sandbox',MANDATEGATE_DISABLE_PAYMENTS:'0',
+    MANDATEGATE_SANDBOX_PAYOUTS:'1',
+    PAYPAL_BASE_URL:'https://api-m.sandbox.paypal.com',
+    PAYPAL_CLIENT_ID:'sandbox-client-id-123',
+    PAYPAL_CLIENT_SECRET:'sandbox-secret-123',
+    PAYPAL_WEBHOOK_ID:'WH-1234567890',
+    DEMO_PAYPAL_RECEIVER_EMAIL:'sb-test-recipient@example.test',
+    DEMO_AGENT_API_KEY:'never-forward-this',
+    DEMO_PAYMENT_AGENT_API_KEY:'never-forward-that',
+    GATE_H_PAYPAL_SINGLE_POST_GRANT:'never-forward',
+  });
+  assert.equal(configured.childEnv.MANDATEGATE_DISABLE_PAYMENTS,'0');
+  assert.equal(configured.childEnv.MANDATEGATE_JUDGE_PREVIEW_ENABLED,'1');
+  assert.equal(configured.childEnv.PAYPAL_BASE_URL,'https://api-m.sandbox.paypal.com');
+  assert.equal(configured.childEnv.PAYPAL_CLIENT_ID,'sandbox-client-id-123');
+  assert.equal(configured.childEnv.PAYPAL_CLIENT_SECRET,'sandbox-secret-123');
+  assert.equal(configured.childEnv.DEMO_PAYPAL_RECEIVER_EMAIL,'sb-test-recipient@example.test');
+  for(const key of ['DEMO_AGENT_API_KEY','DEMO_PAYMENT_AGENT_API_KEY',
+    'GATE_H_PAYPAL_SINGLE_POST_GRANT','NODE_OPTIONS','NEON_PREVIEW_DATABASE_URL']){
+    assert.equal(configured.childEnv[key],undefined,key);
+  }
+});
+test('Neon Sandbox keeps PayPal credentials isolated while payments are disabled',()=>{
+  const selected=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',
+    PAYPAL_CLIENT_SECRET:'parent-only',PAYPAL_CLIENT_ID:'parent-client'});
+  assert.equal(selected.childEnv.MANDATEGATE_DISABLE_PAYMENTS,'1');
+  assert.equal(selected.childEnv.PAYPAL_CLIENT_SECRET,undefined);
+  assert.equal(selected.childEnv.MANDATEGATE_JUDGE_PREVIEW_ENABLED,'1');
+});
+for(const [name,patch,error] of [
+  ['missing explicit enable',{MANDATEGATE_SANDBOX_PAYOUTS:undefined},'RUNTIME_SANDBOX_PAYOUT_GRANT_REQUIRED'],
+  ['production API host',{PAYPAL_BASE_URL:'https://api-m.paypal.com'},'RUNTIME_SANDBOX_PAYOUT_GRANT_REQUIRED'],
+  ['missing client',{PAYPAL_CLIENT_ID:undefined},'RUNTIME_SANDBOX_CREDENTIALS_REQUIRED'],
+  ['missing secret',{PAYPAL_CLIENT_SECRET:undefined},'RUNTIME_SANDBOX_CREDENTIALS_REQUIRED'],
+  ['missing recipient',{DEMO_PAYPAL_RECEIVER_EMAIL:undefined},'RUNTIME_SANDBOX_RECEIVER_REQUIRED'],
+  ['fictional preview receiver',{DEMO_PAYPAL_RECEIVER_EMAIL:'ap@northstar.example'},'RUNTIME_SANDBOX_RECEIVER_REQUIRED'],
+]){
+  test('rejects Sandbox payment mode: '+name,()=>{
+    assert.throws(()=>runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',
+      MANDATEGATE_DISABLE_PAYMENTS:'0',MANDATEGATE_SANDBOX_PAYOUTS:'1',
+      PAYPAL_BASE_URL:'https://api-m.sandbox.paypal.com',
+      PAYPAL_CLIENT_ID:'sandbox-client-id-123',
+      PAYPAL_CLIENT_SECRET:'sandbox-secret-123',
+      DEMO_PAYPAL_RECEIVER_EMAIL:'sb-test-recipient@example.test',...patch}),
+      new RegExp(error));
+  });
+}
+
 for (const [name, patch, error] of [
   ['typo mode', { MANDATEGATE_RUNTIME_MODE: 'neon' }, 'RUNTIME_MODE_INVALID'],
   ['no switch', { MANDATEGATE_DISABLE_PAYMENTS: undefined }, 'RUNTIME_PAYMENT_SWITCH_REQUIRED'],
@@ -68,7 +118,7 @@ for (const [name, patch, error] of [
 
 test('migration and seeding skip without importing any database or auth dependency', () => {
   const script = fileURLToPath(new URL('./runtime-command.mjs', import.meta.url));
-  for (const mode of ['neon-preview', 'render-preview']) {
+  for (const mode of ['neon-preview', 'neon-sandbox', 'render-preview']) {
     for (const action of ['migrate','seed']) {
       const output = execFileSync(process.execPath, [script, action], {
         env: { ...env, MANDATEGATE_RUNTIME_MODE:mode }, encoding:'utf8', timeout:5000,
