@@ -147,3 +147,11 @@
 - Created an isolated, payment-disabled sandbox `mandategate-pr42-ci-20261017`, session `sbx_J02da7d97nIeVAEhc5rPpaDUrNch`; observed Node 24.21 and pnpm. Began authenticated GitHub file-to-sandbox reconstruction for exact PR #42 commit `927c08cfbeaf582f43eef1a5fdbe7491da7e8f89`, with npm/node/Ubuntu-only outbound network policy.
 - Infrastructure stopped the sandbox after ~373 seconds during file transfer, returning `410 sandbox_stopped`; checkout was incomplete, not hash-verified, and no package installation, migrations, Vitest, typecheck, production build or hosted smoke executed. The sandbox was nonpersistent and the partial checkout is not a retained test artifact.
 - **Status:** BLOCKED by runner lifetime/access, not passing. Do not infer application CI success from historical Vercel sessions. No Neon DB mutation, Render deploy, account provisioning, model inference or PayPal call was performed.
+
+
+## 2026-10-18 PT — Lock judge-facing story to current deployed separation
+
+- **Decision:** Use the restricted /judge GET-only evaluation as the intended external judge path; keep owner-only /demo and separately enabled $1.01 Sandbox payout lab distinct. Video and Devpost must not claim the current deployment is globally payments-disabled or that a historical direct-agent payout was caused by GLM invoice review.
+- **Evidence:** Render deployment dep-dbaqifmq1p3s73cn6gm0 at 04ed2b8 reported LIVE, connected Neon read-only counts October 19 07:04 UTC: org_demo 3 requests/0 executions, sandbox org 0 requests/0 executions, active REVIEWER 0. UI source names the "Evaluate fictional request" GET action; draft PR #49 combines unmerged source protections and has no full CI pass.
+- **Rejected:** Existing admin credential sharing, synthetic invoice issuer/payment claims, new payout during video, inferred account-level ZDR, and publicity without review.
+- **Artifact:** devpost/judge-release-packet-2026-10-18.md; prior unmerged PR #36/#38 scripts are historical drafts and must not be copied verbatim.
