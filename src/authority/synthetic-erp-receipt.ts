@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {pool} from "../db/pool";
 import {assertDisposableSimulationEnvironment} from "../autonomy/simulated-runner";
 import {
-  signSyntheticErpEnvelopeForFixture,verifySyntheticErpEnvelope,
+  signSyntheticErpEnvelopeForFixture,syntheticErpEventSchema,verifySyntheticErpEnvelope,
 } from "./synthetic-erp-envelope";
 
 export {syntheticErpEventSchema} from "./synthetic-erp-envelope";
@@ -39,13 +39,14 @@ export async function receiveSyntheticErpEvent(input:{
   event:unknown;signature:string;secret:string;now?:Date;
 }){
   assertDisposableSimulationEnvironment();
+  const candidate=syntheticErpEventSchema.parse(input.event);
+  if(!/^queue_ci_[0-9a-f-]{36}$/i.test(candidate.organizationId))
+    throw Error("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
   const verified=verifySyntheticErpEnvelope({
-    event:input.event,signature:input.signature,
+    event:candidate,signature:input.signature,
     secret:input.secret,now:input.now??new Date(),
   });
   const event=verified.event;
-  if(!/^queue_ci_[0-9a-f-]{36}$/i.test(event.organizationId))
-    throw Error("SYNTHETIC_ERP_ORGANIZATION_REQUIRED");
   const bodyHash=verified.bodySha256;
   const client=await pool.connect();
   try{
