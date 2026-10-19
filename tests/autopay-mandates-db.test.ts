@@ -44,11 +44,16 @@ beforeAll(async()=>{
   ].join(" "),[randomUUID(),req]);
 });
 afterAll(async()=>{await pool.end();});
+const ownCandidates=async()=> (await listAutonomousCandidates(new Date(),50))
+  .filter(x=>x.organizationId===org);
+const ownPreview=async()=> (await previewAutonomousDispatch(new Date(),50))
+  .filter(x=>x.organizationId===org);
+
 
 describe("Autonomous AP requires exact, revocable prior standing authority",()=>{
   it("does not infer payment consent from an ALLOW or an active policy alone",async()=>{
-    expect(await listAutonomousCandidates()).toEqual([]);
-    expect(await previewAutonomousDispatch()).toEqual([]);
+    expect(await ownCandidates()).toEqual([]);
+    expect(await ownPreview()).toEqual([]);
   });
   it("finds one exact scoped mandate, and revalidates current payment authority",async()=>{
     await pool.query([
@@ -57,13 +62,13 @@ describe("Autonomous AP requires exact, revocable prior standing authority",()=>
       "approved_by_user_id,approval_digest,active,expires_at)",
       "values($1,$2,$3,$4,$5,'agent_api',2000,$6,$7,true,now()+interval '1 day')",
     ].join(" "),[grant,org,vendor,destination,policy,actor,sha("isolated synthetic mandate")]);
-    const candidates=await listAutonomousCandidates();
+    const candidates=await ownCandidates();
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toMatchObject({
       requestId:req,logicalPaymentId:logical,authorization:"STANDING_MANDATE",
       amountCents:1000,currency:"USD",
     });
-    const preview=await previewAutonomousDispatch();
+    const preview=await ownPreview();
     expect(preview).toHaveLength(1);
     expect(preview[0]).toMatchObject({preview:"WOULD_DISPATCH",reason:"CURRENT_AUTHORITY"});
     const records=await pool.query(
@@ -71,7 +76,7 @@ describe("Autonomous AP requires exact, revocable prior standing authority",()=>
     expect(records.rows[0].n).toBe(0);
   });
   it("cannot dispatch after recipient, grantor, policy or grant expiry changes",async()=>{
-    const empty=async()=>expect(await listAutonomousCandidates()).toHaveLength(0);
+    const empty=async()=>expect(await ownCandidates()).toHaveLength(0);
     await pool.query("update autopay_mandates set expires_at=now()-interval '1 minute' where id=$1",[grant]);
     await empty();
     await pool.query("update autopay_mandates set expires_at=now()+interval '1 day' where id=$1",[grant]);
@@ -87,14 +92,14 @@ describe("Autonomous AP requires exact, revocable prior standing authority",()=>
     await pool.query("update autopay_mandates set max_amount_cents=100 where id=$1",[grant]);
     await empty();
     await pool.query("update autopay_mandates set max_amount_cents=2000 where id=$1",[grant]);
-    expect(await listAutonomousCandidates()).toHaveLength(1);
+    expect(await ownCandidates()).toHaveLength(1);
   });
   it("does not enqueue the same logical payment after durable execution identity exists",async()=>{
     const store=new PostgresExecutionStore();
     const authoritative=await store.getAuthoritativePayment(req);
     expect(authoritative?.logicalPaymentId).toBe(logical);
     await store.getOrCreateExecution(authoritative!);
-    expect(await listAutonomousCandidates()).toEqual([]);
+    expect(await ownCandidates()).toEqual([]);
     const rows=await pool.query(
       "select status from payment_executions where logical_payment_id=$1",[logical]);
     expect(rows.rows).toHaveLength(1);
