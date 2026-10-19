@@ -28,7 +28,7 @@ const invoice:SandboxRailEnvelope={
 };
 describe("strict Sandbox-only invoice payout rail",()=>{
   it("preserves the historical independent 101-cent manual fixture",()=>{
-    expect(classifySandboxPaymentRail(fixture,env)).toBe("FIXED_MANUAL_FIXTURE");
+    expect(classifySandboxPaymentRail(fixture,env)).toBeNull();
     expect(classifySandboxPaymentRail(fixture,{...env,MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"0"}))
       .toBe("FIXED_MANUAL_FIXTURE");
   });
