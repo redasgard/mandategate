@@ -23,8 +23,12 @@ const allowedNeonHosts = new Set([
   "ep-silent-poetry-arjowm4d-pooler.c-4.us-west-2.aws.neon.tech",
 ]);
 export function demoPreviewEnabled(env:Record<string,string|undefined>):boolean {
-  if(env.MANDATEGATE_RUNTIME_MODE!=="neon-preview" ||
-     env.MANDATEGATE_DISABLE_PAYMENTS!=="1") return false;
+  const mode = env.MANDATEGATE_RUNTIME_MODE;
+  if (mode !== "neon-preview" && mode !== "neon-sandbox") return false;
+  if (mode === "neon-preview" && env.MANDATEGATE_DISABLE_PAYMENTS !== "1") return false;
+  if (mode === "neon-sandbox" &&
+      (env.MANDATEGATE_JUDGE_PREVIEW_ENABLED !== "1" ||
+       !["0","1"].includes(env.MANDATEGATE_DISABLE_PAYMENTS ?? ""))) return false;
   try {
     const url=new URL(env.DATABASE_URL??"");
     return ["postgres:","postgresql:"].includes(url.protocol) &&
