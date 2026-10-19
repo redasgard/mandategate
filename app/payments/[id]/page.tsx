@@ -8,6 +8,7 @@ import { EscalationReview } from "./escalation-review";
 import { getEscalationSnapshot } from "@/src/history/escalation-review";
 import { DecisionEvidencePanel } from "./decision-evidence";
 import { pool } from "@/src/db/pool";
+import {SANDBOX_INVOICE} from "@/src/demo/sandbox-payout-constants";
 
 export default async function PaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -30,6 +31,11 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
       <section className="panel detail">
         <p className="eyebrow">Payment request</p>
         <div className="detail-title"><h1>{row.invoiceNumber}</h1><span className={`decision ${row.outcome.toLowerCase()}`}>{row.outcome}</span></div>
+        {row.invoiceNumber===SANDBOX_INVOICE && row.currency==="USD" && row.amountCents===101
+          ? <p className="muted">Fictional 101-cent PayPal Sandbox scenario.
+              Vendor source verification is simulated for this hackathon test.
+              Preparing is not a transfer; Execute is a separate Sandbox action.</p>
+          : null}
         <dl>
           <div><dt>Vendor</dt><dd>{row.vendorName}</dd></div>
           <div><dt>Amount</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: row.currency }).format(row.amountCents / 100)}</dd></div>
