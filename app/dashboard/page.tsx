@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { listRecentDecisions } from "@/src/db/views";
 import { readDashboardSummary } from "@/src/db/dashboard-overview";
+import { readImportedObligations } from "@/src/db/imported-obligations";
+import { ImportedObligations } from "./imported-obligations";
 import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-incidents";
 import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
@@ -29,9 +31,10 @@ export default async function DashboardPage({ searchParams }: {
   const sandboxPayouts = process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox" &&
     process.env.MANDATEGATE_DISABLE_PAYMENTS === "0";
   const incidentFilter = parseIncidentFilter((await searchParams)?.risk);
-  const [rows, summary, incidents] = await Promise.all([
+  const [rows, summary, incidents, obligations] = await Promise.all([
     listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
     readDashboardIncidents(session.user.id, incidentFilter),
+    readImportedObligations(session.user.id),
   ]);
 
   return (
@@ -42,6 +45,7 @@ export default async function DashboardPage({ searchParams }: {
           <h1>The firewall between AI agents and your money.</h1>
           <p className="muted">{demoMode ? <><Link href="/demo">Three-case demo lab</Link>{" · "}</> : null}<Link href="/invoice-artifacts">Review source invoices</Link>
             {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
+            {" · "}<Link href="/obligations">Upcoming and overdue imports</Link>
             {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
             {" · "}<Link href="/policies">Policies and proposals</Link>
             {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
@@ -77,6 +81,7 @@ export default async function DashboardPage({ searchParams }: {
       </section>
 
       <div className="dashboard-panels">
+        <ImportedObligations overview={obligations} compact />
         <IncidentInvestigation incidents={incidents} activeFilter={incidentFilter} />
         <section className="panel">
           <div className="panel-head">
@@ -85,7 +90,7 @@ export default async function DashboardPage({ searchParams }: {
           </div>
           <div className="panel-body">
             <p><strong>Available balance:</strong> Unavailable. Authenticated PayPal balance reporting is not connected.</p>
-            <p><strong>Upcoming / overdue:</strong> Not tracked. No verified due-date or scheduling ledger yet.</p>
+            <p><strong>Upcoming / overdue:</strong> Displayed above as imported AP evidence. Not a validated financial obligation or a scheduled payout.</p>
             <p><strong>Confirmed payouts submitted this UTC month:</strong>{" "}
               {summary.paidThisMonth.length
                 ? summary.paidThisMonth.map(p => <span key={p.currency}>{exactCents(p.cents,p.currency)} ({p.count} paid){" "}</span>)
