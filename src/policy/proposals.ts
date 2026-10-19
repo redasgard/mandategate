@@ -99,8 +99,8 @@ export async function preparePolicyProposal(input:{
       ? await paidEvidence(client,input.organizationId)
       : {sampleCount:0,median:null,evidenceSha256:sha("mandategate/manual-policy/v1\0"+base.id)};
     const proposed=input.origin==="PAID_HISTORY"?evidence.median:input.proposedLimitCents;
-    if(!validLimit(proposed) || proposed>=base.limitCents)
-      fail("POLICY_PROPOSAL_MUST_TIGHTEN",422);
+    if(!validLimit(proposed))fail("POLICY_PROPOSAL_MUST_TIGHTEN",422);
+    if(proposed>=base.limitCents)fail("POLICY_PROPOSAL_MUST_TIGHTEN",422);
     const id=randomUUID(),expiresAt=new Date(Date.now()+TTL_MS);
     const version=1;
     const digest=digestPolicyProposal({
@@ -170,14 +170,14 @@ export async function decidePolicyProposal(input:{
          current.limitCents!==Number(p.base_limit_cents))
         fail("POLICY_PROPOSAL_STALE");
       if(input.action==="EDIT") {
-        if(!validLimit(input.proposedLimitCents)||
-           input.proposedLimitCents>=current.limitCents||
-           input.proposedLimitCents===Number(p.proposed_limit_cents))
+        const revised=input.proposedLimitCents;
+        if(!validLimit(revised))fail("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
+        if(revised>=current.limitCents||revised===Number(p.proposed_limit_cents))
           fail("POLICY_EDIT_MUST_CHANGE_TIGHTER_LIMIT",422);
         const version=Number(p.version)+1;
         nextDigest=digestPolicyProposal({
           id:input.id,organizationId:orgId,basePolicyId:current.id,
-          baseLimitCents:current.limitCents,proposedLimitCents:input.proposedLimitCents,
+          baseLimitCents:current.limitCents,proposedLimitCents:revised,
           origin:p.origin,evidenceSha256:p.evidence_sha256,version,
           expiresAt:new Date(p.expires_at).toISOString(),
         });
@@ -185,7 +185,7 @@ export async function decidePolicyProposal(input:{
           "update policy_proposals set proposed_limit_cents=$2,version=$3,",
           "proposal_digest=$4,updated_at=now()",
           "where id=$1 and status='PROPOSED'",
-        ].join(" "),[input.id,input.proposedLimitCents,version,nextDigest]);
+        ].join(" "),[input.id,revised,version,nextDigest]);
       } else {
         const nextLimit=Number(p.proposed_limit_cents);
         if(!validLimit(nextLimit)||nextLimit>=current.limitCents)
