@@ -10,6 +10,7 @@ import {
 } from "@/src/db/schema";
 import { evaluatePayment } from "@/src/policy/decision";
 import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
+import {digestAutopayTuple} from "@/src/autonomy/budget";
 import {SANDBOX_ORG_ID,SANDBOX_VENDOR_ID,SANDBOX_INVOICE,SANDBOX_AMOUNT_CENTS,SANDBOX_KEY} from "@/src/demo/sandbox-payout-constants";
 
 export type CanonicalPaymentRequest = {
@@ -148,6 +149,70 @@ export async function submitCanonicalPaymentRequest(input: CanonicalPaymentReque
         source: input.source,
       });
       await tx.insert(paymentDecisions).values({ id: randomUUID(), paymentRequestId: requestId, outcome: decision.outcome, reasonCodes: decision.reasonCodes, evidence: decision.evidence });
+      // Bind the original request tuple to a previously ACTIVE human grant.
+      // If absent, ALLOW is manual-only. This is the SAME request transaction.
+      if(input.source==="agent_api"&&decision.outcome==="ALLOW"){
+        const grant=await tx.execute(sql`
+          select g.id as mandate_id,g.approval_digest,ge.id as grant_event_id,
+                 g.destination_id,g.policy_id
+          from payment_requests pr
+          join autopay_mandates g on g.organization_id=pr.organization_id
+            and g.vendor_id=pr.vendor_id and g.source='agent_api'
+            and g.destination_id=${destination.id} and g.policy_id=${policy.id}
+          join autopay_mandate_events ge on ge.mandate_id=g.id
+            and ge.organization_id=g.organization_id
+            and ge.event_type='GRANTED' and ge.mandate_digest=g.approval_digest
+            and ge.actor_user_id=g.approved_by_user_id
+          join organization_admin_memberships m on m.organization_id=g.organization_id
+            and m.user_id=g.approved_by_user_id and m.role='ADMIN' and m.active=true
+          where pr.id=${requestId} and pr.status='ALLOWED'
+            and pr.source='agent_api' and pr.currency='USD'
+            and pr.amount_cents<=g.max_amount_cents
+            and g.max_total_amount_cents>=pr.amount_cents
+            and g.max_payment_count>0
+            and g.active=true and g.revoked_at is null and g.expires_at>now()
+            and ge.created_at<pr.created_at
+            and ${destination.trusted}=true
+            and ${policy.active}=true
+            and (select count(*) from policies p
+                 where p.organization_id=pr.organization_id and p.active=true)=1
+            and (select count(*) from vendor_destinations d
+                 where d.vendor_id=pr.vendor_id and d.trusted=true)=1
+            and not exists(select 1 from vendor_reverification_cases c
+                 left join vendor_reverification_resolutions r on r.case_id=c.id
+                 where c.organization_id=pr.organization_id and c.vendor_id=pr.vendor_id
+                 and (r.id is null or r.resolution='SIMULATED_REVERIFIED'))
+          limit 1
+          for share of g
+        `);
+        const row=grant.rows[0] as undefined|{
+          mandate_id:string;approval_digest:string;grant_event_id:string;
+          destination_id:string;policy_id:string;
+        };
+        if(row){
+          const tupleHash=digestAutopayTuple({
+            requestId,logicalPaymentId,organizationId:input.organizationId,
+            vendorId:input.vendorId,invoiceNumber:input.invoiceNumber,
+            amountCents:input.amountCents,currency:input.currency.toUpperCase(),
+            requestedDestination:input.paymentDestination,
+            idempotencyKey:input.idempotencyKey,
+            mandateId:row.mandate_id,grantDigest:row.approval_digest,
+            destinationId:row.destination_id,policyId:row.policy_id,
+          });
+          await tx.execute(sql`
+            insert into autopay_payment_bindings
+              (payment_request_id,organization_id,mandate_id,grant_event_id,
+               vendor_id,destination_id,policy_id,amount_cents,currency,
+               request_tuple_sha256,grant_digest)
+            values
+              (${requestId},${input.organizationId},${row.mandate_id},
+               ${row.grant_event_id},${input.vendorId},${row.destination_id},
+               ${row.policy_id},${input.amountCents},
+               ${input.currency.toUpperCase()},${tupleHash},${row.approval_digest})
+          `);
+        }
+      }
+
       if(decision.reasonCodes.includes("DESTINATION_MISMATCH")){
         // Destination mismatch is never a general approvable anomaly.
         // Create a separate vendor re-verification case in the SAME
