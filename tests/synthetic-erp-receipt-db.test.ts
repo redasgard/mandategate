@@ -63,4 +63,62 @@ it("records one exact signed event but rejects replay and immutable tampering",a
    ].join(" "),[org]);
    expect(counts.rows[0]).toMatchObject({attestations:0,payments:0});
  });
+
+it("serializes concurrent exact-event attempts into one immutable receipt",async()=>{
+  const x={...event(),invoiceNumber:"ERP-CONCURRENT-001"};
+  const signature=signSyntheticErpEvent(x,secret);
+  const runs=await Promise.allSettled(Array.from({length:5},()=>
+    receiveSyntheticErpEvent({event:x,signature,secret})));
+  const accepted=runs.filter(x=>x.status==="fulfilled");
+  const rejected=runs.filter(x=>x.status==="rejected");
+  expect(accepted).toHaveLength(1);
+  expect(rejected).toHaveLength(4);
+  for(const item of rejected){
+    if(item.status==="rejected")
+      expect(String(item.reason)).toContain("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
+  }
+  const stored=await pool.query(
+    "select count(*)::int as n from erp_synthetic_signed_invoice_receipts where organization_id=$1 and event_id=$2",
+    [org,x.eventId]);
+  expect(stored.rows[0].n).toBe(1);
+});
+it("rejects a different signed body that reuses an event identity",async()=>{
+  const x={...event(),invoiceNumber:"ERP-ORIGINAL-002"};
+  const signature=signSyntheticErpEvent(x,secret);
+  await receiveSyntheticErpEvent({event:x,signature,secret});
+  const altered={...x,invoiceNumber:"ERP-REBOUND-003"};
+  await expect(receiveSyntheticErpEvent({
+    event:altered,signature:signSyntheticErpEvent(altered,secret),secret,
+  })).rejects.toThrow("SYNTHETIC_ERP_REPLAY_OR_DUPLICATE");
+});
+it("rejects a signature valid under an unregistered key",async()=>{
+  const wrong="different-unenrolled-fixture-secret-for-ci-only";
+  const x={...event(),invoiceNumber:"ERP-WRONG-KEY-005"};
+  await expect(receiveSyntheticErpEvent({
+    event:x,signature:signSyntheticErpEvent(x,wrong),secret:wrong,
+  })).rejects.toThrow("SYNTHETIC_ERP_TRUST_BOUNDARY_FAILED");
+});
+it("enforces irreversible key and channel revocation before admission",async()=>{
+  await pool.query([
+    "update erp_synthetic_source_keys set active=false",
+    "where organization_id=$1 and origin_channel_id=$2 and key_id=$3",
+  ].join(" "),[org,channel,keyId]);
+  const x={...event(),invoiceNumber:"ERP-REVOKED-006"};
+  await expect(receiveSyntheticErpEvent({
+    event:x,signature:signSyntheticErpEvent(x,secret),secret,
+  })).rejects.toThrow("SYNTHETIC_ERP_TRUST_BOUNDARY_FAILED");
+  await expect(pool.query([
+    "update erp_synthetic_source_keys set active=true",
+    "where organization_id=$1 and origin_channel_id=$2 and key_id=$3",
+  ].join(" "),[org,channel,keyId])).rejects.toThrow("ERP_SOURCE_KEY_IMMUTABLE");
+  await expect(pool.query([
+    "delete from erp_synthetic_source_keys",
+    "where organization_id=$1 and origin_channel_id=$2 and key_id=$3",
+  ].join(" "),[org,channel,keyId])).rejects.toThrow("ERP_SOURCE_KEY_IMMUTABLE");
+  await pool.query("update vendor_origin_channels set active=false where id=$1",[channel]);
+  await expect(pool.query(
+    "update vendor_origin_channels set active=true where id=$1",[channel]))
+    .rejects.toThrow("ORIGIN_CHANNEL_IDENTITY_IMMUTABLE");
+});
+
 });
