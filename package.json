@@ -20,6 +20,7 @@
     "recover:paypal-webhooks": "tsx scripts/recover-paypal-webhooks.ts",
     "verify:vision:privacy": "tsx scripts/verify-experiential-vision-privacy.ts",
     "gate-h:sandbox": "tsx scripts/verify-gate-h-sandbox.ts",
+    "demo:sandbox-invoice": "tsx scripts/verify-sandbox-invoice-demo.ts",
     "gate-h:inventory": "tsx scripts/report-gate-h-readiness.ts",
     "jobs:autopay:preview": "tsx scripts/autopay-preview.ts"
   },
