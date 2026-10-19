@@ -74,6 +74,8 @@ export async function readSandboxPayout(userId: string) {
  * The separate org preserves the judge demo's zero-execution invariant.
  */
 export async function prepareSandboxPayout(userId: string) {
+  if (process.env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO === "1")
+    throw new SandboxPayoutError("STANDALONE_SANDBOX_FIXTURE_DISABLED_IN_INVOICE_MODE", 409);
   if (!sandboxPayoutEnabled()) throw new SandboxPayoutError("SANDBOX_PAYOUT_NOT_CONFIGURED", 503);
   await requireOwner(userId);
   const receiver = process.env.DEMO_PAYPAL_RECEIVER_EMAIL!;
