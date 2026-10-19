@@ -127,6 +127,10 @@ it("enforces irreversible key and channel revocation before admission",async()=>
   await expect(receiveSyntheticErpEvent({
     event:x,signature:signSyntheticErpEvent(x,secret),secret,
   })).rejects.toThrow("SYNTHETIC_ERP_TRUST_BOUNDARY_FAILED");
+  await expect(registerSyntheticErpKey({
+    actorUserId:actor,organizationId:org,vendorId:vendor,
+    channelId:channel,keyId:"fixture_replacement",secret,
+  })).rejects.toThrow("SYNTHETIC_ERP_ENROLLMENT_DENIED_OR_DUPLICATE");
   await expect(pool.query([
     "update erp_synthetic_source_keys set active=true",
     "where organization_id=$1 and origin_channel_id=$2 and key_id=$3",
