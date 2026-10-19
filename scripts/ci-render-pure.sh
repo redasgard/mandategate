@@ -12,6 +12,9 @@ if [[ -z "${CI_EXPECTED_SHA:-}" || "$sha" != "$CI_EXPECTED_SHA" ]]; then echo CI
 if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi
 export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:55432/mandategate"
 export BETTER_AUTH_URL="http://127.0.0.1:3000"
+# Render reserves PORT=10000 for hosted services. This is an ephemeral
+# loopback-only CI process; bind the app to the same port as BETTER_AUTH_URL.
+export PORT="3000"
 export BETTER_AUTH_SECRET="synthetic-ci-only-secret-at-least-32-characters"
 export DEMO_ADMIN_EMAIL="admin@mandategate.local"
 export DEMO_ADMIN_PASSWORD="synthetic-demo-password-2026"
