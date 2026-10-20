@@ -273,3 +273,93 @@ body:has(.mg-shell)::before { display:none; }
 @media(prefers-reduced-motion:reduce){
   .mg-shell *{scroll-behavior:auto!important;transition:none!important;}
 }
+
+/* Coherent secondary operations screens. */
+.mg-ledger-overview{margin-bottom:0;}
+.mg-payment-filters{padding:12px 18px;border-bottom:1px solid var(--mg-stroke);}
+.mg-ledger-table th{background:#1d2526;}
+.mg-ledger-table td{vertical-align:middle;font-size:12px;padding:16px;}
+.mg-ledger-table td:first-child{min-width:155px;}
+.mg-ledger-table td:first-child a{display:grid;gap:6px;text-decoration:none;color:#f2e7d7;}
+.mg-ledger-table td:first-child a:hover strong{text-decoration:underline;}
+.mg-ledger-invoice{font-size:11px;color:#c8a77e;font-weight:650;}
+.mg-money-cell{font-variant-numeric:tabular-nums;font-weight:750;}
+.mg-vendor-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;}
+.mg-vendor-summary-item{display:grid;gap:7px;padding:21px 23px;}
+.mg-vendor-summary-item>span{font-size:11px;color:#a4b2ae;font-weight:700;}
+.mg-vendor-summary-item>strong{font-size:34px;line-height:1.2;font-weight:740;font-variant-numeric:tabular-nums;}
+.mg-vendor-summary-item>small{font-size:10px;color:#8c9b97;line-height:1.5;}
+.mg-investigation-surface .mg-case-content{padding:20px;}
+.mg-trust-cases{display:grid;gap:14px;}
+.mg-trust-cases>section,.mg-trust-cases>article{border:1px solid #394548;border-radius:8px;
+  background:#222a2b;padding:18px;}
+.mg-trust-cases input,.mg-trust-cases textarea{max-width:100%;}
+.mg-policy-hero{display:flex;align-items:center;justify-content:space-between;gap:26px;padding:24px;}
+.mg-policy-hero h2{font-size:20px!important;letter-spacing:-.03em;margin:8px 0;}
+.mg-policy-hero p:not(.mg-eyebrow){font-size:12px;color:#9eadaa;line-height:1.55;max-width:680px;margin:0;}
+.mg-primary-link{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
+  border-radius:6px;padding:12px 16px;text-decoration:none!important;font-size:12px;font-weight:760;
+  color:#171717;background:#e4bb83;}
+.mg-primary-link:hover{background:#f0c99a;}
+.mg-policy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,335px),1fr));
+  gap:14px;padding:18px;}
+.mg-policy-card{min-width:0;display:flex;flex-direction:column;gap:14px;border-radius:9px;
+  padding:19px;background:#222a2a;border:1px solid #394446;overflow-wrap:anywhere;}
+.mg-policy-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.mg-policy-card h3{font-size:17px;line-height:1.3;letter-spacing:-.02em;margin:2px 0 0;}
+.mg-policy-description{font-size:12px;color:#a7b4ae;line-height:1.65;margin:0;}
+.mg-policy-meta{color:#96a29e;font-size:11px;line-height:1.6;overflow-wrap:anywhere;margin:0;}
+.mg-policy-amount{font-size:24px;font-weight:740;font-variant-numeric:tabular-nums;letter-spacing:-.03em;}
+.mg-policy-amount small{font-size:12px;letter-spacing:0;font-weight:600;color:#9daca6;}
+.mg-policy-detail{border-top:1px solid #3a4546;padding-top:13px;margin-top:4px;}
+.mg-policy-detail summary{font-size:12px;font-weight:760;color:#e9c591;cursor:pointer;}
+.mg-policy-detail[open] summary{margin-bottom:14px;}
+.mg-policy-detail p{font-size:11px;overflow-wrap:anywhere;line-height:1.6;color:#aab5b0;}
+.mg-policy-detail code{white-space:normal;overflow-wrap:anywhere;}
+.mg-policy-card form{max-width:100%;}
+.mg-policy-card :is(input,textarea,select){max-width:100%;min-width:0;}
+.mg-policy-card .review-stage{display:grid;gap:13px;}
+.mg-policy-revoke summary{color:#e9a49a;}
+.mg-case-content{padding:22px;}
+.mg-mandate-facts{margin:0;grid-template-columns:repeat(2,minmax(0,1fr));}
+.mg-mandate-facts dt{font-size:9px;}
+.mg-mandate-facts dd{font-size:12px;}
+.mg-activity-list{padding:0 25px 0 26px;margin:0;list-style:none;}
+.mg-activity-entry{display:grid;grid-template-columns:18px minmax(0,1fr);gap:17px;}
+.mg-activity-rail{position:relative;display:flex;justify-content:center;padding-top:24px;}
+.mg-activity-rail::before{content:"";position:absolute;left:calc(50% - .5px);top:0;bottom:0;
+  width:1px;background:#3b4846;}
+.mg-activity-entry:first-child .mg-activity-rail::before{top:27px;}
+.mg-activity-entry:last-child .mg-activity-rail::before{bottom:calc(100% - 28px);}
+.mg-activity-node{position:relative;z-index:1;width:10px;height:10px;border:2px solid #d2a679;
+  border-radius:50%;background:#1d2425;}
+.mg-activity-content{border-bottom:1px solid #354041;padding:21px 0 23px;overflow-wrap:anywhere;}
+.mg-activity-entry:last-child .mg-activity-content{border-bottom:0;}
+.mg-activity-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.mg-activity-top time{font-size:10px;color:#8da19b;font-variant-numeric:tabular-nums;}
+.mg-activity-content h3{margin:12px 0 6px;font-size:15px;line-height:1.4;}
+.mg-activity-content p{margin:0;color:#b1bdb6;font-size:12px;line-height:1.65;}
+.mg-activity-meta{display:flex;align-items:center;gap:18px;margin-top:12px;
+  color:#94a4a0;font-size:11px;flex-wrap:wrap;}
+.mg-activity-meta a{color:#e5bc84;text-decoration:none;font-weight:730;}
+@media(max-width:900px){
+  .mg-vendor-summary{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .mg-vendor-summary-item{padding:16px;}
+  .mg-vendor-summary-item>strong{font-size:27px;}
+  .mg-policy-hero{align-items:flex-start;flex-direction:column;}
+}
+@media(max-width:560px){
+  .mg-vendor-summary{grid-template-columns:minmax(0,1fr);}
+  .mg-vendor-summary-item{display:flex;flex-wrap:wrap;gap:7px;align-items:center;}
+  .mg-vendor-summary-item>strong{order:1;margin-left:auto;font-size:26px;}
+  .mg-vendor-summary-item>small{order:2;flex:1 1 100%;}
+  .mg-payment-filters{flex-wrap:nowrap;overflow-x:auto;padding:10px;}
+  .mg-payment-filters a{white-space:nowrap;flex-shrink:0;}
+  .mg-policy-grid{padding:12px;gap:11px;}
+  .mg-policy-card{padding:15px;}
+  .mg-case-content{padding:15px;}
+  .mg-mandate-facts{grid-template-columns:minmax(0,1fr);}
+  .mg-activity-list{padding:0 15px;}
+  .mg-activity-entry{gap:11px;}
+  .mg-activity-top{align-items:flex-start;}
+}
