@@ -141,8 +141,26 @@ export class ExperientialInvoiceVisionGateway {
       refused("SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED");
     }
     if (!this.apiKey) refused("EXPERIENTIAL_API_KEY_REQUIRED");
+    // Hackathon uses the provider's normal inference terms. No account-ZDR
+    // entitlement, paid privacy metadata or ZDR model route is required.
+    // Model identity and schema checks still apply to the actual response.
+    if (!syntheticTest && process.env.MANDATEGATE_REQUIRE_ZDR === "0") {
+      const models = await this.getJson("/v1/models");
+      const model=Array.isArray(models?.data)
+        ? models.data.find((item:any)=>item?.id===INVOICE_VISION_MODEL)
+        : null;
+      if(!model||model.uncensored===true)refused("EXPERIENTIAL_FLASH_MODEL_UNAVAILABLE");
+      return {
+        checkedAt:new Date().toISOString(),accountOrgId:"not-requested",
+        targetModel:INVOICE_VISION_MODEL,accountZdr:false,
+        providerRequiresZdr:false,providerRequiresNoTraining:false,
+        promptCaptureDisabled:false,targetModelHasZdrCapability:false,
+        syntheticNonZdrTest:false,documentBytesSubmitted:false,
+        servingRouteVerified:false,
+      };
+    }
 
-    // No image bytes are sent in any of these preflight requests.
+    // Strict privacy metadata applies only when explicitly required.
     const whoami = await this.getJson("/api/whoami");
     const orgId = whoami?.org_id;
     if (typeof orgId !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(orgId)) {
@@ -217,6 +235,7 @@ export class ExperientialInvoiceVisionGateway {
       refused("INVOICE_IMAGE_INPUT_INVALID");
     }
     const syntheticTest = input.syntheticNonZdrSourceSha256 !== undefined;
+    const requireZdr=!syntheticTest && process.env.MANDATEGATE_REQUIRE_ZDR!=="0";
     await this.verifyPrivacyAndModel(syntheticTest
       ? { syntheticNonZdrSourceSha256: input.syntheticNonZdrSourceSha256 }
       : {});
@@ -226,9 +245,9 @@ export class ExperientialInvoiceVisionGateway {
       model: INVOICE_VISION_MODEL,
       stream: false,
       max_tokens: 8192,
-      // A synthetic non-ZDR test cannot request a ZDR guarantee it lacks.
-      // Provider-side policy may still refuse this request, which is safe.
-      ...(syntheticTest ? {} : { provider: { zdr: true } }),
+      // PayPal hackathon inference does not require paid provider ZDR.
+      // A strict route may opt back into ZDR with explicit server configuration.
+      ...(requireZdr ? {provider:{zdr:true}} : {}),
       response_format: INVOICE_VISION_RESPONSE_FORMAT,
       messages: [
         { role: "system", content: prompt.systemPrompt },
@@ -268,7 +287,7 @@ export class ExperientialInvoiceVisionGateway {
     const body = await readBoundedJson(response);
 
     const servedZdr = response.headers.get("x-gateway-zdr") === "true";
-    if (!syntheticTest && !servedZdr) {
+    if (requireZdr && !servedZdr) {
       refused("EXPERIENTIAL_SERVING_ROUTE_NOT_ZDR");
     }
     const canonical = response.headers.get("x-gateway-canonical-model");
