@@ -8,7 +8,7 @@ export default async function ActivityPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
   const entries=await listAdminActivity(session.user.id);
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="activity" title="Activity"
       description="Understand every consequential decision, its source, and its recorded outcome."
       email={session.user.email}/>
