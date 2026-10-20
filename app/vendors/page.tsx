@@ -32,7 +32,7 @@ export default async function VendorsPage(){
         A printed or agent-supplied payment destination never changes a trusted
         vendor record. A destination mismatch is DENIED, opens a separate
         re-verification case, and cannot be overridden from an ordinary payment
-        approval screen. Demo verification is synthetic and Sandbox-only.
+        approval screen. The test vendor is bound to PayPal Sandbox.
       </p>
       <div className="table-wrap"><table>
         <thead><tr><th>Organization</th><th>Vendor</th><th>Trusted destination</th></tr></thead>
@@ -46,7 +46,7 @@ export default async function VendorsPage(){
         <h2>Re-verification incidents</h2>
         <p className="muted">
           Original DENY decisions are final for each submitted invoice, even
-          after a separately authorized demo trust-record transition.
+          after a separately authorized trust-record transition.
         </p>
         {cases.length===0?<p className="muted">No destination mismatch cases recorded.</p>:
           cases.map(c=><VendorReverificationActions key={c.id} item={{
