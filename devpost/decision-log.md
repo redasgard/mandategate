@@ -1,5 +1,14 @@
 # MandateGate decision log
 
+## 2026-10-19 PT — Honor non-ZDR fictional invoice exemption in payment-capable Sandbox demo
+
+- **Decision:** The hackathon explicitly permits non-ZDR GLM observations for **exact, byte-identical fictional source documents with informed admin consent**. The standard external provider route still requires account ZDR. This exception does not authenticate a vendor or authorize PayPal.
+- **Observed defect:** The public payment-capable `neon-sandbox` startup excluded `MANDATEGATE_SYNTHETIC_NON_ZDR_TEST` because payments were enabled, and the invoice-detail page placed the strict ZDR action above the independent PDF review. An administrator trying to continue the fictional $1.01 invoice received `EXPERIENTIAL_ACCOUNT_ZDR_REQUIRED`, despite the agreed hackathon exemption.
+- **Repair:** Permit the separate existing `observe-synthetic` endpoint on the fixed Render Sandbox host **only** when the original stored PDF SHA equals `createSandboxInvoicePdf(DEMO_PAYPAL_RECEIVER_EMAIL).sha256` for `org_demo`, with active invoice demo/AI flags and PayPal Sandbox host. Do not enable an arbitrary admin-uploaded or environment-allowlisted source on the payment-capable host. Keep same-origin authenticated ADMIN consent, append-only consent audit before model inference, exact model checks, explicit retention-risk acknowledgement, and T1 `ESCALATE` disposition. Other organizations, arbitrary documents, real invoices, other MIME types, production PayPal and strict `/observe` cannot bypass ZDR.
+- **UX:** Lead with independently parsed PDF source review, which needs no AI privacy entitlement. Offer the optional, clearly labeled fictional non-ZDR GLM test below, not a blocking strict privacy check.
+- **Safety:** The change does not add or execute any PayPal payout, update destination trust, approve a binding or bypass T2/T3/T4.
+- **Verification:** Exact-head isolated Render CI and new route/policy negative regressions required before web deployment. Current payment/webhook proof remains unverified.
+
 ## 2026-10-19 PT — Demonstrate actual PayPal Sandbox invoice payout with fictional source
 
 - **Decision:** Implement a bounded end-to-end invoice-derived PayPal **Sandbox** path for the hackathon, rather than treating production-grade external supplier identity or GLM zero-data-retention access as prerequisites to a fictional demo. Preserve honest synthetic provenance: actual PDF bytes + independent parser T2, pre-enrolled **simulated** administrator source assertion T3, and exact human T4 approval. The user expressly reconfirmed PayPal is Sandbox.
