@@ -1,6 +1,7 @@
 "use client";
 
 import {useState} from "react";
+import {useRouter} from "next/navigation";
 import {AdvisoryErrorDetails} from "@/app/components/advisory-error";
 
 type SourceMime="application/pdf"|"image/png"|"image/jpeg";
@@ -23,6 +24,7 @@ type Observation={
 export function InvoiceVisionObservation({
   artifactId,artifactSha256,mimeType,
 }:{artifactId:string;artifactSha256:string;mimeType:SourceMime}){
+  const router=useRouter();
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
   const [data,setData]=useState<Observation|null>(null);
@@ -39,12 +41,15 @@ export function InvoiceVisionObservation({
       if(!response.ok)throw new Error(typeof body?.error==="string"
         ?body.error:"INVOICE_OBSERVATION_FAILED");
       setData(body.observation);
+      // Refresh the independently rendered Neon record. Otherwise a prior
+      // FAILED attempt remains visible under the successful result.
+      router.refresh();
     }catch(e){
       setError(e instanceof Error?e.message:"INVOICE_OBSERVATION_FAILED");
     }finally{setBusy(false);}
   }
 
-  return <section className="review-stage">
+  return <section id="invoice-ai-analysis" className="review-stage">
     <p className="eyebrow">AI invoice analysis</p>
     <h2>Extract invoice details with GLM-5.3 Flash</h2>
     <p>The model proposes vendor, amount, currency and payment destination for
