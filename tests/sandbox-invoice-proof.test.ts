@@ -1,4 +1,4 @@
-import {describe,expect,it} from "vitest";
+import {describe,expect,it,vi} from "vitest";
 import {
   assertSandboxInvoiceReviewedBinding,
   SandboxInvoiceDemoError,validateSandboxInvoiceDemoEnvironment,
@@ -46,6 +46,34 @@ describe("bounded fictional invoice to PayPal Sandbox validation",()=>{
       ...grant,PAYPAL_CLIENT_ID:"sandbox-client",PAYPAL_CLIENT_SECRET:"sandbox-secret",
       PAYPAL_WEBHOOK_ID:"sandbox-webhook-id",
     },"submit")).toBeTruthy();
+  });
+  it("accepts explicitly synthetic source only on pinned fictional Sandbox host",()=>{
+    const fictional={...b,originMethod:"SYNTHETIC_FIXTURE",
+      originChannelKind:"SYNTHETIC_FIXTURE"};
+    expect(()=>assertSandboxInvoiceReviewedBinding(fictional,{
+      receiver,artifactSha256:a,tupleSha256:t,
+    })).toThrow("SANDBOX_INVOICE_UNAPPROVED_OR_UNVERIFIED");
+    try{
+      for(const [key,value] of Object.entries({
+        RENDER_SERVICE_ID:"srv-db39vmm7bikc73c55nh0",
+        MANDATEGATE_RUNTIME_MODE:"neon-sandbox",
+        MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"1",
+        MANDATEGATE_DISABLE_PAYMENTS:"0",
+        PAYPAL_BASE_URL:"https://api-m.sandbox.paypal.com",
+        DEMO_PAYPAL_RECEIVER_EMAIL:receiver,
+      }))vi.stubEnv(key,value);
+      expect(assertSandboxInvoiceReviewedBinding(fictional,{
+        receiver,artifactSha256:a,tupleSha256:t,
+      })).toEqual({fixtureIssuerSimulated:true,paymentAuthorized:false});
+      for(const changed of [
+        {originMethod:"ADMIN_OUT_OF_BAND"},
+        {originChannelKind:"KNOWN_CALLBACK"},
+        {amountCents:102},
+        {receiver:"attacker@example.test"},
+      ])expect(()=>assertSandboxInvoiceReviewedBinding({...fictional,...changed},{
+        receiver,artifactSha256:a,tupleSha256:t,
+      })).toThrow(SandboxInvoiceDemoError);
+    }finally{vi.unstubAllEnvs();}
   });
   it("rejects non-Sandbox modes, hosts, bad hashes and absent opt-in",()=>{
     for(const change of [
