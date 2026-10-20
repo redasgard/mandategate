@@ -13,7 +13,7 @@ describe("judge documentation and evidence-bound claims", () => {
   it("keeps GLM T1, synthetic policy decisions and historical PayPal proof separate", () => {
     expect(readme).toContain("PayPal AI Hackathon application");
     expect(readme).toContain("A prepared request or");
-    expect(readme).toContain("an earlier independent Sandbox payment was completed");
+    expect(readme).toContain("An earlier independent Sandbox payment was completed");
     expect(readme).toContain("it **does not**");
     expect(readme).toContain("external provider");
     expect(readme).toContain("independently approved invoice");
@@ -70,7 +70,7 @@ describe("judge documentation and evidence-bound claims", () => {
     expect(demoPreviewEnabled({...neonEnv,DATABASE_URL:"postgresql://test:test@127.0.0.1:55432/mandategate"})).toBe(false);
     expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox"})).toBe(false);
     expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox",MANDATEGATE_JUDGE_PREVIEW_ENABLED:"1"})).toBe(true);
-    expect(readme).toContain("Authenticated local HTTP smoke");
+    expect(readme).toContain("pnpm smoke");
     expect(readme).toContain("actual judge access");
   });
 
