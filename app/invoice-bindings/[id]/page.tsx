@@ -101,13 +101,13 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
         : null}
       {sandboxInvoiceDemo && binding.authorization_status==="CONSUMED" && binding.linked_payment_request_id
         ? <p><Link href={"/payments/"+encodeURIComponent(binding.linked_payment_request_id)}>
-            Open the prepared fictional Sandbox payment
+            Open the prepared PayPal Sandbox payment
           </Link></p>
         : null}
       {sandboxInvoiceDemo
-        ? <p className="muted">This is a fictional Sandbox issuer simulation, not verification
-            of an actual supplier. Only the exact reviewed USD 1.01 tuple can use the
-            restricted Sandbox payment rail.</p>
+        ? <p className="muted">This recipient is a Sandbox test account, not an independently
+            authenticated live supplier. Only the reviewed USD 1.01 payment
+            can reach the PayPal Sandbox execution endpoint.</p>
         : null}
     </section>
   </main>;
