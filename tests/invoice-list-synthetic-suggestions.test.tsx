@@ -46,8 +46,8 @@ describe("signed-in invoice intake discoverability without authority confusion",
     expect(html).toContain("Northstar Components");
     expect(html).toContain("USD 125.00");
     expect(html).toContain('href="/invoice-artifacts/'+base.id+'"');
-    expect(html).toContain("Saved AI only. Not T2 verification, issuer proof, or payment approval");
-    expect(html).toContain("Viewing the list does not initiate an AI request or a PayPal payout");
+    expect(html).toContain("AI suggestions; verify before payment.");
+    expect(html).toContain("it cannot");
     expect(html).toContain("SAFE_INVOICE_UPLOAD_FORM");
 
     expect(mocks.query).toHaveBeenCalledTimes(2);
@@ -67,7 +67,7 @@ describe("signed-in invoice intake discoverability without authority confusion",
     rows([{...base,analysis_status:"FAILED",ai_vendor:null,ai_invoice:null,ai_amount:null,ai_currency:null}]);
     const html=renderToStaticMarkup(await InvoiceArtifactListPage());
     expect(html).toContain("No eligible saved AI suggestions");
-    expect(html).toContain("FAILED");
+    expect(html).toContain("Needs AI retry");
     expect(html).not.toContain("DEMO-GLM-004");
     expect(html).not.toContain("USD 125.00");
   });
