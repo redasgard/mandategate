@@ -3,42 +3,86 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { listRecentDecisions } from "@/src/db/views";
+import { readImportedObligations } from "@/src/db/imported-obligations";
+import { ImportedObligations } from "@/app/dashboard/imported-obligations";
+import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
+import { OperationsHeader } from "@/app/components/operations-header";
 
+type View = "ALL" | "REVIEW" | "DENIED" | "ALLOWED";
+function selectView(value: unknown): View {
+  return value === "REVIEW" || value === "DENIED" || value === "ALLOWED" ? value : "ALL";
+}
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }
+const FILTERS: {value:View;label:string}[] = [
+  {value:"ALL",label:"Recent requests"},
+  {value:"REVIEW",label:"Needs review"},
+  {value:"DENIED",label:"Denied"},
+  {value:"ALLOWED",label:"Allowed"},
+];
 
-export default async function PaymentsPage() {
+export default async function PaymentsPage({searchParams}:{
+  searchParams?:Promise<{view?:string|string[]}>;
+}={}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
-  const rows = await listRecentDecisions(session.user.id);
+  if (await isRestrictedJudge(session.user.id)) redirect("/judge");
+  const [rows, obligations] = await Promise.all([
+    listRecentDecisions(session.user.id,100),
+    readImportedObligations(session.user.id),
+  ]);
+  const view = selectView((await searchParams)?.view);
+  const visible = rows.filter(row =>
+    view==="ALL" || (view==="REVIEW" && row.status==="ESCALATED") ||
+    (view==="DENIED" && row.outcome==="DENY") ||
+    (view==="ALLOWED" && row.outcome==="ALLOW"));
+  const needsReview = rows.filter(row=>row.status==="ESCALATED").length;
+  const denied = rows.filter(row=>row.outcome==="DENY").length;
+  const allowed = rows.filter(row=>row.outcome==="ALLOW").length;
+
   return <main className="shell">
-    <header className="topbar">
-      <div>
-        <p className="eyebrow">MANDATEGATE / PAYMENTS</p>
-        <h1>Payment requests</h1>
-        <p className="muted">Requests submitted by operations agents, with decisions made by MandateGate.</p>
+    <OperationsHeader active="payments" title="Payments"
+      description="Follow agent-submitted invoices and payment decisions. Investigate exceptions rather than re-uploading documents."
+      email={session.user.email}/>
+    <section className="ops-summary-grid" aria-label="Recent request decisions">
+      <article className="ops-summary-item"><span>Recent requests</span><strong>{rows.length}</strong><small>Latest 100 decision records at most</small></article>
+      <article className="ops-summary-item"><span>Needs review</span><strong>{needsReview}</strong><small>Current escalated request state</small></article>
+      <article className="ops-summary-item"><span>Denied</span><strong>{denied}</strong><small>Policy or trust boundary denied</small></article>
+      <article className="ops-summary-item"><span>Allowed</span><strong>{allowed}</strong><small>Policy result; not proof of a payout</small></article>
+    </section>
+    <section className="panel ops-queue-panel">
+      <div className="panel-head">
+        <div><p className="eyebrow">Decision ledger</p><h2>Agent payment requests</h2></div>
+        <span className="badge">{visible.length} shown / latest 100 maximum</span>
       </div>
-      <div className="identity">{session.user.email}</div>
-    </header>
-    <nav className="panel" aria-label="Primary navigation" style={{display:"flex",gap:"1.2rem",flexWrap:"wrap"}}>
-      <Link href="/dashboard">Dashboard</Link><strong aria-current="page">Payments</strong>
-      <Link href="/vendors">Vendors</Link><Link href="/policies">Policies</Link><Link href="/activity">Activity</Link>
-    </nav>
-    <section className="panel">
-      <div className="panel-head"><div><p className="eyebrow">Incoming agent requests</p><h2>Recent decisions</h2></div><span className="badge">{rows.length} recent</span></div>
-      {rows.length ? <div className="table-wrap">
-        <table className="dashboard-table" aria-label="Payment requests">
-          <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Evidence</th></tr></thead>
-          <tbody>{rows.map(row=><tr key={row.requestId}>
+      <nav aria-label="Payment decision filters" className="ops-table-toolbar">
+        {FILTERS.map(filter=><Link key={filter.value}
+          href={filter.value==="ALL"?"/payments":"/payments?view="+filter.value}
+          aria-current={view===filter.value?"page":undefined}>{filter.label}</Link>)}
+      </nav>
+      {visible.length ? <div className="table-wrap">
+        <table className="dashboard-table ops-queue-table" aria-label="Agent payment requests">
+          <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Request state</th><th>Recorded (UTC)</th></tr></thead>
+          <tbody>{visible.map(row=><tr key={row.requestId}>
             <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
-            <td data-label="Vendor">{row.vendorName}</td><td data-label="Amount">{formatMoney(row.amountCents,row.currency)}</td>
+            <td data-label="Vendor">{row.vendorName}</td>
+            <td data-label="Amount">{formatMoney(row.amountCents,row.currency)}</td>
             <td data-label="Decision"><span className={"decision "+row.outcome.toLowerCase()}>{row.outcome}</span></td>
-            <td data-label="Evidence">{row.reasonCodes.join(", ")}</td>
+            <td data-label="Request state"><span className="ops-state">{row.status}</span></td>
+            <td data-label="Recorded (UTC)">{row.createdAt.toISOString().slice(0,16).replace("T"," ")}</td>
           </tr>)}</tbody>
         </table>
-      </div> : <div className="empty"><p>No agent payment requests yet.</p><p className="muted">Your connected operations agent submits requests through the scoped payment API. Manual invoice upload is available for troubleshooting, not required for normal processing.</p></div>}
+      </div> : <div className="empty">{rows.length
+        ? "No recent payment requests match this filter."
+        : "No agent payment requests recorded yet. Connected operations agents submit them through the scoped API."}</div>}
+      <p className="ops-context-note" style={{padding:"0 18px"}}>ALLOW is a policy decision, not a PayPal receipt. Open a payment for the exact authorization, execution state and provider evidence. Filters apply to the most recent 100 decisions only.</p>
     </section>
-    <section className="panel"><p className="muted">For source investigation or an exceptional manual workflow: <Link href="/invoice-artifacts">Invoice evidence</Link>. For payment authority: <Link href="/policies">Standing mandates and policies</Link>.</p></section>
+    <ImportedObligations overview={obligations} compact/>
+    <section className="ops-handoff" aria-label="Supporting payment tools" style={{marginTop:18}}>
+      <div><h3>Agent-connected intake</h3><p className="muted">The default path starts in your operations agent. Manual document upload and AP import are available for exceptional evidence review; they do not themselves authorize or initiate payments.</p></div>
+      <div><Link href="/policies">View policies →</Link>{" · "}
+        <Link href="/invoice-artifacts">Invoice evidence</Link></div>
+    </section>
   </main>;
 }
