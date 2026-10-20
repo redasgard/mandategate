@@ -9,6 +9,8 @@ import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
 import { PersistedInvoiceObservation } from "./persisted-observation";
+import { InvoiceJourney } from "@/app/components/invoice-journey";
+import {invoiceExtractionSchema} from "@/src/invoices/schema";
 
 
 export default async function InvoiceArtifactReviewPage({
@@ -28,25 +30,57 @@ export default async function InvoiceArtifactReviewPage({
     "from invoice_image_observations where organization_id=$1 and artifact_id=$2 limit 1",
   ].join(" "), [artifact.organizationId,id]);
   const observation = savedObservation.rows[0] ?? null;
+  const extraction=invoiceExtractionSchema.safeParse(observation?.extraction);
+  const hasAiResult=Boolean(
+    extraction.success &&
+    ["ESCALATE","EXTRACTED_UNTRUSTED"].includes(observation?.state) &&
+    !observation?.error_code,
+  );
+  const suggestions=hasAiResult&&extraction.success?extraction.data:null;
+  const supplier=suggestions?.vendor_name.value??"Supplier to review";
+  const number=suggestions?.invoice_number.value??"New invoice";
+  const amount=suggestions?.total_amount_decimal.value;
+  const currency=suggestions?.currency.value;
+  const paymentText=amount&&currency?`${currency} ${amount}`:"Amount to review";
+  const originalSource="/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source";
 
   if(artifact.mimeType!=="application/pdf") {
-    return <main className="shell narrow">
-      <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
-      <section className="panel detail">
-        <p className="eyebrow">Untrusted image invoice / source review</p>
-        <h1>Inspect original image and advisory model observations</h1>
-        <p className="muted">Image evidence is not independently transcribed or authenticated.
-          A model response cannot authorize payments or change vendor destinations.</p>
-        <dl>
-          <div><dt>Media type</dt><dd>{artifact.mimeType}</dd></div>
-          <div><dt>Original SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
-          <div><dt>Source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"}
-            target="_blank" rel="noopener noreferrer">View original image</a></dd></div>
-          <div><dt>Trust state</dt><dd>Untrusted document</dd></div>
-        </dl>
-        <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
-/>
-        <PersistedInvoiceObservation record={observation}/>
+    return <main className="shell invoice-product">
+      <Link href="/invoice-artifacts" className="back">← All invoices</Link>
+      <InvoiceJourney stage="review"/>
+      <section className="panel invoice-main">
+        <header className="invoice-overview">
+          <div>
+            <p className="eyebrow">AI-assisted invoice processing</p>
+            <h1>{number}</h1>
+            <p className="muted">Review what AI extracted from the image.
+              Source verification is not available for images on this payment path.</p>
+          </div>
+          <div className="invoice-overview-aside">
+            <span>AI-suggested total</span>
+            <strong>{paymentText}</strong>
+            <span className="invoice-status needs-review">Needs document verification</span>
+          </div>
+        </header>
+        <div className="invoice-workspace-body">
+          <a className="invoice-secondary-link" href={originalSource} target="_blank"
+            rel="noopener noreferrer">View original invoice ↗</a>
+          {hasAiResult?<PersistedInvoiceObservation record={observation}/>:null}
+          <InvoiceVisionObservation artifactId={id}
+            artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
+          {!hasAiResult?<PersistedInvoiceObservation record={observation}/>:null}
+          <div className="invoice-review-notes">
+            <strong>Payment not yet available</strong>
+            <p>Image-only fields cannot satisfy the independent PDF evidence
+              required by the current PayPal invoice execution flow.
+              A human-reviewed PDF source is needed before authorization.</p>
+          </div>
+          <details className="invoice-technical">
+            <summary>Document metadata</summary>
+            <dl><div><dt>Media type</dt><dd>{artifact.mimeType}</dd></div>
+              <div><dt>SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div></dl>
+          </details>
+        </div>
       </section>
     </main>;
   }
@@ -98,31 +132,53 @@ export default async function InvoiceArtifactReviewPage({
     evidenceReference:r.independent_evidence_reference as string,
     expiresAt:(r.expires_at as Date).toISOString(),
   }));
-  return <main className="shell narrow">
-    <Link href="/dashboard" className="back">← Dashboard</Link>
-    <section className="panel detail">
-      <p className="eyebrow">Invoice verification and payment approval</p>
-      <h1>Review invoice and prepare PayPal payment</h1>
-      <p className="muted">The PDF is untrusted. Read its exact original bytes, verify independently extracted text, then confirm the issuer using a channel that was enrolled before this invoice. None of these actions executes a payment.</p>
-      <dl>
-        <div><dt>Original media type</dt><dd>{artifact.mimeType}</dd></div>
-        <div><dt>Artifact size</dt><dd>{artifact.byteSize.toLocaleString()} bytes</dd></div>
-        <div><dt>Source artifact SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
-        <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect original PDF (admin-only download)</a></dd></div>
-      </dl>
-      <p className="muted">You can verify the source fields directly or use
-        AI to suggest invoice details. Neither step authorizes a payout.
-        Payment submission is a separate PayPal Sandbox operation after approval.</p>
-      <InvoiceArtifactReview
-        artifactId={id} artifactSha256={artifact.sha256}
-        initialPages={pages?.pages ?? []}
-        initialClaims={existingClaims}
-        initialAttestations={existingAttestations}
-        eligibleChannels={eligibleChannels}
-      />
-      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
-/>
-      <PersistedInvoiceObservation record={observation}/>
+  return <main className="shell invoice-product">
+    <Link href="/invoice-artifacts" className="back">← All invoices</Link>
+    <InvoiceJourney stage="review"/>
+    <section className="panel invoice-main">
+      <header className="invoice-overview">
+        <div>
+          <p className="eyebrow">AI-assisted invoice processing</p>
+          <h1>{number}</h1>
+          <p className="muted">
+            {supplier}{supplier!=="Supplier to review"?" · AI suggested":""}.
+            Review the printed facts, approve the exact payment and
+            complete the transfer in PayPal Sandbox.
+          </p>
+          <a className="invoice-secondary-link" target="_blank" rel="noopener noreferrer"
+            href={originalSource}>View original invoice ↗</a>
+        </div>
+        <div className="invoice-overview-aside">
+          <span>Invoice total {hasAiResult?"(AI suggestion)":""}</span>
+          <strong>{paymentText}</strong>
+          <span className={"invoice-status "+(hasAiResult?"needs-review":"pending")}>
+            {hasAiResult?"Ready for your review":"Awaiting AI analysis"}
+          </span>
+        </div>
+      </header>
+      <div className="invoice-workspace-body">
+        {hasAiResult ? <PersistedInvoiceObservation record={observation}/>:null}
+        {hasAiResult?<details className="invoice-technical">
+          <summary>Analyze this invoice again</summary>
+          <p className="muted">The saved result is already available.
+            Rerun AI only when you need a fresh observation.</p>
+          <InvoiceVisionObservation artifactId={id}
+            artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>
+        </details>:<InvoiceVisionObservation artifactId={id}
+          artifactSha256={artifact.sha256} mimeType={artifact.mimeType}/>}
+        {!hasAiResult?<PersistedInvoiceObservation record={observation}/>:null}
+        <InvoiceArtifactReview artifactId={id} artifactSha256={artifact.sha256}
+          initialPages={pages?.pages??[]} initialClaims={existingClaims}
+          initialAttestations={existingAttestations} eligibleChannels={eligibleChannels}/>
+        <details className="invoice-technical">
+          <summary>Document metadata and audit reference</summary>
+          <dl>
+            <div><dt>File type</dt><dd>{artifact.mimeType}</dd></div>
+            <div><dt>File size</dt><dd>{artifact.byteSize.toLocaleString()} bytes</dd></div>
+            <div><dt>Original source SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
+          </dl>
+        </details>
+      </div>
     </section>
   </main>;
 }
