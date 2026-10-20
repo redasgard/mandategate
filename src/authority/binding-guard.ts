@@ -4,6 +4,7 @@ import { invoiceDecimalToCents } from "../invoices/normalize";
 import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
 import { assessHistoricalPaymentRisk } from "../history/anomaly";
 import { hashPaymentAuthorityTuple } from "./contracts";
+import {isExactSandboxFictionalInvoice,sandboxOriginIsSynthetic} from "../demo/sandbox-fictional-origin";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 const criticalFields = [
@@ -72,9 +73,22 @@ export async function inspectCurrentAuthorityBinding(
   if (new Date(b.expires_at).getTime() <= now ||
     new Date(b.origin_expires_at).getTime() <= now) refuse("BINDING_OR_ORIGIN_EXPIRED");
   if (!b.channel_active || !b.channel_predates_artifact ||
-    b.channel_kind === "SYNTHETIC_FIXTURE" ||
-    b.origin_method !== "ADMIN_OUT_OF_BAND" || !b.origin_proof_sha256 ||
-    !b.independent_evidence_reference) refuse("ISSUER_ORIGIN_NOT_TRUSTED");
+    !b.origin_proof_sha256 || !b.independent_evidence_reference)
+    refuse("ISSUER_ORIGIN_NOT_TRUSTED");
+  const fictionalOrigin=sandboxOriginIsSynthetic(b.channel_kind,b.origin_method);
+  if (fictionalOrigin) {
+    if (b.channel_kind!=="SYNTHETIC_FIXTURE" ||
+        b.origin_method!=="SYNTHETIC_FIXTURE" ||
+        !b.channel_enroller || b.claim_source_kind!=="PDF_TEXT" ||
+        !isExactSandboxFictionalInvoice({
+          organizationId:b.organization_id,vendorId:b.vendor_id,
+          invoiceNumber:b.invoice_number,amountCents:Number(b.amount_cents),
+          currency:b.currency,recipient:b.current_destination,
+        }))
+      refuse("SYNTHETIC_ISSUER_NOT_REAL_AUTHORITY");
+  }else if (b.origin_method!=="ADMIN_OUT_OF_BAND") {
+    refuse("ISSUER_ORIGIN_NOT_TRUSTED");
+  }
   if (b.claim_status !== "VERIFIED" ||
     b.verifier_method !== "ADMIN_EXPLICIT" ||
     !["HUMAN_TRANSCRIPTION", "PDF_TEXT"].includes(b.claim_source_kind)) {
@@ -85,6 +99,7 @@ export async function inspectCurrentAuthorityBinding(
     b.origin_artifact_sha256 !== b.current_artifact_sha256) refuse("SOURCE_DIGEST_CHANGED");
 
   const actors = [b.verifier_actor, b.origin_actor];
+  if(fictionalOrigin) actors.push(b.channel_enroller);
   if (requiredState !== "PROPOSED") {
     if (!b.approval_actor || !b.approval_proof_sha256) refuse("APPROVAL_NOT_ATTESTED");
     actors.push(b.approval_actor);
