@@ -47,7 +47,7 @@ The project sits at the intersection of AI security, authorization, and real fin
 
 A real operations agent submits a real invoice document through the MandateGate API.
 
-The current PayPal AI Hackathon release demonstrates:
+The PayPal AI Hackathon application must prove these real, inspectable outcomes:
 
 1. a normal known-vendor invoice is analyzed, allowed, and paid through PayPal Sandbox;
 2. a subtle near-duplicate or unusual-amount invoice is detected from historical context, escalated, and rejected without payment;
@@ -57,7 +57,7 @@ The compelling moment is seeing an invoice that looks legitimate get stopped bec
 
 ## Hackathon Release Boundary
 
-MandateGate is the product. The PayPal AI Hackathon is the current release milestone, not the definition of the product. The Devpost Learn 2–4 hour proof slice maps to P0 for planning/build discipline; it does not cap the broader hackathon release.
+The PayPal AI Hackathon is the **current primary product and shipping milestone**. A production or enterprise-readiness track is not in scope. Complete AI invoice analysis, policy decisions, a real PayPal Sandbox payout and verified webhook reconciliation before treating the core implementation as finished.
 
 P0, P1, and P2 are all in scope for the November hackathon release. The tiers control build order and emergency cut priority only. Nothing in P1 or P2 may destabilize P0.
 
@@ -75,8 +75,8 @@ P0, P1, and P2 are all in scope for the November hackathon release. The tiers co
 - permanent payment idempotency
 - real PayPal Sandbox payment execution
 - structured reason/evidence trail
-- basic polished dashboard/demo flow
-- all three canonical demo scenarios working end to end
+- coherent invoice → AI → decision → PayPal execution experience
+- three risk-policy cases with real reason codes; each only pays when separately authorized
 
 ### P1 — planned hackathon features
 
