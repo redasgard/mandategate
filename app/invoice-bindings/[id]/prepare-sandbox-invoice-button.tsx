@@ -25,12 +25,12 @@ export function PrepareSandboxInvoiceButton({bindingId}:{bindingId:string}){
     }finally{setBusy(false);}
   };
   return <div className="review-stage">
-    <p className="eyebrow">Fictional PayPal Sandbox invoice</p>
-    <p>This source and issuer are part of a controlled simulation.
+    <p className="eyebrow">PayPal Sandbox payment preparation</p>
+    <p>This supplier is a PayPal Sandbox test record.
       Preparing records the reviewed invoice request; it does not pay.
       A separate explicit payment action appears on the next screen.</p>
     <button type="button" disabled={busy} onClick={()=>void prepare()}>
-      {busy?"Preparing…":"Prepare USD 1.01 Sandbox invoice, no payment"}
+      {busy?"Preparing…":"Prepare USD 1.01 for PayPal execution"}
     </button>
     {error?<p role="alert" className="error">{error}</p>:null}
   </div>;
