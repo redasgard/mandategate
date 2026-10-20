@@ -39,35 +39,36 @@ export default async function DashboardPage({ searchParams }: {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">MandateGate / PayPal + AI</p>
-          <h1>The firewall between AI agents and your money.</h1>
-          <p className="muted"><Link href="/invoice-artifacts">Invoice intake</Link>
-            {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
-            {" · "}<Link href="/obligations">Upcoming and overdue imports</Link>
-            {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
-            {" · "}<Link href="/policies">Policies and proposals</Link>
-            {" · "}<Link href="/activity">Activity and decision evidence</Link></p>
+          <p className="eyebrow">MANDATEGATE / OPERATIONS CONTROL</p>
+          <h1>Payment operations</h1>
+          <p className="muted">Autonomous accounts payable. Investigate exceptions, monitor execution, and manage standing authority.</p>
         </div>
         <div className="identity">{session.user.email}</div>
       </header>
 
-      <section className="panel review-stage" aria-label="Invoice intake">
-        <p className="eyebrow">Invoice intake / source evidence</p>
-        <h2>Analyze, approve and execute invoice payments</h2>
-        <p className="muted">Start with the original PDF, PNG, or JPEG. Uploaded
-          documents are untrusted; AI reads them, policy evaluates the risk,
-          and a reviewer controls authorization. Approved payments are executed
-          through PayPal Sandbox and tracked through provider receipts.</p>
-        <p><Link href="/invoice-artifacts">Open invoice workflow →</Link></p>
+      <nav className="panel" aria-label="Primary navigation" style={{display:"flex",gap:"1.2rem",flexWrap:"wrap",alignItems:"center"}}>
+        <strong aria-current="page">Dashboard</strong>
+        <Link href="/requests">Payments</Link>
+        <Link href="/vendors">Vendors</Link>
+        <Link href="/policies">Policies</Link>
+        <Link href="/activity">Activity</Link>
+      </nav>
+
+      <section className="panel" aria-label="Operations workflow">
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">Agent-driven processing</p>
+            <h2>Payments arrive from your operations agents</h2>
+          </div>
+          <span className="badge">Exception-first</span>
+        </div>
+        <div className="panel-body">
+          <p>Agents submit invoice requests through the scoped API. MandateGate independently evaluates source evidence, vendor trust, historical behavior and active standing mandates. Authorized requests may execute automatically; exceptions require investigation.</p>
+          <p className="muted">No invoice download and re-upload is required for the normal workflow. Manual document intake remains a support and testing tool, not the product's primary action.</p>
+          <p><Link href="/requests">Review payments →</Link>{" · "}<Link href="/policies">Manage standing authority →</Link></p>
+        </div>
       </section>
 
-
-      {sandboxPayouts ? <section className="panel review-stage" aria-label="PayPal Sandbox execution">
-        <p className="eyebrow">PayPal Sandbox / actual API</p>
-        <h2>Pay approved invoices through PayPal Sandbox</h2>
-        <p className="muted">Executes through the real PayPal Sandbox API after invoice verification and approval. Each payout is recorded with its batch, item, and webhook status. No live funds are moved.</p>
-        <p><Link href="/sandbox-payout">Open PayPal execution →</Link></p>
-      </section> : null}
       <section className="metrics" aria-label="Current payment risk">
         <article className="metric danger"><span>AWAITING REVIEW</span><strong>{summary.pendingReview}</strong></article>
         <article className="metric blocked"><span>DENIED REQUESTS</span><strong>{summary.denied}</strong></article>
@@ -79,7 +80,7 @@ export default async function DashboardPage({ searchParams }: {
         <IncidentInvestigation incidents={incidents} activeFilter={incidentFilter} />
         <section className="panel">
           <div className="panel-head">
-            <div><p className="eyebrow">Payment reporting</p><h2>Observed state, not invented balances</h2></div>
+            <div><p className="eyebrow">Payment reporting</p><h2>Money position</h2></div>
             <span className="badge">Sandbox / live PostgreSQL</span>
           </div>
           <div className="panel-body">
@@ -112,7 +113,7 @@ export default async function DashboardPage({ searchParams }: {
 
         <section className="panel">
           <div className="panel-head">
-            <div><p className="eyebrow">Recent authority decisions</p><h2>Agent requests, MandateGate decisions</h2></div>
+            <div><p className="eyebrow">Recent activity</p><h2>Agent requests and policy outcomes</h2></div>
             <span className="badge">Payment execution requires separate authorization</span>
           </div>
           {rows.length === 0 ? (
