@@ -81,8 +81,8 @@ export default async function DashboardPage({ searchParams }: {
       <div className="ops-summary-grid">
         <SnapshotMetric label="Available balance" value="Not connected"
           detail="No authenticated PayPal balance feed. Never assumed to be zero."/>
-        <SnapshotMetric label="Confirmed paid · UTC month" value={paidThisMonth}
-          detail="Reconciled local payout records; not cash balance or net spend."/>
+        <SnapshotMetric label="Recorded paid · UTC month" value={paidThisMonth}
+          detail="Local PAID execution states; not a PayPal balance or net spend."/>
         <SnapshotMetric label="Upcoming · next 14 days"
           value={exactCents(obligations.upcoming.cents,"USD")}
           detail={obligations.upcoming.count+" imported open rows. Not authorized payouts."}/>
