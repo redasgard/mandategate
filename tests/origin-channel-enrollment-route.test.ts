@@ -28,9 +28,11 @@ describe("issuer enrollment requires a genuine signed-in admin action",()=>{
     expect(response.status).toBe(401);
     expect((await response.json()).error).toBe("UNAUTHORIZED");
   });
-  it("does not accept synthetic-fixture channel as genuine issuer",()=>{
-    expect(()=>validateEnrollmentReference("SYNTHETIC_FIXTURE","synthetic-fixture:seed"))
-      .toThrow("ORIGIN_CHANNEL_KIND_UNSUPPORTED");
+  it("distinguishes fictional markers from genuine issuer claims",()=>{
+    expect(()=>validateEnrollmentReference("SYNTHETIC_FIXTURE","synthetic-fixture:mandategate-demo-only"))
+      .not.toThrow();
+    expect(()=>validateEnrollmentReference("TRUSTED_PORTAL","synthetic-fixture:mandategate-demo-only"))
+      .toThrow("INDEPENDENT_CHANNEL_EVIDENCE_REFERENCE_REQUIRED");
     expect(()=>validateEnrollmentReference("TRUSTED_PORTAL","callback-record:not-a-portal"))
       .toThrow("INDEPENDENT_CHANNEL_EVIDENCE_REFERENCE_REQUIRED");
   });
