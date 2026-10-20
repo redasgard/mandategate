@@ -77,6 +77,39 @@ test('isolated Neon Sandbox forwards only explicitly approved PayPal Sandbox cre
     assert.equal(configured.childEnv[key],undefined,key);
   }
 });
+test('reviewed invoice feature flag crosses only into one payment-capable hosted Sandbox',()=>{
+  const payment = {...env,
+    MANDATEGATE_RUNTIME_MODE:'neon-sandbox', MANDATEGATE_DISABLE_PAYMENTS:'0',
+    MANDATEGATE_SANDBOX_PAYOUTS:'1',
+    PAYPAL_BASE_URL:'https://api-m.sandbox.paypal.com',
+    PAYPAL_CLIENT_ID:'sandbox-client-id-123',
+    PAYPAL_CLIENT_SECRET:'sandbox-secret-123',
+    PAYPAL_WEBHOOK_ID:'WH-1234567890',
+    DEMO_PAYPAL_RECEIVER_EMAIL:'sb-test-recipient@example.test',
+    MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:'1',
+    RENDER_SERVICE_ID:'srv-db39vmm7bikc73c55nh0',
+  };
+  const started=runtimeProfile(payment);
+  assert.equal(started.childEnv.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO,'1');
+  assert.equal(started.childEnv.PAYPAL_BASE_URL,'https://api-m.sandbox.paypal.com');
+  assert.equal(started.childEnv.DEMO_PAYPAL_RECEIVER_EMAIL,'sb-test-recipient@example.test');
+  assert.equal(runtimeProfile({...payment,MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:'0'})
+    .childEnv.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO,undefined);
+  for(const patch of [
+    {RENDER_SERVICE_ID:'srv-other'},
+    {RENDER_SERVICE_ID:undefined},
+    {MANDATEGATE_DISABLE_PAYMENTS:'1'},
+    {MANDATEGATE_SANDBOX_PAYOUTS:'0'},
+    {PAYPAL_BASE_URL:'https://api-m.paypal.com'},
+  ]) {
+    assert.throws(()=>runtimeProfile({...payment,...patch}),
+      /RUNTIME_SANDBOX_INVOICE_DEPLOYMENT_NOT_BOUND|RUNTIME_SANDBOX_PAYOUT_GRANT_REQUIRED/);
+  }
+  assert.throws(()=>runtimeProfile({...payment,MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:'true'}),
+    /RUNTIME_SANDBOX_INVOICE_FLAG_INVALID/);
+  assert.equal(runtimeProfile({...env,MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:'0'})
+    .childEnv.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO,undefined);
+});
 test('Neon Sandbox keeps PayPal credentials isolated while payments are disabled',()=>{
   const selected=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',
     PAYPAL_CLIENT_SECRET:'parent-only',PAYPAL_CLIENT_ID:'parent-client'});
