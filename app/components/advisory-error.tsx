@@ -8,6 +8,19 @@ export type AdvisoryFailure={
 };
 
 const failures:Record<string,AdvisoryFailure>={
+  EXPERIENTIAL_REQUEST_FIELDS_IGNORED:{
+    title:"AI provider ignored a required request field",
+    explanation:"The gateway returned an adaptation incompatible with the invoice-analysis contract. MandateGate rejected the result instead of treating it as verified facts.",
+    resolution:"Retry invoice analysis. If the problem repeats, inspect the server's safe provider-field diagnostic. No PayPal payout was created.",
+    preflightBlocked:false,
+  },
+  EXPERIENTIAL_EXTRACTION_INVALID_SCHEMA:{
+    title:"AI returned invalid structured invoice data",
+    explanation:"The provider did not enforce the output format and the response failed MandateGate's local invoice schema validation.",
+    resolution:"Retry invoice analysis or continue with independently verified PDF text. Invalid model output cannot authorize payment.",
+    preflightBlocked:false,
+  },
+
   SYNTHETIC_NON_ZDR_TEST_DISABLED:{
     title:"Synthetic test mode is disabled",
     explanation:"This environment is not explicitly configured as the approved demo with PayPal Sandbox and the synthetic-only exception.",
@@ -108,8 +121,8 @@ const failures:Record<string,AdvisoryFailure>={
 export function explainAdvisoryFailure(code:string):AdvisoryFailure{
   return failures[code]??{
     title:"AI observation could not be completed",
-    explanation:"MandateGate stopped the optional AI operation. The technical code below identifies the failure. The request may have reached the provider if this happened after privacy preflight.",
-    resolution:"Inspect the technical code and retry after resolving the provider or processing issue. You can continue non-AI invoice review.",
+    explanation:"MandateGate could not complete invoice AI analysis. The technical code identifies the failed step. The provider may already have received the image.",
+    resolution:"Retry the invoice AI action after resolving the provider or processing issue. You can still review the original invoice and PDF text.",
     preflightBlocked:false,
   };
 }
@@ -122,7 +135,7 @@ export function AdvisoryErrorDetails({code,metadataOnly=false}:{code:string;meta
     <p className="muted">{metadataOnly?
       "This metadata-only check did not send invoice content or invoke the model.":
       info.preflightBlocked?
-        "Blocked at privacy preflight. No invoice image was sent to the model and no payment was authorized.":
+        "Blocked before inference. No invoice image was sent to the model and no payment was authorized.":
         "The AI request did not complete. Transmission status may be unknown. This action cannot authorize a payment."}
     </p>
     <details><summary>Technical details</summary><code>{code}</code></details>
