@@ -43,6 +43,9 @@ export function InvoiceArtifactReview(props:{
         )
       : blanks;
   });
+  const [activeStep,setActiveStep]=useState<1|2|3>(
+    props.initialAttestations.length>0?3:props.initialClaims.length>0?2:1,
+  );
   const [reason,setReason]=useState("");
   const [claims,setClaims]=useState<Claim[]>(props.initialClaims);
   const [attestations,setAttestations]=useState<Attestation[]>(props.initialAttestations);
@@ -108,7 +111,8 @@ export function InvoiceArtifactReview(props:{
     setClaimId(id);setClaims(list=>[{
       id,createdAt:new Date().toISOString(),
     },...list]);
-    setNotice("T2 field-source proof recorded. Issuer origin is still unverified.");
+    setNotice("Invoice details verified against the original PDF. Next: confirm the supplier.");
+    setActiveStep(2);
   });
   const attest=()=>run("attest",async()=>{
     if(!selectedChannel || !outOfBandConfirmed)
@@ -127,7 +131,8 @@ export function InvoiceArtifactReview(props:{
       evidenceReference:evidenceRef.trim(),
       expiresAt:new Date(a.expiresAt).toISOString(),
     },...list]);
-    setNotice(fictionalChannel?"Fictional Sandbox source assertion recorded. No supplier was contacted and no payment was authorized.":"Human out-of-band attestation recorded. Software has not independently contacted the issuer.");
+    setNotice(fictionalChannel?"Northstar test supplier confirmed for PayPal Sandbox. No payment was authorized.":"Supplier source confirmation saved. Payment is not yet approved.");
+    setActiveStep(3);
   });
   const propose=()=>run("proposal",async()=>{
     const result=await send("/proposals",{
@@ -137,120 +142,184 @@ export function InvoiceArtifactReview(props:{
     setProposal(result.proposal);
     setNotice("Proposal evaluated. No payment was authorized or sent.");
   });
-  return <div className="review-wizard">
-    <section className="review-stage">
-      <p className="eyebrow">1 / Independent PDF text</p>
-      <h2>Read the source before entering facts</h2>
-      {pages.length===0?
-        <button type="button" onClick={()=>void prepare()} disabled={busy!==null}>
-          Parse PDF and suggest unverified facts (no AI inference)
-        </button>:
-        <div>{pages.map(p=><div className="review-page" key={p.pageNumber}>
-          <div className="review-page-header">Page {p.pageNumber} / text SHA-256 {p.textSha256}</div>
-          <pre>{p.text}</pre>
-        </div>)}</div>}
-      {pages.length>0?<button type="button" onClick={()=>suggest(pages)} disabled={busy!==null}>
-        Suggest missing fields from saved PDF text (no AI)
-      </button>:null}
-      <p className="muted">Suggested fields are editable, unverified parser-text candidates. They do not establish invoice authenticity, vendor identity or authority. Your prior edits are never overwritten. Compare with the original PDF before explicit T2 review.</p>
-      <p className="muted">Parsed text is document evidence, not issuer identity. Compare it with the original PDF; hidden layers and clipping may still cause differences. For a scanned PDF without extractable text, the agent analysis API can render a bounded single page for untrusted GLM observation, but that image result always escalates and never satisfies independent T2 evidence. Multi-page scans require manual review.</p>
-    </section>
-    <section className="review-stage">
-      <p className="eyebrow">2 / T2 source corroboration</p>
-      <h2>Record exact labeled payment-critical values</h2>
-      <div className="review-grid">
-        {fieldNames.map(name=><div key={name} className="review-field">
-          <label>{labels[name]}
-            <input value={facts[name].value}
-              placeholder={name==="total_amount_decimal"?"1.01":""}
-              onChange={e=>updateFact(name,"value",e.target.value)} />
-          </label>
-          <label>Exact quote from the selected page
-            <textarea rows={2} value={facts[name].sourceFragment}
-              onChange={e=>updateFact(name,"sourceFragment",e.target.value)}/>
-          </label>
-          <label>Page number
-            <select value={facts[name].pageNumber}
-              onChange={e=>updateFact(name,"pageNumber",Number(e.target.value))}>
-              {pages.map(p=><option key={p.pageNumber} value={p.pageNumber}>{p.pageNumber}</option>)}
-              {pages.length===0?<option value={1}>1</option>:null}
-            </select>
-          </label>
-        </div>)}
+  return <div className="invoice-review-wizard" id="invoice-review-workflow">
+    <header className="invoice-section-heading">
+      <div>
+        <p className="eyebrow">Invoice review</p>
+        <h2>Three short checks before payment</h2>
+        <p className="muted">Your review creates an auditable payment request.
+          Actual PayPal execution remains a separate confirmation.</p>
       </div>
-      <label>Review justification (minimum 16 characters)
-        <textarea value={reason} rows={3}
-          onChange={e=>setReason(e.target.value)} maxLength={500}/>
-      </label>
-      <button type="button" disabled={busy!==null || pages.length===0 || reason.trim().length<16}
-        onClick={()=>void verify()}>Verify exact PDF field evidence</button>
-      {claims.length>0?<label>Verified PDF claim to use for proposal
-        <select value={claimId} onChange={e=>setClaimId(e.target.value)}>
-          {claims.map(c=><option key={c.id} value={c.id}>
-            {c.id} / {c.createdAt}
+    </header>
+    <nav className="invoice-task-steps" aria-label="Invoice verification steps">
+      <button type="button" className={activeStep===1?"current":claims.length?"complete":""}
+        aria-current={activeStep===1?"step":undefined} onClick={()=>setActiveStep(1)}>
+        <span>{claims.length?"✓":"1"}</span> Invoice details
+      </button>
+      <button type="button" className={activeStep===2?"current":attestations.length?"complete":""}
+        aria-current={activeStep===2?"step":undefined} disabled={!claimId}
+        onClick={()=>setActiveStep(2)}>
+        <span>{attestations.length?"✓":"2"}</span> Supplier
+      </button>
+      <button type="button" className={activeStep===3?"current":""}
+        aria-current={activeStep===3?"step":undefined} disabled={!claimId||!attestationId}
+        onClick={()=>setActiveStep(3)}>
+        <span>3</span> Payment checks
+      </button>
+    </nav>
+
+    {activeStep===1 ? <section className="invoice-task-card" aria-label="Verify invoice details">
+      <div className="invoice-task-card-head">
+        <span className="invoice-step-number">01</span>
+        <div><h3>Confirm the invoice details</h3>
+          <p className="muted">Check these five fields against the original PDF.
+            We've suggested what we can; you make the final decision.</p>
+        </div>
+      </div>
+      <a className="invoice-secondary-link" target="_blank" rel="noopener noreferrer"
+        href={"/api/admin/invoice-artifacts/"+encodeURIComponent(props.artifactId)+"/source"}>
+        Open original invoice ↗
+      </a>
+      {pages.length===0 ?
+        <div className="invoice-task-prompt">
+          <p>Extract the readable text from this PDF to fill the review form.</p>
+          <button type="button" onClick={()=>void prepare()} disabled={busy!==null}>
+            {busy==="pages"?"Reading invoice…":"Read invoice details"}
+          </button>
+        </div>
+        : <>
+          <div className="invoice-fields">
+            {fieldNames.map(name=><div className="invoice-field-row" key={name}>
+              <label className="invoice-value-field">{labels[name]}
+                <input value={facts[name].value}
+                  placeholder={name==="total_amount_decimal"?"0.00":"Not found"}
+                  onChange={e=>updateFact(name,"value",e.target.value)} />
+              </label>
+              <details className="invoice-field-evidence"
+                open={!facts[name].sourceFragment.trim()}>
+                <summary>Source quote {facts[name].sourceFragment.trim()?"✓":"needed"}</summary>
+                <label>Exact phrase from original PDF
+                  <textarea rows={2} value={facts[name].sourceFragment}
+                    onChange={e=>updateFact(name,"sourceFragment",e.target.value)}/>
+                </label>
+                <label>Page
+                  <select value={facts[name].pageNumber}
+                    onChange={e=>updateFact(name,"pageNumber",Number(e.target.value))}>
+                    {pages.map(p=><option key={p.pageNumber} value={p.pageNumber}>{p.pageNumber}</option>)}
+                  </select>
+                </label>
+              </details>
+            </div>)}
+          </div>
+          <details className="invoice-technical">
+            <summary>Show PDF source text and hashes</summary>
+            {pages.map(p=><div className="review-page" key={p.pageNumber}>
+              <div className="review-page-header">Page {p.pageNumber} · text SHA-256 {p.textSha256}</div>
+              <pre>{p.text}</pre>
+            </div>)}
+            <button type="button" className="invoice-ghost-button"
+              onClick={()=>suggest(pages)} disabled={busy!==null}>
+              Refresh missing suggestions
+            </button>
+          </details>
+          <label className="invoice-review-reason">Reason for verifying these details
+            <textarea value={reason} rows={2} maxLength={500}
+              placeholder="I checked the printed invoice, amount and payment address against the original PDF."
+              onChange={e=>setReason(e.target.value)}/>
+          </label>
+          <button type="button" className="invoice-primary-action"
+            disabled={busy!==null||reason.trim().length<16}
+            onClick={()=>void verify()}>
+            {busy==="verify"?"Verifying…":"Verify invoice details & continue →"}
+          </button>
+          <p className="invoice-small-note">No payment is sent at this step.
+            Source quotations remain available under each field.</p>
+        </>}
+    </section> : null}
+
+    {activeStep===2 ? <section className="invoice-task-card" aria-label="Confirm invoice supplier">
+      <div className="invoice-task-card-head">
+        <span className="invoice-step-number">02</span>
+        <div><h3>Confirm the supplier</h3>
+          <p className="muted">Match this invoice to a supplier source registered
+            before the invoice was uploaded.</p>
+        </div>
+      </div>
+      {props.eligibleChannels.length===0 ? <div className="invoice-review-notes">
+        <p>No eligible supplier source is registered for this invoice.</p>
+        <Link href="/vendor-origin-channels">Register supplier source →</Link>
+      </div> : <label>Supplier source
+        <select value={channelId} onChange={e=>{
+          setChannelId(e.target.value);setOutOfBandConfirmed(false);setEvidenceRef("");
+        }}>
+          {props.eligibleChannels.map(ch=><option value={ch.id} key={ch.id}>
+            {ch.vendorName} {ch.kind==="SYNTHETIC_FIXTURE"?"(PayPal Sandbox test supplier)":""}
           </option>)}
         </select>
-      </label>:null}
-    </section>
-    <section className="review-stage">
-      <p className="eyebrow">3 / T3 independent issuer origin</p>
-      <h2>{fictionalChannel?"Acknowledge the fictional Sandbox source":"Confirm through a previously enrolled vendor channel"}</h2>
-      {props.eligibleChannels.length===0?
-        <p className="error">No eligible pre-invoice source channel exists. Register the Northstar Sandbox test source before uploading the invoice.</p>:
-        <label>Trusted vendor channel (pre-enrolled)
-          <select value={channelId} onChange={e=>{setChannelId(e.target.value);setOutOfBandConfirmed(false);setEvidenceRef("");}}>
-            {props.eligibleChannels.map(ch=><option key={ch.id} value={ch.id}>
-              {ch.vendorName} / {ch.kind} / {ch.id}
-            </option>)}
-          </select>
-        </label>}
-      <label>{fictionalChannel?"Fictional Sandbox scenario reference":"Independent callback, portal or ERP evidence reference"}
+      </label>}
+      <label>{fictionalChannel?"Test supplier reference":"Independent supplier verification reference"}
         <input value={evidenceRef} onChange={e=>setEvidenceRef(e.target.value)}
-          placeholder={fictionalChannel?"synthetic-fixture:mandategate-demo-issuer-001":"callback-record:actual-reference-from-independent-system"}/>
+          placeholder={fictionalChannel?"synthetic-fixture:northstar-sandbox-001":"callback-record:verified-reference"} />
       </label>
-      <label className="review-checkbox">
+      <label className="review-checkbox invoice-confirm-check">
         <input type="checkbox" checked={outOfBandConfirmed}
           onChange={e=>setOutOfBandConfirmed(e.target.checked)}/>
-        {fictionalChannel
-          ? "I confirm this is a fictional Sandbox issuer scenario. No actual vendor was contacted or authenticated."
-          : "I personally checked the pre-established contact or system outside the invoice and recorded a genuine evidence reference."}
+        <span>{fictionalChannel
+          ?"This is a PayPal Sandbox test supplier. No live supplier was contacted or authenticated."
+          :"I independently checked this supplier through the registered source, not from the invoice alone."}</span>
       </label>
-      <button type="button" disabled={busy!==null || !outOfBandConfirmed || !selectedChannel || evidenceRef.trim().length<16}
-        onClick={()=>void attest()}>{fictionalChannel?"Record fictional Sandbox source":"Record my out-of-band issuer attestation"}</button>
-      {attestations.length>0?<label>Active origin attestation to use for proposal
-        <select value={attestationId} onChange={e=>setAttestationId(e.target.value)}>
-          {attestations.map(a=><option key={a.id} value={a.id}>
-            {a.evidenceReference} / {a.id}
-          </option>)}
-        </select>
-      </label>:null}
-      <p className="muted">{fictionalChannel
-        ? "This is a Sandbox test source, not an authenticated live supplier. The USD 1.01 test invoice requires separate payment approval."
-        : "A format-valid evidence reference is not external authentication by itself. This records an accountable human assertion; a vendor callback/ERP record must really exist."}</p>
-    </section>
-    <section className="review-stage">
-      <p className="eyebrow">4 / Exact proposal</p>
-      <h2>Freeze server-selected values before separate approval</h2>
-      <p className="muted">This proposal resolves the trusted vendor, receiver, current policy and source records entirely on the server. No amount or receiver can be submitted here.</p>
-      <button type="button" disabled={busy!==null || !claimId || !attestationId}
-        onClick={()=>void propose()}>Evaluate and freeze payment proposal</button>
-      {proposal?<div>
-        <p>Decision: <strong>{proposal.outcome}</strong></p>
-        <p className="mono">Reasons: {proposal.reasonCodes.join(", ")}</p>
-        {proposal.historyEvidence?.length?<section role="alert">
-          <h3>Imported paid-invoice history requires investigation</h3>
-          <p>The following immutable import references are risk evidence, not payment authority.</p>
-          <pre>{JSON.stringify(proposal.historyEvidence,null,2)}</pre>
-        </section>:null}
-        {proposal.bindingId?<div>
-          <p>Frozen tuple SHA-256: <span className="mono">{proposal.tupleSha256}</span></p>
-          <Link href={"/invoice-bindings/"+encodeURIComponent(proposal.bindingId)}>
-            Open independent exact-tuple approval review
-          </Link>
-        </div>:<p>No approvable payment binding was created.</p>}
+      <button type="button" className="invoice-primary-action"
+        disabled={busy!==null||!outOfBandConfirmed||!selectedChannel||evidenceRef.trim().length<16}
+        onClick={()=>void attest()}>
+        {busy==="attest"?"Recording confirmation…":"Confirm supplier & continue →"}
+      </button>
+      <p className="invoice-small-note">Supplier confirmation cannot authorize
+        or execute a PayPal payout.</p>
+    </section> : null}
+
+    {activeStep===3 ? <section className="invoice-task-card" aria-label="Review payment policy">
+      <div className="invoice-task-card-head">
+        <span className="invoice-step-number">03</span>
+        <div><h3>Check the payment</h3>
+          <p className="muted">MandateGate compares the reviewed invoice with
+            the trusted vendor destination, duplicates and payment limits.</p>
+        </div>
+      </div>
+      <div className="invoice-payment-preview">
+        <div><span>Supplier</span><strong>{facts.vendor_name.value||"Not supplied"}</strong></div>
+        <div><span>Invoice</span><strong>{facts.invoice_number.value||"Not supplied"}</strong></div>
+        <div><span>Amount on document</span>
+          <strong>{facts.currency.value} {facts.total_amount_decimal.value}</strong></div>
+        <div><span>Payment address on document</span>
+          <strong>{facts.invoice_payment_destination.value||"Not supplied"}</strong></div>
+      </div>
+      <p className="invoice-small-note">These are the reviewed document fields.
+        Final payment values are independently selected by the server.</p>
+      <button type="button" className="invoice-primary-action" disabled={busy!==null||!claimId||!attestationId}
+        onClick={()=>void propose()}>
+        {busy==="proposal"?"Checking policy…":"Run payment checks →"}
+      </button>
+      {proposal?<div className="invoice-policy-result" role="status">
+        <strong>{proposal.bindingId?"Payment ready for your approval":
+          proposal.outcome==="DENY"?"Payment blocked":"Payment needs attention"}</strong>
+        <p>{proposal.bindingId
+          ?"MandateGate froze the exact payment details. A separate approval is required."
+          :"Review the policy findings before trying to authorize this invoice."}</p>
+        {proposal.bindingId ? <Link className="invoice-primary-link"
+          href={"/invoice-bindings/"+encodeURIComponent(proposal.bindingId)}>
+          Continue to payment approval →
+        </Link>:null}
+        <details className="invoice-technical">
+          <summary>Technical policy findings</summary>
+          <pre>{JSON.stringify({
+            outcome:proposal.outcome,reasonCodes:proposal.reasonCodes,
+            historyEvidence:proposal.historyEvidence,
+            tupleSha256:proposal.tupleSha256,
+          },null,2)}</pre>
+        </details>
       </div>:null}
-    </section>
-    {notice?<p role="status" className="review-notice">{notice}</p>:null}
-    {error?<p role="alert" className="error">{error}</p>:null}
+    </section> : null}
+    {notice?<p className="review-notice" role="status">{notice}</p>:null}
+    {error?<p className="error" role="alert">{error}</p>:null}
   </div>;
 }
