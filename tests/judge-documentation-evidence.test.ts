@@ -56,7 +56,7 @@ describe("judge documentation and evidence-bound claims", () => {
     expect(readme).toContain("The seed **does not print the password**");
     expect(seed).toContain("demo admin credential material is intentionally not logged");
     expect(scope).toContain("at least 32 characters");
-    expect(readme).toContain("Read-only test fixtures are isolated and cannot pay");
+    expect(readme).toContain("pnpm gate-h:inventory");
     // Test the real preview policy instead of pinning the old exact source
     // expression: neon-sandbox was added later, with a separate judge flag.
     expect(demo).toContain("allowedNeonHosts.has(url.hostname)");
