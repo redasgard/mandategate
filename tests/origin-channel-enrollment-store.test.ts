@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll,beforeAll,describe,expect,it } from "vitest";
+import { afterAll,beforeAll,describe,expect,it,vi } from "vitest";
 import { pool } from "../src/db/pool";
 import {
   OriginChannelEnrollmentError,enrollTrustedVendorOriginChannel,
@@ -36,6 +36,46 @@ describe("preexisting origin registry is admin-only and immutable",()=>{
     await expect(enrollTrustedVendorOriginChannel({
       ...fixture,confirmedOutsideInvoice:false,
     })).rejects.toMatchObject({code:"INDEPENDENT_CHANNEL_CHECK_NOT_CONFIRMED"});
+  });
+  it("records fictional Sandbox origin without asserting genuine callback",async()=>{
+    const env:Record<string,string>={
+      RENDER_SERVICE_ID:"srv-db39vmm7bikc73c55nh0",
+      MANDATEGATE_RUNTIME_MODE:"neon-sandbox",
+      MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"1",
+      MANDATEGATE_DISABLE_PAYMENTS:"0",
+      PAYPAL_BASE_URL:"https://api-m.sandbox.paypal.com",
+      DEMO_PAYPAL_RECEIVER_EMAIL:"sandbox-ci-recipient@example.test",
+    };
+    const payload={
+      actorUserId:actor,organizationId:"org_demo",vendorId:"vendor_northstar",
+      kind:"SYNTHETIC_FIXTURE" as const,
+      independentEvidenceReference:"synthetic-fixture:ci-admin-"+randomUUID(),
+      confirmedOutsideInvoice:false,confirmedSyntheticSimulation:true,
+    };
+    await expect(enrollTrustedVendorOriginChannel(payload))
+      .rejects.toMatchObject({code:"SANDBOX_SYNTHETIC_CHANNEL_NOT_ALLOWED"});
+    try{
+      for(const [key,value] of Object.entries(env))vi.stubEnv(key,value);
+      await expect(enrollTrustedVendorOriginChannel({...payload,confirmedSyntheticSimulation:false}))
+        .rejects.toMatchObject({code:"SANDBOX_SYNTHETIC_ACK_REQUIRED"});
+      await expect(enrollTrustedVendorOriginChannel({...payload,confirmedOutsideInvoice:true}))
+        .rejects.toMatchObject({code:"SANDBOX_SYNTHETIC_ACK_REQUIRED"});
+      await expect(enrollTrustedVendorOriginChannel({...payload,organizationId:"other_org"}))
+        .rejects.toMatchObject({code:"SANDBOX_SYNTHETIC_CHANNEL_NOT_ALLOWED"});
+      const recorded=await enrollTrustedVendorOriginChannel(payload);
+      expect(recorded).toMatchObject({
+        kind:"SYNTHETIC_FIXTURE",
+        evidenceStatus:"SANDBOX_FICTIONAL_SOURCE_NOT_AUTHENTICATED",
+        issuerAuthenticated:false,paymentAuthorized:false,paymentExecuted:false,
+      });
+      const duplicate=await enrollTrustedVendorOriginChannel(payload);
+      expect(duplicate).toMatchObject({id:recorded.id,replayed:true});
+      const row=await pool.query(
+        "select enrolled_by_user_id,kind from vendor_origin_channels where id=$1",
+        [recorded.id],
+      );
+      expect(row.rows[0]).toMatchObject({enrolled_by_user_id:actor,kind:"SYNTHETIC_FIXTURE"});
+    }finally{vi.unstubAllEnvs();}
   });
   it("creates pre-invoice assertion with DB-generated timestamp and idempotent evidence",async()=>{
     const fixture={
