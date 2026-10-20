@@ -15,7 +15,7 @@ export default async function PoliciesPage(){
   if(!session)redirect("/sign-in");
   if(await isRestrictedJudge(session.user.id))redirect("/judge");
   const data=await readPolicyConsole(session.user.id);
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="policies" title="Policies & mandates"
       description="Review standing payment authority, inspect proposals, and revoke unsafe rules. AI suggestions alone cannot change policy."
       email={session.user.email}/>
