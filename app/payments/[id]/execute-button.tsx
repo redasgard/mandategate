@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function ExecutePaymentButton({ requestId, disabled }: { requestId: string; disabled: boolean }) {
+export function ExecutePaymentButton({ requestId, disabled, amountLabel }: { requestId: string; disabled: boolean; amountLabel?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,5 +20,10 @@ export function ExecutePaymentButton({ requestId, disabled }: { requestId: strin
     } finally { setBusy(false); }
   }
 
-  return <div><button type="button" onClick={execute} disabled={disabled || busy}>{busy ? "Submitting…" : "Execute PayPal Sandbox payout"}</button>{error ? <p className="error">{error}</p> : null}</div>;
+  return <div className="invoice-payment-action">
+    <button type="button" className="invoice-primary-action" onClick={execute} disabled={disabled || busy}>
+      {busy?"Submitting to PayPal…":amountLabel?`Pay ${amountLabel} with PayPal Sandbox →`:"Execute PayPal Sandbox payout →"}
+    </button>
+    {error?<p role="alert" className="error">{error}</p>:null}
+  </div>;
 }
