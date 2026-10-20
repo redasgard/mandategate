@@ -366,3 +366,93 @@ button.policy-outline {background:transparent;color:var(--amber);border:1px soli
 .invoice-list-table .invoice-technical summary{font-size:11px;}
 .invoice-list-table p{margin:5px 0;}
 @media(max-width:540px){.invoice-upload-form{grid-template-columns:minmax(0,1fr);}}
+
+
+/* PRD-first operations shell: shared across Dashboard, Payments, Vendors, Policies, Activity. */
+.ops-skip-link{position:absolute;left:20px;top:-100px;z-index:1000;background:var(--amber);color:#17120a;padding:10px 16px;font-weight:800;}
+.ops-skip-link:focus{top:12px;}
+.ops-appbar{display:grid;grid-template-columns:minmax(176px,1fr) auto minmax(100px,1fr);
+  align-items:center;gap:20px;border:1px solid var(--line);background:#191713;
+  padding:12px 18px;margin-bottom:34px;box-shadow:0 14px 36px rgba(0,0,0,.18);}
+.ops-brand{display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;}
+.ops-brand-mark{display:grid;place-items:center;flex:0 0 36px;height:36px;border:1px solid var(--amber);
+  color:var(--amber);font-size:20px;font-weight:850;letter-spacing:-.09em;}
+.ops-brand-text{display:grid;gap:1px;min-width:0;}
+.ops-brand-text strong{font-size:15px;letter-spacing:-.025em;}
+.ops-brand-text small{font-size:9px;letter-spacing:.17em;color:var(--muted);font-weight:750;}
+.ops-primary-nav{display:flex;align-items:center;gap:4px;min-width:0;}
+.ops-nav-link{display:inline-flex;align-items:center;min-height:39px;padding:9px 12px;color:#b5a999;
+  text-decoration:none;border:1px solid transparent;border-radius:5px;font-size:13px;font-weight:700;}
+.ops-nav-link:hover{color:var(--text);background:var(--surface-2);}
+.ops-nav-link.is-active{color:#f1ce92;background:#30261a;border-color:#5c4729;}
+.ops-account{justify-self:end;font-size:12px;max-width:210px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:var(--muted);}
+.ops-page-heading{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:24px;}
+.ops-page-heading h1{font-size:clamp(30px,3.7vw,44px);letter-spacing:-.035em;margin:7px 0 10px;}
+.ops-page-heading .muted{margin:0;max-width:730px;font-size:14px;}
+.ops-page-heading:focus{outline:none;}
+.ops-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:20px 0;}
+.ops-summary-item{min-width:0;border:1px solid var(--line);background:var(--surface);padding:18px;
+  display:flex;flex-direction:column;gap:10px;}
+.ops-summary-item > span{color:var(--muted);text-transform:uppercase;font-size:11px;
+  font-weight:750;letter-spacing:.085em;}
+.ops-summary-item > strong{font-size:clamp(19px,2.6vw,26px);letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere;}
+.ops-summary-item > small{font-size:12px;color:var(--muted);line-height:1.4;}
+.ops-alert-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:26px;}
+.ops-alert{display:flex;justify-content:space-between;align-items:center;gap:15px;
+  border:1px solid var(--line);border-left:3px solid var(--amber);padding:16px 18px;
+  background:var(--surface);text-decoration:none;min-width:0;}
+.ops-alert:hover{background:var(--surface-2);border-color:#6d573b;}
+.ops-alert.blocked{border-left-color:var(--red);}
+.ops-alert .ops-alert-copy{display:grid;gap:5px;min-width:0;}
+.ops-alert .ops-alert-copy strong{font-size:13px;}
+.ops-alert .ops-alert-copy small{color:var(--muted);font-size:11px;line-height:1.35;}
+.ops-alert .ops-alert-count{font-size:31px;line-height:1;font-variant-numeric:tabular-nums;
+  font-weight:800;color:var(--amber);}
+.ops-alert.blocked .ops-alert-count{color:var(--red);}
+.ops-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 12px;}
+.ops-section-head h2{font-size:20px;margin:0;}
+.ops-section-head .ops-subtle-link{color:var(--amber);font-size:13px;font-weight:700;text-decoration:none;}
+.ops-section-head .ops-subtle-link:hover{text-decoration:underline;}
+.ops-context-note{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 18px;}
+.ops-context-note a{color:#efc079;}
+.ops-financial-section{margin-bottom:20px;}
+.ops-queue-panel{margin-bottom:18px;}
+.ops-queue-table tr:hover{background:#211e19;}
+.ops-table-toolbar{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;
+  border-bottom:1px solid var(--line);}
+.ops-table-toolbar a{font-size:12px;color:var(--muted);border:1px solid var(--line);
+  border-radius:5px;padding:8px 12px;text-decoration:none;}
+.ops-table-toolbar a[aria-current="page"]{background:#30261a;color:#f1ce92;border-color:#6d573b;}
+.ops-muted-link{color:var(--amber);font-weight:750;text-decoration:none;}
+.ops-muted-link:hover{text-decoration:underline;}
+.ops-state{display:inline-flex;padding:5px 7px;border:1px solid var(--line);
+  font-size:11px;font-weight:750;letter-spacing:.045em;color:#c2b9a8;}
+.ops-handoff{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 22px;border:1px solid var(--line);background:var(--surface);}
+.ops-handoff h3{font-size:15px;margin:0 0 7px;}
+.ops-handoff p{margin:0;max-width:760px;font-size:12px;}
+.ops-handoff a{color:var(--amber);font-size:13px;font-weight:700;white-space:nowrap;}
+@media(max-width:1050px){
+  .ops-appbar{grid-template-columns:minmax(175px,1fr) auto;}
+  .ops-primary-nav{grid-row:2;grid-column:1/-1;justify-content:flex-start;
+    border-top:1px solid var(--line);padding-top:9px;}
+  .ops-account{grid-row:1;grid-column:2;}
+}
+@media(max-width:740px){
+  .ops-appbar{display:flex;flex-wrap:wrap;gap:12px;padding:12px;margin-bottom:24px;}
+  .ops-account{margin-left:auto;max-width:45%;}
+  .ops-primary-nav{flex:1 1 100%;max-width:100%;white-space:nowrap;
+    overflow-x:auto;overscroll-behavior-x:contain;}
+  .ops-nav-link{font-size:12px;padding:9px 10px;flex-shrink:0;}
+  .ops-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ops-alert-strip{grid-template-columns:minmax(0,1fr);}
+  .ops-section-head{align-items:flex-start;}
+  .ops-handoff{align-items:flex-start;}
+}
+@media(max-width:400px){
+  .ops-summary-grid{grid-template-columns:minmax(0,1fr);}
+  .ops-account{display:none;}
+}
+@media(prefers-reduced-motion:reduce){.ops-nav-link,.ops-alert{transition:none;}}
