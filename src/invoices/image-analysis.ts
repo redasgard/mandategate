@@ -10,7 +10,7 @@ import { assessUntrustedInvoiceExtraction } from "./schema";
 import { validateInvoiceImageContainer, InvoiceImageIntegrityError } from "./image-integrity";
 import { rasterizeStoredPdfPage, PDF_RASTERIZER_VERSION, type RenderedPdfPage } from "./pdf-raster";
 import { PdfSourceError } from "./pdf-text";
-import { isSyntheticNonZdrSourceAllowlisted } from "../ai/gateway/non-zdr-test-policy";
+import { isSyntheticNonZdrSourceAllowlisted, sandboxInvoiceNonZdrEnvironmentEnabled, isExactSandboxPdfNonZdrSource } from "../ai/gateway/non-zdr-test-policy";
 
 export class InvoiceImageAnalysisError extends Error {
   constructor(public readonly code: string, public readonly httpStatus: number) {
@@ -138,7 +138,12 @@ export async function analyzeStoredInvoiceImage(
 ) {
   const artifact = await loadInvoiceArtifactForAnalysis(organizationId, artifactId);
   if (!artifact) throw new InvoiceImageAnalysisError("ARTIFACT_NOT_FOUND", 404);
-  const syntheticTest = options.syntheticNonZdrTest === true;
+  const syntheticTest=options.syntheticNonZdrTest===true;
+  if(syntheticTest && sandboxInvoiceNonZdrEnvironmentEnabled() &&
+    !isExactSandboxPdfNonZdrSource({
+      organizationId,mimeType:artifact.mimeType,sha256:artifact.sha256,
+    }))
+    throw new InvoiceImageAnalysisError("SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED",403);
   // Fail before rasterization, database claims, or external metadata/inference.
   if (syntheticTest && !isSyntheticNonZdrSourceAllowlisted(artifact.sha256)) {
     throw new InvoiceImageAnalysisError("SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED", 403);
