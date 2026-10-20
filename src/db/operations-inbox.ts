@@ -39,7 +39,7 @@ export async function readIncomingInvoices(actorId: string, limit = 12): Promise
     "where i.artifact_id=a.id and i.organization_id=a.organization_id",
     "and i.input_sha256=a.sha256 and i.state in ('ESCALATE','EXTRACTED_UNTRUSTED')",
     "and i.error_code is null",
-    "order by i.created_at desc limit 1) obs on true",
+    "order by i.finished_at desc nulls last, i.started_at desc nulls last limit 1) obs on true",
     "where exists (select 1 from organization_admin_memberships m",
     "where m.organization_id=a.organization_id and m.user_id=$1",
     "and m.role='ADMIN' and m.active=true)",
