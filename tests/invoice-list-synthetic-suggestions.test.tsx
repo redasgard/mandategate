@@ -47,7 +47,7 @@ describe("signed-in invoice intake discoverability without authority confusion",
     expect(html).toContain("USD 125.00");
     expect(html).toContain('href="/invoice-artifacts/'+base.id+'"');
     expect(html).toContain("Saved AI only. Not T2 verification, issuer proof, or payment approval");
-    expect(html).toContain("Viewing this list makes no AI or PayPal request");
+    expect(html).toContain("Viewing the list does not initiate an AI request or a PayPal payout");
     expect(html).toContain("SAFE_INVOICE_UPLOAD_FORM");
 
     expect(mocks.query).toHaveBeenCalledTimes(2);
@@ -55,9 +55,9 @@ describe("signed-in invoice intake discoverability without authority confusion",
     expect(params).toEqual(["reviewer_admin"]);
     expect(sourceSql).toContain("m.user_id=$1 and m.role='ADMIN' and m.active=true");
     expect(sourceSql).toContain("o.organization_id=a.organization_id");
-    expect(sourceSql).toContain("o.state='ESCALATE' and o.error_code is null");
-    expect(sourceSql).toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
-    expect(sourceSql).toContain("c.source_sha256=a.sha256");
+    expect(sourceSql).toContain("o.state in ('ESCALATE','EXTRACTED_UNTRUSTED')");
+    expect(sourceSql).toContain("o.error_code is null");
+    expect(sourceSql).not.toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
     expect(sourceSql).toContain("o.input_sha256=a.sha256");
     expect(sourceSql).toContain("^[0-9]{1,12}[.][0-9]{2}$");
     expect(sourceSql).not.toMatch(/\b(?:insert|update|delete|truncate|drop|alter)\b/i);
