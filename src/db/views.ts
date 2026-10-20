@@ -22,6 +22,8 @@ export async function listRecentDecisions(userId: string, limit = 25) {
 export async function getDecisionDetail(requestId: string, userId: string) {
   const [row] = await db.select({
     requestId: paymentRequests.id,
+    vendorId: paymentRequests.vendorId,
+    organizationId: paymentRequests.organizationId,
     logicalPaymentId: paymentRequests.logicalPaymentId,
     invoiceNumber: paymentRequests.invoiceNumber,
     source: paymentRequests.source,
