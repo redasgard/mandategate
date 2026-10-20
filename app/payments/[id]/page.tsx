@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { getDecisionDetail } from "@/src/db/views";
 import { ExecutePaymentButton } from "./execute-button";
+import { InvoiceJourney } from "@/app/components/invoice-journey";
 import { EscalationReview } from "./escalation-review";
 import { getEscalationSnapshot } from "@/src/history/escalation-review";
 import { DecisionEvidencePanel } from "./decision-evidence";
@@ -25,48 +26,90 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const payoutsDisabled = process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
   const terminal = ["PAID", "PAYMENT_FAILED", "PAYMENT_BLOCKED", "PAYMENT_RETURNED", "PAYMENT_REFUNDED", "PAYMENT_REVERSED", "PAYMENT_UNKNOWN_MANUAL_RECONCILIATION"].includes(row.executionStatus ?? "");
 
-  return (
-    <main className="shell narrow">
-      <Link href="/dashboard" className="back">← Dashboard</Link>
-      <section className="panel detail">
-        <p className="eyebrow">Payment request</p>
-        <div className="detail-title"><h1>{row.invoiceNumber}</h1><span className={`decision ${row.outcome.toLowerCase()}`}>{row.outcome}</span></div>
-        {row.invoiceNumber===SANDBOX_INVOICE && row.currency==="USD" && row.amountCents===101
-          ? <p className="muted">PayPal Sandbox test invoice, USD 1.01.
-              The supplier is a Sandbox test record, not a live counterparty.
-              Preparing is not a transfer; Execute is a separate Sandbox action.</p>
-          : null}
-        <dl>
-          <div><dt>Vendor</dt><dd>{row.vendorName}</dd></div>
-          <div><dt>Amount</dt><dd>{new Intl.NumberFormat("en-US", { style: "currency", currency: row.currency }).format(row.amountCents / 100)}</dd></div>
-          <div><dt>Requested destination</dt><dd>{row.requestedDestination}</dd></div>
-          <div><dt>Logical payment ID</dt><dd className="mono">{row.logicalPaymentId}</dd></div>
-          <div><dt>Execution state</dt><dd>{row.executionStatus ?? "Not executed"}</dd></div>
-          <div><dt>PayPal batch ID</dt><dd className="mono">{row.paypalPayoutBatchId ?? "—"}</dd></div>
-          <div><dt>PayPal item ID</dt><dd className="mono">{row.paypalPayoutItemId ?? "—"}</dd></div>
-          <div><dt>PayPal status</dt><dd>{row.rawPaypalStatus ?? "—"}</dd></div>
-        </dl>
-        {row.outcome==="ESCALATE" && row.status==="ESCALATED" && snapshot
-          ? <EscalationReview requestId={row.requestId}
-              snapshotSha256={snapshot.snapshotSha256}
-              trustedDestinationCurrent={snapshot.trustedDestinationCurrent}
-              payoutsDisabled={payoutsDisabled}/>
-          : null}
-        {row.outcome==="ESCALATE" && recordedReview?.rows[0]
-          ? <section className="review-stage">
-              <p className="eyebrow">Recorded human decision</p>
-              <h2>{recordedReview.rows[0].action}</h2>
-              <p>{recordedReview.rows[0].explanation}</p>
-              <p className="muted">Recorded: {(recordedReview.rows[0].created_at as Date).toISOString()}
-                 / evidence digest: {recordedReview.rows[0].evidence_sha256??"none"}</p>
-            </section>:null}
-        {row.outcome === "ALLOW" || (row.outcome==="ESCALATE" && row.status==="APPROVED")
-          ? (payoutsDisabled
-              ? <p role="status" className="muted">PayPal payout execution is disabled on this service. No payment was submitted.</p>
-              : <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />)
-          : null}
-        <DecisionEvidencePanel evidence={row.evidence} reasonCodes={row.reasonCodes} currency={row.currency}/>
-      </section>
-    </main>
-  );
+  const amountLabel=new Intl.NumberFormat("en-US",{
+    style:"currency",currency:row.currency,
+  }).format(row.amountCents/100);
+  const paymentCanExecute=row.outcome==="ALLOW"||
+    (row.outcome==="ESCALATE"&&row.status==="APPROVED");
+  const paymentSubmitted=Boolean(row.paypalPayoutBatchId||row.paypalPayoutItemId);
+  return <main className="shell invoice-product">
+    <Link href="/dashboard" className="back">← Dashboard</Link>
+    <InvoiceJourney stage="pay"/>
+    <section className="panel invoice-main">
+      <header className="invoice-overview">
+        <div><p className="eyebrow">PayPal Sandbox</p>
+          <h1>Send this payment</h1>
+          <p className="muted">Invoice {row.invoiceNumber} · {row.vendorName}</p>
+        </div>
+        <div className="invoice-overview-aside">
+          <span>Payment amount</span>
+          <strong>{amountLabel}</strong>
+          <span className={"invoice-status "+(
+            row.executionStatus==="PAID"?"approved":
+              paymentSubmitted?"pending":"needs-review")}>
+            {row.executionStatus==="PAID"?"PayPal payment completed":
+              paymentSubmitted?"Sent; verify final PayPal status":
+              paymentCanExecute?"Ready to submit":"Awaiting approval"}
+          </span>
+        </div>
+      </header>
+      <div className="invoice-workspace-body">
+        <div className="invoice-payment-preview">
+          <div><span>Supplier</span><strong>{row.vendorName}</strong></div>
+          <div><span>Invoice</span><strong>{row.invoiceNumber}</strong></div>
+          <div><span>Amount</span><strong>{amountLabel}</strong></div>
+          <div><span>PayPal recipient</span><strong>{row.requestedDestination}</strong></div>
+        </div>
+        <div className="invoice-task-card">
+          <div className="invoice-task-card-head">
+            <span className="invoice-step-number">04</span>
+            <div><h3>Execute with PayPal</h3>
+              <p className="muted">This button submits a real request to the
+                PayPal Sandbox Payouts API. Sandbox money is test-only.
+                MandateGate records provider IDs and reconciles status.</p></div>
+          </div>
+          {paymentSubmitted?<div className="invoice-review-notes" role="status">
+            <strong>PayPal submission recorded</strong>
+            <p>Batch {row.paypalPayoutBatchId??"pending"} · Item {row.paypalPayoutItemId??"pending"}.
+              A submitted batch is not proof of completed payment.</p>
+          </div>:null}
+          {row.outcome==="ESCALATE"&&row.status==="ESCALATED"&&snapshot
+            ? <EscalationReview requestId={row.requestId}
+                snapshotSha256={snapshot.snapshotSha256}
+                trustedDestinationCurrent={snapshot.trustedDestinationCurrent}
+                payoutsDisabled={payoutsDisabled}/>:null}
+          {row.outcome==="ESCALATE"&&recordedReview?.rows[0]
+            ? <p className="invoice-small-note">
+                Reviewer decision: {recordedReview.rows[0].action} · {recordedReview.rows[0].explanation}
+              </p>:null}
+          {paymentCanExecute && !payoutsDisabled && !terminal
+            ? <ExecutePaymentButton requestId={row.requestId} amountLabel={amountLabel} disabled={terminal}/>
+            :null}
+          {payoutsDisabled?<p role="alert" className="muted">
+            PayPal execution is disabled on this service. No payout was submitted by this action.
+          </p>:null}
+          {!paymentCanExecute&&!payoutsDisabled?<p role="status">
+            Payment needs authorization before PayPal submission.
+          </p>:null}
+          {terminal?<p role="status">
+            Current execution status: <strong>{row.executionStatus}</strong>.
+            Further submission is disabled. Check the reconciled status below.
+          </p>:null}
+        </div>
+        <details className="invoice-technical">
+          <summary>PayPal status and security audit</summary>
+          <dl>
+            <div><dt>Decision</dt><dd>{row.outcome}</dd></div>
+            <div><dt>Execution status</dt><dd>{row.executionStatus??"Not submitted"}</dd></div>
+            <div><dt>PayPal status</dt><dd>{row.rawPaypalStatus??"Not available"}</dd></div>
+            <div><dt>PayPal batch ID</dt><dd className="mono">{row.paypalPayoutBatchId??"Not available"}</dd></div>
+            <div><dt>PayPal item ID</dt><dd className="mono">{row.paypalPayoutItemId??"Not available"}</dd></div>
+            <div><dt>Logical payment ID</dt><dd className="mono">{row.logicalPaymentId}</dd></div>
+          </dl>
+          <DecisionEvidencePanel evidence={row.evidence}
+            reasonCodes={row.reasonCodes} currency={row.currency}/>
+        </details>
+      </div>
+    </section>
+  </main>;
 }
