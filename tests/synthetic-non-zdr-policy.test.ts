@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {createSandboxInvoicePdf} from "../src/demo/sandbox-invoice-pdf";
 import {
+  sandboxInvoiceNonZdrEnvironmentEnabled,isExactSandboxPdfNonZdrSource,
   syntheticNonZdrTestEnvironmentEnabled,
   isSyntheticNonZdrSourceAllowlisted,
 } from "../src/ai/gateway/non-zdr-test-policy";
@@ -53,5 +55,57 @@ describe("explicit synthetic non-ZDR environment fence", () => {
     expect(isSyntheticNonZdrSourceAllowlisted("0".repeat(64))).toBe(false);
     vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST", "*");
     expect(isSyntheticNonZdrSourceAllowlisted(syntheticSha)).toBe(false);
+  });
+});
+
+
+describe("exact generated PayPal Sandbox fixture without account ZDR",()=>{
+  const receiver="sandbox-invoice-ai-fixture@example.test";
+  const source=()=>createSandboxInvoicePdf(receiver).sha256;
+  function enableInvoiceSandbox(){
+    vi.stubEnv("MANDATEGATE_DEPLOYMENT_ROLE","");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_TEST","0");
+    vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST","a".repeat(64));
+    vi.stubEnv("RENDER_SERVICE_ID","srv-db39vmm7bikc73c55nh0");
+    vi.stubEnv("MANDATEGATE_RUNTIME_MODE","neon-sandbox");
+    vi.stubEnv("MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO","1");
+    vi.stubEnv("MANDATEGATE_ENABLE_INVOICE_AI","1");
+    vi.stubEnv("MANDATEGATE_DISABLE_PAYMENTS","0");
+    vi.stubEnv("PAYPAL_BASE_URL","https://api-m.sandbox.paypal.com");
+    vi.stubEnv("DEMO_PAYPAL_RECEIVER_EMAIL",receiver);
+  }
+  it("recognizes only the server-generated fictional PDF despite payment Sandbox being active",()=>{
+    enableInvoiceSandbox();
+    expect(sandboxInvoiceNonZdrEnvironmentEnabled()).toBe(true);
+    expect(syntheticNonZdrTestEnvironmentEnabled()).toBe(true);
+    expect(isSyntheticNonZdrSourceAllowlisted(source())).toBe(true);
+    expect(isSyntheticNonZdrSourceAllowlisted("a".repeat(64))).toBe(false);
+    expect(isExactSandboxPdfNonZdrSource({
+      organizationId:"org_demo",mimeType:"application/pdf",sha256:source(),
+    })).toBe(true);
+    for(const patch of [
+      {organizationId:"org_other"},
+      {mimeType:"image/png"},
+      {sha256:"a".repeat(64)},
+    ])expect(isExactSandboxPdfNonZdrSource({
+      organizationId:"org_demo",mimeType:"application/pdf",sha256:source(),...patch,
+    })).toBe(false);
+  });
+  it("refuses a copied flag on production, unpinned hosts, altered receiver or non-invoice mode",()=>{
+    enableInvoiceSandbox();
+    for(const [key,bad] of [
+      ["RENDER_SERVICE_ID","srv-production"],
+      ["MANDATEGATE_RUNTIME_MODE","legacy"],
+      ["MANDATEGATE_DISABLE_PAYMENTS","1"],
+      ["MANDATEGATE_ENABLE_INVOICE_AI","0"],
+      ["MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO","0"],
+      ["PAYPAL_BASE_URL","https://api-m.paypal.com"],
+      ["DEMO_PAYPAL_RECEIVER_EMAIL","not-email"],
+    ] as const){
+      const before=process.env[key];
+      vi.stubEnv(key,bad);
+      expect(isSyntheticNonZdrSourceAllowlisted(source())).toBe(false);
+      vi.stubEnv(key,before);
+    }
   });
 });
