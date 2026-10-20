@@ -48,7 +48,7 @@ describe("one-time PayPal Sandbox test recipient setup",()=>{
     const res=await POST(request());
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
-      status:"CONFIGURED",changed:true,recipient,paymentSubmitted:false,
+      status:"CONFIGURED",changed:true,recipient:receiver,paymentSubmitted:false,
     });
     const sql=query.mock.calls.map(c=>String(c[0]));
     expect(sql.some(q=>q.startsWith("update vendor_destinations"))).toBe(true);
