@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { pool } from "../db/pool";
+import {sandboxFictionalIssuerChannelAllowed} from "../demo/sandbox-fictional-origin";
 
 /**
  * An administrator's off-invoice channel ENROLLMENT assertion.
@@ -10,6 +11,7 @@ const allowedKinds={
   KNOWN_CALLBACK:"callback-record:",
   TRUSTED_PORTAL:"portal-event:",
   ERP_INTEGRATION:"erp-entry:",
+  SYNTHETIC_FIXTURE:"synthetic-fixture:",
 } as const;
 export type OriginChannelKind=keyof typeof allowedKinds;
 export class OriginChannelEnrollmentError extends Error {
@@ -48,11 +50,19 @@ export function originEnrollmentDigest(input:{
 export async function enrollTrustedVendorOriginChannel(input:{
   actorUserId:string;organizationId:string;vendorId:string;kind:OriginChannelKind;
   independentEvidenceReference:string;confirmedOutsideInvoice:boolean;
+  confirmedSyntheticSimulation?:boolean;
 }) {
   if(!input.actorUserId || !input.organizationId || !input.vendorId)
     deny("ENROLLMENT_IDENTIFIERS_REQUIRED",400);
-  if(input.confirmedOutsideInvoice!==true)
+  if(input.kind==="SYNTHETIC_FIXTURE"){
+    if(!sandboxFictionalIssuerChannelAllowed(input.organizationId,input.vendorId))
+      deny("SANDBOX_SYNTHETIC_CHANNEL_NOT_ALLOWED",403);
+    if(input.confirmedOutsideInvoice!==false ||
+       input.confirmedSyntheticSimulation!==true)
+      deny("SANDBOX_SYNTHETIC_ACK_REQUIRED",422);
+  }else if(input.confirmedOutsideInvoice!==true || input.confirmedSyntheticSimulation===true){
     deny("INDEPENDENT_CHANNEL_CHECK_NOT_CONFIRMED",422);
+  }
   const digest=originEnrollmentDigest(input);
   const client=await pool.connect();
   try {
@@ -96,7 +106,9 @@ export async function enrollTrustedVendorOriginChannel(input:{
       createdAt:(row.created_at as Date).toISOString(),
       active:row.active as boolean,
       replayed:created.rows.length===0,
-      evidenceStatus:"ADMIN_ASSERTED_NOT_INDEPENDENTLY_VERIFIED" as const,
+      evidenceStatus:input.kind==="SYNTHETIC_FIXTURE"
+        ? "SANDBOX_FICTIONAL_SOURCE_NOT_AUTHENTICATED" as const
+        : "ADMIN_ASSERTED_NOT_INDEPENDENTLY_VERIFIED" as const,
       issuerAuthenticated:false as const,
       paymentAuthorized:false as const,paymentExecuted:false as const,
     };
