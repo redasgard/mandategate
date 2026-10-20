@@ -30,3 +30,12 @@ export function paymentExecutionLabel(status: string | null): string {
   if (status.startsWith("PAYMENT_UNKNOWN")) return "Unknown · investigate";
   return status.replaceAll("_", " ");
 }
+
+export function paymentSourceLabel(source: string): string {
+  switch (source) {
+    case "agent_api": return "Agent API";
+    case "verified_invoice": return "Reviewed invoice";
+    case "sandbox_fixture": return "Sandbox fixture";
+    default: return "Other source";
+  }
+}
