@@ -41,9 +41,8 @@ describe("saved GLM observation source review",()=>{
       "request-fixture","invoice-vision-observer-v2",
       "Model-proposed source quotations","Quote evidence is unverified",
     ])expect(html).toContain(literal);
-    expect(html).toContain("Provider retention may apply");
-    expect(html).toContain("Synthetic exception: ZDR metadata is not compliance proof");
-    expect(html).not.toContain("Gateway ZDR receipt");
+    expect(html).not.toMatch(/ZDR|zero.data.retention/i);
+    expect(html).not.toContain("SYNTHETIC_NON_ZDR_TEST_ONLY");
     expect(html).not.toContain("Accept and execute");
     expect(html).toContain("independent PDF source");
   });
@@ -99,10 +98,10 @@ describe("saved GLM observation source review",()=>{
     },
   );
 
-  it("never upgrades a synthetic exception when gateway metadata reports ZDR",()=>{
+  it("does not show retired provider privacy controls in saved invoice UI",()=>{
     const html=render({...record,gateway_zdr:true});
-    expect(html).toContain("Synthetic exception: ZDR metadata is not compliance proof");
-    expect(html).not.toContain("Provider reported true; account-level policy verification is separate");
+    expect(html).not.toMatch(/ZDR|zero.data.retention|SYNTHETIC_NON_ZDR_TEST_ONLY/i);
+    expect(html).toContain("Model confidence");
   });
 
 });
