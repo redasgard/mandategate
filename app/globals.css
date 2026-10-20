@@ -479,3 +479,5 @@ button.policy-outline {background:transparent;color:var(--amber);border:1px soli
  .ops-payment-hero > div{padding:15px;}
  .ops-manual-test{padding:14px;}
 }
+
+.ops-inbox-candidate{display:block;margin-top:5px;color:var(--muted);font-size:12px;overflow-wrap:anywhere;}
