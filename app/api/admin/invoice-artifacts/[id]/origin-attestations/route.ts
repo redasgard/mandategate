@@ -6,6 +6,7 @@ import {
   OriginAttestationError, attestInvoiceIssuerFromTrustedChannel,
 } from "@/src/authority/origin-attestation";
 import { z } from "zod";
+import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 
 export const runtime="nodejs";
 const MAX_BODY_BYTES=4096;
@@ -16,6 +17,7 @@ const inputSchema=z.object({
   channelId:z.string().min(1).max(120),
   independentEvidenceReference:z.string().min(16).max(140),
   expectedArtifactSha256:z.string().regex(/^[a-f0-9]{64}$/),
+  confirmedSyntheticSimulation:z.boolean().optional(),
 }).strict();
 
 async function authorizedArtifact(request: Request, id:string) {
@@ -39,9 +41,11 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     "join vendors v on v.id=ch.vendor_id and v.organization_id=ch.organization_id",
     "join invoice_artifacts art on art.id=$2 and art.organization_id=ch.organization_id",
     "where ch.organization_id=$1 and ch.active=true",
-    "and ch.kind <> 'SYNTHETIC_FIXTURE' and ch.created_at < art.created_at",
+    "and (ch.kind <> 'SYNTHETIC_FIXTURE' or ($3::boolean and ch.enrolled_by_user_id is not null",
+    "and ch.organization_id='org_demo' and ch.vendor_id='vendor_northstar'))",
+    "and ch.created_at < art.created_at",
     "order by v.name,ch.created_at",
-  ].join(" "),[org,id]);
+  ].join(" "),[org,id,sandboxFictionalIssuerChannelAllowed(org,"vendor_northstar")]);
   return Response.json({
     artifactId:id,artifactSha256:authz.artifact!.sha256,
     eligibleChannels:result.rows,
@@ -90,11 +94,12 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       vendorId:input.data.vendorId,
       channelId:input.data.channelId,
       independentEvidenceReference:input.data.independentEvidenceReference,
-    });
+    },{allowSyntheticFixture:input.data.confirmedSyntheticSimulation===true});
     return Response.json({
       attestation,
       externallyVerifiedBySoftware:false,
-      humanOutOfBandAttestation:true,
+      humanOutOfBandAttestation:attestation.method!=="SYNTHETIC_FIXTURE",
+      fictionalSandboxOrigin:attestation.method==="SYNTHETIC_FIXTURE",
       paymentAuthorized:false,
     },{status:201,headers:{"Cache-Control":"private, no-store"}});
   }catch(error){
