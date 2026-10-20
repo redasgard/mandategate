@@ -10,6 +10,8 @@ import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-
 import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { OperationsHeader } from "@/app/components/operations-header";
+import { readIncomingInvoices } from "@/src/db/operations-inbox";
+import { IncomingInvoiceQueue } from "@/app/components/incoming-invoices";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -37,11 +39,12 @@ export default async function DashboardPage({ searchParams }: {
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
 
   const incidentFilter = parseIncidentFilter((await searchParams)?.risk);
-  const [rows, summary, incidents, obligations] = await Promise.all([
+  const [rows, summary, incidents, obligations, incoming] = await Promise.all([
     listRecentDecisions(session.user.id),
     readDashboardSummary(session.user.id),
     readDashboardIncidents(session.user.id, incidentFilter),
     readImportedObligations(session.user.id),
+    readIncomingInvoices(session.user.id, 5),
   ]);
 
   const paidThisMonth = summary.paidThisMonth.length
@@ -113,6 +116,8 @@ export default async function DashboardPage({ searchParams }: {
           ? <p className="ops-context-note" style={{padding:"0 18px"}}>Showing the six most recent escalations. <Link href="/payments?view=REVIEW">Open the payment queue →</Link></p>
           : null}
       </section>
+
+      <IncomingInvoiceQueue items={incoming}/>
 
       <section className="panel" aria-label="Recent payment decisions">
         <div className="panel-head">
