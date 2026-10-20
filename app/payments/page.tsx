@@ -7,6 +7,8 @@ import { readImportedObligations } from "@/src/db/imported-obligations";
 import { ImportedObligations } from "@/app/dashboard/imported-obligations";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { OperationsHeader } from "@/app/components/operations-header";
+import { readIncomingInvoices } from "@/src/db/operations-inbox";
+import { IncomingInvoiceQueue } from "@/app/components/incoming-invoices";
 import { PAYMENT_VIEW_OPTIONS, parsePaymentView, matchesPaymentView, paymentExecutionLabel } from "@/src/ui/payments-view";
 
 function formatMoney(cents: number, currency: string) {
@@ -19,9 +21,10 @@ export default async function PaymentsPage({searchParams}:{
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
-  const [rows, obligations] = await Promise.all([
+  const [rows, obligations, incoming] = await Promise.all([
     listRecentDecisions(session.user.id,100),
     readImportedObligations(session.user.id),
+    readIncomingInvoices(session.user.id, 12),
   ]);
   const view = parsePaymentView((await searchParams)?.view);
   const visible = rows.filter(row => matchesPaymentView(row, view));
@@ -39,6 +42,7 @@ export default async function PaymentsPage({searchParams}:{
       <article className="ops-summary-item"><span>Denied</span><strong>{denied}</strong><small>Policy or trust boundary denied</small></article>
       <article className="ops-summary-item"><span>Allowed</span><strong>{allowed}</strong><small>Policy result; not proof of a payout</small></article>
     </section>
+    <IncomingInvoiceQueue items={incoming}/>
     <section className="panel ops-queue-panel">
       <div className="panel-head">
         <div><p className="eyebrow">Decision ledger</p><h2>Agent payment requests</h2></div>
