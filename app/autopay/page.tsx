@@ -1,5 +1,4 @@
 import { OperationsHeader } from "@/app/components/operations-header";
-import Link from "next/link";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
