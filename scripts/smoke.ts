@@ -639,12 +639,12 @@ console.log("obligation smoke passed: signed-in imported AP view and dashboard, 
 
 const trustPage=await fetch(`${baseUrl}/vendors`,{headers:{cookie:adminCookie}});
 if(trustPage.status!==200 ||
-   !(await trustPage.text()).includes("Trusted vendors and payment re-verification"))
+   !(await trustPage.text()).includes("Destination change investigations"))
   throw Error("signed-in vendor trust case dashboard unavailable");
 
 const activityPage=await fetch(`${baseUrl}/activity`,{headers:{cookie:adminCookie}});
 if(activityPage.status!==200 ||
-   !(await activityPage.text()).includes("Activity and consequential decisions"))
+   !(await activityPage.text()).includes("Events and detection evidence"))
   throw Error("signed-in activity and evidence view unavailable");
 
 // S8 product path: an authenticated admin can prepare an inert proposal and
@@ -654,7 +654,7 @@ if(![302,303,307,308].includes(policiesNoSession.status))
   throw Error("policy console accepted anonymous access");
 const policyPage=await fetch(baseUrl+"/policies",{headers:{cookie:adminCookie}});
 if(policyPage.status!==200 ||
-   !(await policyPage.text()).includes("Policies require a decision"))
+   !(await policyPage.text()).includes("Prepared policy changes"))
   throw Error("signed-in policy console did not render");
 const proposalOriginHeaders={cookie:adminCookie,origin:baseUrl,"content-type":"application/json"};
 const badPolicyOrigin=await fetch(baseUrl+"/api/admin/policy-proposals",{
