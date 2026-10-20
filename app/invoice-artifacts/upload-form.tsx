@@ -54,8 +54,8 @@ export function InvoiceArtifactUpload({organizations}:{organizations:Organizatio
   }
 
   return <section className="review-stage">
-    <p className="eyebrow">Demo document intake / untrusted</p>
-    <h2>Upload an invoice to inspect</h2>
+    <p className="eyebrow">Invoice intake</p>
+    <h2>Upload invoice for analysis</h2>
     <p className="muted">
       Signed-in admin upload, without agent credentials. Original bytes are
       hashed and stored as untrusted source material. No payment request,
