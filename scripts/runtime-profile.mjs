@@ -74,7 +74,9 @@ export function runtimeProfile(env) {
       if (env.RENDER_SERVICE_ID !== 'srv-db39vmm7bikc73c55nh0' ||
           env.MANDATEGATE_DISABLE_PAYMENTS !== '0' ||
           env.MANDATEGATE_SANDBOX_PAYOUTS !== '1' ||
-          env.PAYPAL_BASE_URL !== 'https://api-m.sandbox.paypal.com')
+          env.PAYPAL_BASE_URL !== 'https://api-m.sandbox.paypal.com' ||
+          typeof env.PAYPAL_WEBHOOK_ID !== 'string' ||
+          !/^[A-Za-z0-9-]{8,128}$/.test(env.PAYPAL_WEBHOOK_ID))
         throw Error('RUNTIME_SANDBOX_INVOICE_DEPLOYMENT_NOT_BOUND');
       childEnv.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO = '1';
     }
@@ -123,6 +125,9 @@ export function runtimeProfile(env) {
           env.PAYPAL_CLIENT_ID.length >= 8,
         clientSecretConfigured: typeof env.PAYPAL_CLIENT_SECRET === 'string' &&
           env.PAYPAL_CLIENT_SECRET.length >= 8,
+        webhookConfigured: typeof env.PAYPAL_WEBHOOK_ID === 'string' &&
+          /^[A-Za-z0-9-]{8,128}$/.test(env.PAYPAL_WEBHOOK_ID),
+        invoiceModeRequested: env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO === '1',
         recipientConfigured: receiver.length <= 254 &&
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver) &&
           receiver !== 'ap@northstar.example',
