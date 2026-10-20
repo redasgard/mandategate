@@ -32,7 +32,7 @@ export default async function PaymentsPage({searchParams}:{
   const denied = rows.filter(row=>row.outcome==="DENY").length;
   const allowed = rows.filter(row=>row.outcome==="ALLOW").length;
 
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="payments" title="Payments"
       description="Track incoming evidence, payment requests from each source, and their actual policy and PayPal outcomes."
       email={session.user.email}/>
