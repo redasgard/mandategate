@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   summary: vi.fn(),
   incidents: vi.fn(),
   obligations: vi.fn(),
+  incoming: vi.fn(),
 }));
 vi.mock("../src/db/pool", () => ({ pool: { query: mocks.query } }));
 vi.mock("../src/auth/auth", () => ({
@@ -28,6 +29,7 @@ vi.mock("../src/db/imported-obligations", () => ({
 vi.mock("../src/db/dashboard-overview", () => ({
   readDashboardSummary: mocks.summary,
 }));
+vi.mock("../src/db/operations-inbox", () => ({ readIncomingInvoices: mocks.incoming }));
 
 import { isRestrictedJudge } from "../src/auth/judge-dashboard";
 import DashboardPage from "../app/dashboard/page";
@@ -37,6 +39,7 @@ beforeEach(() => {
   mocks.session.mockReset();
   mocks.recent.mockReset();
   mocks.summary.mockReset();
+  mocks.incoming.mockReset().mockResolvedValue([]);
   mocks.incidents.mockReset().mockResolvedValue([]);
   mocks.obligations.mockReset().mockResolvedValue({
     asOfUtc:"2026-10-19",upcomingHorizon:"2026-11-02",items:[],
@@ -64,6 +67,7 @@ describe("judge-only accounts cannot enter the admin dashboard", () => {
     await expect(DashboardPage()).rejects.toThrow("REDIRECT:/judge");
     expect(mocks.recent).not.toHaveBeenCalled();
     expect(mocks.summary).not.toHaveBeenCalled();
+    expect(mocks.incoming).not.toHaveBeenCalled();
   });
 
   it("keeps a real admin on the existing dashboard", async () => {
@@ -73,6 +77,7 @@ describe("judge-only accounts cannot enter the admin dashboard", () => {
     expect(page).toBeDefined();
     expect(mocks.recent).toHaveBeenCalledWith("judge-user");
     expect(mocks.summary).toHaveBeenCalledWith("judge-user");
+    expect(mocks.incoming).toHaveBeenCalledWith("judge-user",5);
   });
 
   it("does not promote or redirect an unrelated reviewer", async () => {
