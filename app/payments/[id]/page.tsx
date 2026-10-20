@@ -34,7 +34,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const paymentSubmitted=Boolean(row.paypalPayoutBatchId||row.paypalPayoutItemId);
   return <main className="shell invoice-product">
     <Link href="/dashboard" className="back">← Dashboard</Link>
-    <InvoiceJourney stage="pay"/>
+    {row.source==="verified_invoice"?<InvoiceJourney stage="pay"/>:null}
     <section className="panel invoice-main">
       <header className="invoice-overview">
         <div><p className="eyebrow">PayPal Sandbox</p>
