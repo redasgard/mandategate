@@ -7,7 +7,7 @@ import {SANDBOX_AMOUNT_CENTS,SANDBOX_INVOICE} from "./sandbox-payout-constants";
  */
 export function sandboxFictionalIssuerChannelAllowed(
   organizationId:string,vendorId:string,
-  env:NodeJS.ProcessEnv=process.env,
+  env:Readonly<Record<string,string|undefined>>=process.env,
 ):boolean{
   return organizationId===DEMO_ORG_ID &&
     vendorId===DEMO_VENDOR_ID &&
@@ -25,7 +25,7 @@ export function isExactSandboxFictionalInvoice(
     organizationId:string;vendorId:string;invoiceNumber:string;
     amountCents:number;currency:string;recipient:string;
   },
-  env:NodeJS.ProcessEnv=process.env,
+  env:Readonly<Record<string,string|undefined>>=process.env,
 ):boolean{
   return sandboxFictionalIssuerChannelAllowed(invoice.organizationId,invoice.vendorId,env) &&
     invoice.invoiceNumber===SANDBOX_INVOICE &&
