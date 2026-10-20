@@ -10,6 +10,7 @@ import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-
 import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { OperationsHeader } from "@/app/components/operations-header";
+import { paymentSourceLabel } from "@/src/ui/payments-view";
 import { readIncomingInvoices } from "@/src/db/operations-inbox";
 import { IncomingInvoiceQueue } from "@/app/components/incoming-invoices";
 
@@ -121,15 +122,16 @@ export default async function DashboardPage({ searchParams }: {
 
       <section className="panel" aria-label="Recent payment decisions">
         <div className="panel-head">
-          <div><p className="eyebrow">Agent requests</p><h2>Recent payment decisions</h2></div>
+          <div><p className="eyebrow">All authorized request sources</p><h2>Recent payment decisions</h2></div>
           <Link className="ops-muted-link" href="/payments">View payment requests →</Link>
         </div>
         {rows.length===0
-          ? <div className="empty">No agent payment requests have been recorded for your organizations yet.</div>
+          ? <div className="empty">No payment requests have been recorded for your organizations yet.</div>
           : <div className="table-wrap"><table className="dashboard-table ops-queue-table">
-              <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Current request state</th></tr></thead>
+              <thead><tr><th>Invoice</th><th>Source</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Current request state</th></tr></thead>
               <tbody>{rows.slice(0,8).map(row=><tr key={row.requestId}>
                 <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
+                <td data-label="Source">{paymentSourceLabel(row.source)}</td>
                 <td data-label="Vendor">{row.vendorName}</td>
                 <td data-label="Amount">{money(row.amountCents,row.currency)}</td>
                 <td data-label="Decision"><span className={"decision "+row.outcome.toLowerCase()}>{row.outcome}</span></td>
