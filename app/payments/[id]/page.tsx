@@ -32,13 +32,20 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const paymentCanExecute=row.outcome==="ALLOW"||
     (row.outcome==="ESCALATE"&&row.status==="APPROVED");
   const paymentSubmitted=Boolean(row.paypalPayoutBatchId||row.paypalPayoutItemId);
+  const paymentStatusLabel=terminal
+    ? row.executionStatus==="PAID"?"PayPal payment completed"
+      :row.executionStatus==="PAYMENT_UNKNOWN_MANUAL_RECONCILIATION"
+        ?"Payment status unknown · reconciliation required"
+        :"Execution ended · "+row.executionStatus
+    :paymentSubmitted?"Sent to PayPal · awaiting final confirmation"
+      :paymentCanExecute?"Ready to submit":"Awaiting approval";
   return <main className="shell invoice-product">
     <Link href="/dashboard" className="back">← Dashboard</Link>
     {row.source==="verified_invoice"?<InvoiceJourney stage="pay"/>:null}
     <section className="panel invoice-main">
       <header className="invoice-overview">
         <div><p className="eyebrow">PayPal Sandbox</p>
-          <h1>Send this payment</h1>
+          <h1>{terminal?"Payment status":"Send this payment"}</h1>
           <p className="muted">Invoice {row.invoiceNumber} · {row.vendorName}</p>
         </div>
         <div className="invoice-overview-aside">
@@ -47,9 +54,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
           <span className={"invoice-status "+(
             row.executionStatus==="PAID"?"approved":
               paymentSubmitted?"pending":"needs-review")}>
-            {row.executionStatus==="PAID"?"PayPal payment completed":
-              paymentSubmitted?"Sent; verify final PayPal status":
-              paymentCanExecute?"Ready to submit":"Awaiting approval"}
+            {paymentStatusLabel}
           </span>
         </div>
       </header>
