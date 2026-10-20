@@ -29,6 +29,8 @@ monitoring, exception-review and standing-authority control surface.
    idempotency and signed webhook/reconciliation. An `ALLOW` decision or a
    submitted batch is not proof of final PayPal settlement.
 
+A prepared request or an `ALLOW` policy decision is not a completed payout. Only authenticated provider evidence can establish its remote status.
+
 **Implementation limit:** Both scoped agent ingress endpoints exist, but the
 complete raw-agent-invoice → AI → authoritative verification → autonomous payout
 handoff has **not** been verified end to end. The standing-mandate preflight
