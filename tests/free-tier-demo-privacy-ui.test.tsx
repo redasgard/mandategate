@@ -4,7 +4,8 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {InvoiceVisionObservation} from "../app/invoice-artifacts/[id]/observation-actions";
 
 vi.mock("next/navigation",()=>({
-  redirect:(path:string)=>{throw new Error("REDIRECT:"+path);}
+  redirect:(path:string)=>{throw new Error("REDIRECT:"+path);},
+  useRouter:()=>({refresh:()=>{}}),
 }));
 import PrivacyPreflightPage from "../app/invoice-artifacts/privacy/page";
 
