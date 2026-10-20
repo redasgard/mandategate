@@ -115,10 +115,12 @@ export default async function InvoiceArtifactReviewPage({
         <div><dt>Source artifact SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
         <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect original PDF (admin-only download)</a></dd></div>
       </dl>
-      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
-          syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
-          syntheticTestAllowlisted={syntheticTestAllowlisted}/>
-        <PersistedInvoiceObservation record={observation}/>
+      <p className="muted">
+        PDF field verification below works without AI or any provider ZDR entitlement.
+        {syntheticTestAllowlisted
+          ? " This exact fictional Sandbox PDF may also use the separate, consented non-ZDR AI test. Its results remain advisory and cannot authorize payment."
+          : " Other documents still require full ZDR for external AI observation."}
+      </p>
       <InvoiceArtifactReview
         artifactId={id} artifactSha256={artifact.sha256}
         initialPages={pages?.pages ?? []}
@@ -126,6 +128,10 @@ export default async function InvoiceArtifactReviewPage({
         initialAttestations={existingAttestations}
         eligibleChannels={eligibleChannels}
       />
+      <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
+        syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
+        syntheticTestAllowlisted={syntheticTestAllowlisted}/>
+      <PersistedInvoiceObservation record={observation}/>
     </section>
   </main>;
 }
