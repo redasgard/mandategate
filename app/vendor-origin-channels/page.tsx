@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { VendorOriginChannelEnroll } from "./enroll-form";
+import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 
 export default async function VendorOriginChannelPage(){
   const session=await auth.api.getSession({headers:await headers()});
@@ -33,10 +34,10 @@ export default async function VendorOriginChannelPage(){
       <p className="eyebrow">Vendor source-of-truth registry</p>
       <h1>Issuer channels are enrolled before invoices arrive</h1>
       <p className="muted">
-        A real out-of-band record must exist. Source document contents and AI
+        For real suppliers, an out-of-band record must exist. The clearly labeled fictional Sandbox option does not authenticate a vendor. Source document contents and AI
         observations can never enroll or change a trusted channel.
       </p>
-      <VendorOriginChannelEnroll vendors={vendors.rows.map(row=>({
+      <VendorOriginChannelEnroll sandboxDemoEnabled={sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar")} vendors={vendors.rows.map(row=>({
         organizationId:row.organization_id as string,
         organizationName:row.organization_name as string,
         vendorId:row.vendor_id as string,
@@ -53,7 +54,7 @@ export default async function VendorOriginChannelPage(){
               <td>{row.vendor_name} <span className="mono">{row.id}</span></td>
               <td>{row.kind}</td>
               <td>{(row.created_at as Date).toISOString()}</td>
-              <td>{row.kind==="SYNTHETIC_FIXTURE"?"Synthetic fixture only":
+              <td>{row.kind==="SYNTHETIC_FIXTURE"?"Fictional demo-only; no real issuer authentication":
                 row.active===true?"Admin-attested channel":"Revoked"}</td>
             </tr>)}
           </tbody></table>
