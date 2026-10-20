@@ -8,7 +8,16 @@ export function invoiceAiEnvironment(env, mode) {
       env.RENDER_SERVICE_ID !== SERVICE) return {};
   // The non-ZDR fictional exception is never available while the Sandbox
   // payout rail is active. Strict GLM privacy preflight stays unchanged.
-  const result = { MANDATEGATE_ENABLE_INVOICE_AI: '1' };
+  const result={MANDATEGATE_ENABLE_INVOICE_AI:'1'};
+  // No ZDR entitlement for this hackathon build. The opt-out is confined
+  // to the existing authenticated PayPal Sandbox web service.
+  // Payment signing, approval and webhook controls are entirely separate.
+  if(env.MANDATEGATE_REQUIRE_ZDR==='0' &&
+      mode==='neon-sandbox' &&
+      env.MANDATEGATE_DISABLE_PAYMENTS==='0' &&
+      env.PAYPAL_BASE_URL===SANDBOX) {
+    result.MANDATEGATE_REQUIRE_ZDR='0';
+  }
   const key = env.EXPLABS_API_KEY;
   if (typeof key === 'string' && key.length > 0 && key.length <= 4096 && !/\s/.test(key)) {
     result.EXPLABS_API_KEY = key;
