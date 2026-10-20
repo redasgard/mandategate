@@ -23,7 +23,7 @@ export default async function VendorsPage(){
       "order by o.name,v.name limit 200",
     ].join(" "),[session.user.id]),
   ]);
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="vendors" title="Vendors"
       description="Inspect trusted payment destinations and investigate changes before they can affect payouts."
       email={session.user.email}/>
