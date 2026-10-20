@@ -63,6 +63,7 @@ export function InvoiceArtifactReview(props:{
     ()=>props.eligibleChannels.find(c=>c.id===channelId),
     [channelId,props.eligibleChannels],
   );
+  const fictionalChannel=selectedChannel?.kind==="SYNTHETIC_FIXTURE";
   const prefix= "/api/admin/invoice-artifacts/"+encodeURIComponent(props.artifactId);
   const updateFact=(name:FieldName,key:keyof Fact,value:string|number)=>
     setFacts(prev=>({...prev,[name]:{...prev[name],[key]:value}}));
@@ -111,12 +112,13 @@ export function InvoiceArtifactReview(props:{
   });
   const attest=()=>run("attest",async()=>{
     if(!selectedChannel || !outOfBandConfirmed)
-      throw new Error("INDEPENDENT_VENDOR_CONTACT_NOT_CONFIRMED");
+      throw new Error(fictionalChannel?"SANDBOX_FICTIONAL_SOURCE_ACK_REQUIRED":"INDEPENDENT_VENDOR_CONTACT_NOT_CONFIRMED");
     const result=await send("/origin-attestations",{
       vendorId:selectedChannel.vendorId,
       channelId:selectedChannel.id,
       independentEvidenceReference:evidenceRef.trim(),
       expectedArtifactSha256:props.artifactSha256,
+      confirmedSyntheticSimulation:fictionalChannel,
     });
     const a=result.attestation;
     setAttestationId(a.id);
@@ -125,7 +127,7 @@ export function InvoiceArtifactReview(props:{
       evidenceReference:evidenceRef.trim(),
       expiresAt:new Date(a.expiresAt).toISOString(),
     },...list]);
-    setNotice("Human out-of-band attestation recorded. Software has not independently contacted the issuer.");
+    setNotice(fictionalChannel?"Fictional Sandbox source assertion recorded. No supplier was contacted and no payment was authorized.":"Human out-of-band attestation recorded. Software has not independently contacted the issuer.");
   });
   const propose=()=>run("proposal",async()=>{
     const result=await send("/proposals",{
@@ -192,27 +194,29 @@ export function InvoiceArtifactReview(props:{
     </section>
     <section className="review-stage">
       <p className="eyebrow">3 / T3 independent issuer origin</p>
-      <h2>Confirm through a previously enrolled vendor channel</h2>
+      <h2>{fictionalChannel?"Acknowledge the fictional Sandbox source":"Confirm through a previously enrolled vendor channel"}</h2>
       {props.eligibleChannels.length===0?
-        <p className="error">No pre-existing eligible vendor channel is enrolled for this artifact. Do not attest using a contact printed on the invoice.</p>:
+        <p className="error">No eligible pre-invoice source channel exists. For the fictional Sandbox demo, register a clearly labeled simulated source before uploading the invoice.</p>:
         <label>Trusted vendor channel (pre-enrolled)
-          <select value={channelId} onChange={e=>setChannelId(e.target.value)}>
+          <select value={channelId} onChange={e=>{setChannelId(e.target.value);setOutOfBandConfirmed(false);setEvidenceRef("");}}>
             {props.eligibleChannels.map(ch=><option key={ch.id} value={ch.id}>
               {ch.vendorName} / {ch.kind} / {ch.id}
             </option>)}
           </select>
         </label>}
-      <label>Independent callback, portal or ERP evidence reference
+      <label>{fictionalChannel?"Fictional Sandbox scenario reference":"Independent callback, portal or ERP evidence reference"}
         <input value={evidenceRef} onChange={e=>setEvidenceRef(e.target.value)}
-          placeholder="callback-record:actual-reference-from-independent-system"/>
+          placeholder={fictionalChannel?"synthetic-fixture:mandategate-demo-issuer-001":"callback-record:actual-reference-from-independent-system"}/>
       </label>
       <label className="review-checkbox">
         <input type="checkbox" checked={outOfBandConfirmed}
           onChange={e=>setOutOfBandConfirmed(e.target.checked)}/>
-        I personally checked the pre-established contact or system outside the invoice and recorded a genuine evidence reference.
+        {fictionalChannel
+          ? "I confirm this is a fictional Sandbox issuer scenario. No actual vendor was contacted or authenticated."
+          : "I personally checked the pre-established contact or system outside the invoice and recorded a genuine evidence reference."}
       </label>
       <button type="button" disabled={busy!==null || !outOfBandConfirmed || !selectedChannel || evidenceRef.trim().length<16}
-        onClick={()=>void attest()}>Record my out-of-band issuer attestation</button>
+        onClick={()=>void attest()}>{fictionalChannel?"Record fictional Sandbox source":"Record my out-of-band issuer attestation"}</button>
       {attestations.length>0?<label>Active origin attestation to use for proposal
         <select value={attestationId} onChange={e=>setAttestationId(e.target.value)}>
           {attestations.map(a=><option key={a.id} value={a.id}>
@@ -220,7 +224,9 @@ export function InvoiceArtifactReview(props:{
           </option>)}
         </select>
       </label>:null}
-      <p className="muted">A format-valid evidence reference is not external authentication by itself. This records an accountable human assertion; a vendor callback/ERP record must really exist.</p>
+      <p className="muted">{fictionalChannel
+        ? "This is not a real callback, ERP record, or vendor verification. Only the exact fictional USD 1.01 Sandbox scenario may proceed to separate approval."
+        : "A format-valid evidence reference is not external authentication by itself. This records an accountable human assertion; a vendor callback/ERP record must really exist."}</p>
     </section>
     <section className="review-stage">
       <p className="eyebrow">4 / Exact proposal</p>
