@@ -101,6 +101,8 @@ test('reviewed invoice feature flag crosses only into one payment-capable hosted
     {MANDATEGATE_DISABLE_PAYMENTS:'1'},
     {MANDATEGATE_SANDBOX_PAYOUTS:'0'},
     {PAYPAL_BASE_URL:'https://api-m.paypal.com'},
+    {PAYPAL_WEBHOOK_ID:undefined},
+    {PAYPAL_WEBHOOK_ID:'not/webhook!'},
   ]) {
     assert.throws(()=>runtimeProfile({...payment,...patch}),
       /RUNTIME_SANDBOX_INVOICE_DEPLOYMENT_NOT_BOUND|RUNTIME_SANDBOX_PAYOUT_GRANT_REQUIRED/);
