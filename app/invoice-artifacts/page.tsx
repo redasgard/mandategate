@@ -31,11 +31,8 @@ export default async function InvoiceArtifactListPage(){
     "left join invoice_image_observations o on o.artifact_id=a.id",
     "and o.organization_id=a.organization_id",
     "and o.input_sha256=a.sha256",
-    "and o.state='ESCALATE' and o.error_code is null",
-    "and o.reason_codes @> jsonb_build_array('SYNTHETIC_NON_ZDR_TEST_ONLY')",
-    "and exists (select 1 from invoice_synthetic_non_zdr_test_consents c",
-    "where c.organization_id=a.organization_id and c.artifact_id=a.id",
-    "and c.source_sha256=a.sha256)",
+    "and o.state in ('ESCALATE','EXTRACTED_UNTRUSTED')",
+    "and o.error_code is null",
     "order by a.created_at desc,a.id desc limit 50",
   ].join(" "),[session.user.id]);
   const organizations=await pool.query([
@@ -53,21 +50,21 @@ export default async function InvoiceArtifactListPage(){
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
       <p className="eyebrow">Invoice origin review</p>
-      <h1>Stored invoice artifacts</h1>
+      <h1>Invoices</h1>
       <p className="muted">Only artifacts in your active admin organizations are shown.
-        Saved AI suggestions below are unverified text from consented fictional documents.
-        They may be wrong and do not establish the vendor, issuer, invoice total, or payment
-        authority. Viewing this list makes no AI or PayPal request.</p>
+        AI suggestions are unverified and may be wrong. The invoice's original
+        source, vendor, amount and recipient must be checked before payment.
+        Viewing the list does not initiate an AI request or a PayPal payout.</p>
       <p><Link href="/vendor-origin-channels">1. Enroll independently known vendor origin channel (before invoice intake)</Link></p>
       {sandboxFixtureAvailable ? <section className="review-stage">
-        <h2>Fictional PayPal Sandbox invoice</h2>
-        <p>This is test data, not an actual supplier request. First register a simulated
-          Northstar source channel, then download and upload this invoice,
-          verify the exact PDF text, and separately approve its payment tuple.</p>
-        <p><a href="/api/admin/sandbox-invoice-fixture">Download USD 1.01 Sandbox test PDF</a></p>
-        <p className="muted">Downloading, uploading or reviewing cannot send a PayPal payout.</p>
+        <h2>PayPal Sandbox test invoice</h2>
+        <p>Start with a USD 1.01 Northstar test invoice, register its test
+          source, verify the document, approve the exact payment details, and
+          execute through PayPal Sandbox. This is test data, not a live supplier.</p>
+        <p><a href="/api/admin/sandbox-invoice-fixture">Download Northstar invoice, USD 1.01</a></p>
+        <p className="muted">PayPal execution happens separately after authorization.
+          A submitted payout must be confirmed by batch, item and webhook evidence.</p>
       </section> : null}
-      <p><Link href="/invoice-artifacts/privacy">Check GLM account privacy metadata</Link></p>
       <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
         id:row.id as string,name:row.name as string,
       }))}/>
