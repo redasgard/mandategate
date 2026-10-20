@@ -13,10 +13,12 @@ const unknown: PaymentListRow = {status:"ALLOWED",outcome:"ALLOW",executionStatu
 
 describe("PRD payment operations filters", () => {
   it("exposes exact payment sections without manual invoice intake", () => {
-    expect(PAYMENT_VIEW_OPTIONS.map(v => v.value)).toEqual(["ALL","REVIEW","DENIED","ALLOWED","PAID"]);
+    expect(PAYMENT_VIEW_OPTIONS.map(v => v.value)).toEqual(["ALL","REVIEW","DENIED","DECLINED","ALLOWED","PAID","UNKNOWN"]);
     expect(parsePaymentView("INVALID")).toBe("ALL");
     expect(parsePaymentView(["PAID"])).toBe("ALL");
     expect(parsePaymentView("PAID")).toBe("PAID");
+    expect(parsePaymentView("DECLINED")).toBe("DECLINED");
+    expect(parsePaymentView("UNKNOWN")).toBe("UNKNOWN");
   });
 
   it("keeps reviewed escalations out of the pending human-review queue", () => {
@@ -35,14 +37,19 @@ describe("PRD payment operations filters", () => {
 
   it("shows unknown payout outcome without falsely marking it PAID", () => {
     expect(matchesPaymentView(unknown,"PAID")).toBe(false);
+    expect(matchesPaymentView(unknown,"UNKNOWN")).toBe(true);
+    expect(matchesPaymentView({...unknown,executionStatus:"PAYMENT_STATUS_UNKNOWN"},"UNKNOWN")).toBe(true);
+    expect(matchesPaymentView(paid,"UNKNOWN")).toBe(false);
     expect(paymentExecutionLabel(unknown.executionStatus)).toBe("Unknown · investigate");
     expect(paymentExecutionLabel("PAYMENT_FAILED")).toBe("PAYMENT FAILED");
+    expect(paymentExecutionLabel("PAYMENT_STATUS_UNKNOWN")).toBe("Unknown · investigate");
   });
 
   it("distinguishes agent requests, reviewed invoices and test fixtures", () => {
     expect(paymentSourceLabel("agent_api")).toBe("Agent API");
     expect(paymentSourceLabel("verified_invoice")).toBe("Reviewed invoice");
     expect(paymentSourceLabel("sandbox_fixture")).toBe("Sandbox fixture");
+    expect(paymentSourceLabel("demo_fixture")).toBe("Synthetic fixture");
     expect(paymentSourceLabel("future_source")).toBe("Other source");
   });
 
@@ -50,5 +57,7 @@ describe("PRD payment operations filters", () => {
     expect(matchesPaymentView(denied,"DENIED")).toBe(true);
     expect(matchesPaymentView(review,"DENIED")).toBe(false);
     expect(matchesPaymentView(reviewed,"ALL")).toBe(true);
+    expect(matchesPaymentView({...reviewed,status:"DECLINED"},"DECLINED")).toBe(true);
+    expect(matchesPaymentView(review,"DECLINED")).toBe(false);
   });
 });
