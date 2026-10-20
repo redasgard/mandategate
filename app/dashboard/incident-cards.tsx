@@ -16,7 +16,7 @@ const labels: Record<IncidentFilter, string> = {
 export function IncidentInvestigation({
   incidents, activeFilter,
 }: { incidents: Incident[]; activeFilter: IncidentFilter }) {
-  return <section className="panel" aria-label="Incident investigation">
+  return <section id="incidents" className="panel" aria-label="Incident investigation">
     <div className="panel-head">
       <div>
         <p className="eyebrow">Investigation / evidence-backed alerts</p>
