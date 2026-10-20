@@ -10,6 +10,8 @@ import { pool } from "@/src/db/pool";
 import { OperationsHeader } from "@/app/components/operations-header";
 import { paymentSourceLabel, paymentExecutionLabel } from "@/src/ui/payments-view";
 import { paymentDetailStatus, showManualSandboxControl } from "@/src/ui/payment-detail-state";
+import { compareTrustedRecipient } from "@/src/ui/trusted-recipient";
+import Link from "next/link";
 
 export default async function PaymentDetailPage({
   params,
@@ -36,6 +38,18 @@ export default async function PaymentDetailPage({
     "limit 1",
   ].join(" "), [id, session.user.id]) : null;
 
+  const currentTrust = await pool.query([
+    "select vd.destination from vendor_destinations vd",
+    "join vendors v on v.id=vd.vendor_id and v.organization_id=$2",
+    "where vd.vendor_id=$1 and vd.trusted=true",
+    "and exists (select 1 from organization_admin_memberships m",
+    "where m.organization_id=v.organization_id and m.user_id=$3",
+    "and m.role='ADMIN' and m.active=true)",
+    "limit 2",
+  ].join(" "), [row.vendorId, row.organizationId, session.user.id]);
+  const trustDisplay = compareTrustedRecipient(
+    currentTrust.rows.map(value => String(value.destination)), row.requestedDestination,
+  );
   const payoutsDisabled = process.env.MANDATEGATE_DISABLE_PAYMENTS === "1";
   const amountLabel = new Intl.NumberFormat("en-US", {
     style: "currency", currency: row.currency,
@@ -71,7 +85,9 @@ export default async function PaymentDetailPage({
         <dl className="ops-payment-facts">
           <div><dt>Request source</dt><dd>{paymentSourceLabel(row.source)}</dd></div>
           <div><dt>Request state</dt><dd>{row.status}</dd></div>
-          <div><dt>Requested recipient</dt><dd className="mono">{row.requestedDestination}</dd></div>
+          <div><dt>Invoice / agent requested recipient</dt><dd className="mono">{row.requestedDestination}</dd></div>
+          <div><dt>Current vendor trust record</dt><dd className="mono">{trustDisplay.destination}</dd></div>
+          <div><dt>Recipient comparison</dt><dd>{trustDisplay.label}{trustDisplay.isMismatch ? <> · <Link href="/vendors">Investigate vendor trust</Link></> : null}</dd></div>
           <div><dt>PayPal execution</dt><dd>{paymentExecutionLabel(row.executionStatus)}</dd></div>
         </dl>
         <p className="ops-context-note">An ALLOW decision does not mean payment was sent. The invoice and agent-provided recipient cannot update a vendor's trusted destination.</p>
@@ -80,7 +96,7 @@ export default async function PaymentDetailPage({
 
     <section className="panel ops-payment-detail" aria-label="Decision explanation">
       <div className="panel-head">
-        <div><p className="eyebrow">Deterministic controls / evidence</p><h2>Why MandateGate made this decision</h2></div>
+        <div><p className="eyebrow">Deterministic controls / evidence</p><h2>Decision evidence</h2></div>
       </div>
       <div className="panel-body">
         <p><strong>Reason codes:</strong> {row.reasonCodes.join(", ") || "None recorded"}</p>
