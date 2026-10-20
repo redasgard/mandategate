@@ -7,20 +7,11 @@ import { readImportedObligations } from "@/src/db/imported-obligations";
 import { ImportedObligations } from "@/app/dashboard/imported-obligations";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { OperationsHeader } from "@/app/components/operations-header";
+import { PAYMENT_VIEW_OPTIONS, parsePaymentView, matchesPaymentView, paymentExecutionLabel } from "@/src/ui/payments-view";
 
-type View = "ALL" | "REVIEW" | "DENIED" | "ALLOWED";
-function selectView(value: unknown): View {
-  return value === "REVIEW" || value === "DENIED" || value === "ALLOWED" ? value : "ALL";
-}
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }
-const FILTERS: {value:View;label:string}[] = [
-  {value:"ALL",label:"Recent requests"},
-  {value:"REVIEW",label:"Needs review"},
-  {value:"DENIED",label:"Denied"},
-  {value:"ALLOWED",label:"Allowed"},
-];
 
 export default async function PaymentsPage({searchParams}:{
   searchParams?:Promise<{view?:string|string[]}>;
@@ -32,11 +23,8 @@ export default async function PaymentsPage({searchParams}:{
     listRecentDecisions(session.user.id,100),
     readImportedObligations(session.user.id),
   ]);
-  const view = selectView((await searchParams)?.view);
-  const visible = rows.filter(row =>
-    view==="ALL" || (view==="REVIEW" && row.status==="ESCALATED") ||
-    (view==="DENIED" && row.outcome==="DENY") ||
-    (view==="ALLOWED" && row.outcome==="ALLOW"));
+  const view = parsePaymentView((await searchParams)?.view);
+  const visible = rows.filter(row => matchesPaymentView(row, view));
   const needsReview = rows.filter(row=>row.status==="ESCALATED").length;
   const denied = rows.filter(row=>row.outcome==="DENY").length;
   const allowed = rows.filter(row=>row.outcome==="ALLOW").length;
@@ -57,19 +45,20 @@ export default async function PaymentsPage({searchParams}:{
         <span className="badge">{visible.length} shown / latest 100 maximum</span>
       </div>
       <nav aria-label="Payment decision filters" className="ops-table-toolbar">
-        {FILTERS.map(filter=><Link key={filter.value}
+        {PAYMENT_VIEW_OPTIONS.map(filter=><Link key={filter.value}
           href={filter.value==="ALL"?"/payments":"/payments?view="+filter.value}
           aria-current={view===filter.value?"page":undefined}>{filter.label}</Link>)}
       </nav>
       {visible.length ? <div className="table-wrap">
         <table className="dashboard-table ops-queue-table" aria-label="Agent payment requests">
-          <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Request state</th><th>Recorded (UTC)</th></tr></thead>
+          <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Request state</th><th>PayPal result</th><th>Recorded (UTC)</th></tr></thead>
           <tbody>{visible.map(row=><tr key={row.requestId}>
             <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
             <td data-label="Vendor">{row.vendorName}</td>
             <td data-label="Amount">{formatMoney(row.amountCents,row.currency)}</td>
             <td data-label="Decision"><span className={"decision "+row.outcome.toLowerCase()}>{row.outcome}</span></td>
             <td data-label="Request state"><span className="ops-state">{row.status}</span></td>
+            <td data-label="PayPal result"><span className={"ops-state"+(row.executionStatus==="PAID"?" is-paid":row.executionStatus?.startsWith("PAYMENT_UNKNOWN")?" is-unknown":"")}>{paymentExecutionLabel(row.executionStatus)}</span></td>
             <td data-label="Recorded (UTC)">{row.createdAt.toISOString().slice(0,16).replace("T"," ")}</td>
           </tr>)}</tbody>
         </table>
