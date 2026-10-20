@@ -42,15 +42,33 @@ if(![302,303,307,308].includes(unauthMandates.status))
   throw Error("anonymous autopay mandate console was not restricted");
 const mandateScreen=await fetch(baseUrl+"/autopay",{headers:{cookie:adminCookie}});
 if(mandateScreen.status!==200 ||
-    !(await mandateScreen.text()).includes("Delegate authority once. Investigate exceptions."))
+    !(await mandateScreen.text()).includes("Standing mandates"))
   throw Error("signed-in autopay mandate console not rendered");
 console.log("autopay UI smoke passed: session required, inert grant preparation only, zero payouts");
 
 const signedDashboard=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
 if(signedDashboard.status!==200 ||
-   !(await signedDashboard.text()).includes("Current payment risk")) {
+   !(await signedDashboard.text()).includes("Attention required")) {
   throw Error("signed-in dashboard risk view failed to render");
 }
+// PRD-first operations shell: authenticated main navigation, agent and admin
+// invoice evidence in the same bounded read-only Payments surface.
+for (const [route,expected] of [
+  ["/dashboard","Payment operations"],
+  ["/payments","Incoming invoices"],
+  ["/vendors","Trusted recipients"],
+  ["/policies","Policies &amp; mandates"],
+  ["/activity","Events and detection evidence"],
+] as const) {
+  const page=await fetch(baseUrl+route,{headers:{cookie:adminCookie}});
+  const markup=await page.text();
+  if(page.status!==200 || !markup.includes(expected) ||
+     !markup.includes('aria-label="Primary navigation"')) {
+    throw Error("operations UI smoke failed: "+route+" ("+page.status+")");
+  }
+}
+console.log("operations UI smoke passed: authenticated PRD navigation, incoming invoices and decision ledger");
+
 const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
 const enrollment=await fetch(`${baseUrl}/api/admin/vendor-origin-channels`,{
   method:"POST",headers:{
@@ -691,7 +709,7 @@ if (process.env.CI === "true") {
       // Demo admin may have access to other test organizations. Revocation
       // must remove this organization's data, not require a globally empty UI.
       if(markup.includes(historicalDecision.requestId) ||
-         !markup.includes("Current payment risk")) {
+         !markup.includes("Attention required")) {
         throw Error("revoked session retained target invoice or failed to render dashboard");
       }
     } finally {
