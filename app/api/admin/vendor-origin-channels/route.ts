@@ -10,9 +10,10 @@ const MAX_BODY_BYTES=2048;
 const requestSchema=z.object({
   organizationId:z.string().min(1).max(120),
   vendorId:z.string().min(1).max(120),
-  kind:z.enum(["KNOWN_CALLBACK","TRUSTED_PORTAL","ERP_INTEGRATION"]),
+  kind:z.enum(["KNOWN_CALLBACK","TRUSTED_PORTAL","ERP_INTEGRATION","SYNTHETIC_FIXTURE"]),
   independentEvidenceReference:z.string().min(16).max(128),
-  confirmedOutsideInvoice:z.literal(true),
+  confirmedOutsideInvoice:z.boolean(),
+  confirmedSyntheticSimulation:z.boolean().optional(),
 }).strict();
 
 export async function POST(request:Request) {
