@@ -67,17 +67,17 @@ export default async function DashboardPage({searchParams}:{
           <Link className="mg-status-shortcut" href="/dashboard?risk=REVIEW#incidents">
             <span><span className="mg-status-name">Awaiting review</span>
               <span className="mg-status-hint">Unresolved escalations</span></span>
-            <strong className="mg-status-count is-review">{pendingApprovals}</strong>
+            <strong className="mg-status-count is-review" data-mg-count="review">{pendingApprovals}</strong>
           </Link>
           <Link className="mg-status-shortcut" href="/dashboard?risk=BLOCKED#incidents">
             <span><span className="mg-status-name">Blocked requests</span>
               <span className="mg-status-hint">Recorded policy denials</span></span>
-            <strong className="mg-status-count is-deny">{summary.denied}</strong>
+            <strong className="mg-status-count is-deny" data-mg-count="denied">{summary.denied}</strong>
           </Link>
           <Link className="mg-status-shortcut" href="/dashboard?risk=PAYOUT#incidents">
             <span><span className="mg-status-name">Provider uncertainty</span>
               <span className="mg-status-hint">Payouts needing reconciliation</span></span>
-            <strong className="mg-status-count is-unknown">{summary.payoutUnknown}</strong>
+            <strong className="mg-status-count is-unknown" data-mg-count="unknown">{summary.payoutUnknown}</strong>
           </Link>
         </div>
         <IncidentInvestigation incidents={incidents} activeFilter={filter}/>
