@@ -64,6 +64,20 @@ export function runtimeProfile(env) {
     MANDATEGATE_DISABLE_PAYMENTS: mode === 'neon-sandbox' ? env.MANDATEGATE_DISABLE_PAYMENTS : '1',
     MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
   if (mode === 'neon-sandbox') {
+    // The reviewed-invoice experiment is bound to the already provisioned
+    // PayPal Sandbox deployment. Parent env values never cross the child
+    // boundary unless all payout and exact-service preconditions are met.
+    const invoiceFlag = env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO;
+    if (invoiceFlag !== undefined && invoiceFlag !== '0' && invoiceFlag !== '1')
+      throw Error('RUNTIME_SANDBOX_INVOICE_FLAG_INVALID');
+    if (invoiceFlag === '1') {
+      if (env.RENDER_SERVICE_ID !== 'srv-db39vmm7bikc73c55nh0' ||
+          env.MANDATEGATE_DISABLE_PAYMENTS !== '0' ||
+          env.MANDATEGATE_SANDBOX_PAYOUTS !== '1' ||
+          env.PAYPAL_BASE_URL !== 'https://api-m.sandbox.paypal.com')
+        throw Error('RUNTIME_SANDBOX_INVOICE_DEPLOYMENT_NOT_BOUND');
+      childEnv.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO = '1';
+    }
     // A reviewer may replay the forever-nonpayable synthetic demo even while
     // a separate trusted request uses PayPal Sandbox. No reviewer is ADMIN.
     childEnv.MANDATEGATE_JUDGE_PREVIEW_ENABLED = '1';
