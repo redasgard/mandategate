@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactUpload } from "./upload-form";
+import {ConfigureSandboxRecipient} from "./configure-sandbox-recipient";
+import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 
 export default async function InvoiceArtifactListPage(){
   const session=await auth.api.getSession({headers:await headers()});
@@ -42,10 +44,8 @@ export default async function InvoiceArtifactListPage(){
     "order by o.name,o.id",
   ].join(" "),[session.user.id]);
   const sandboxFixtureAvailable=
-    process.env.MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO==="1" &&
-    process.env.MANDATEGATE_RUNTIME_MODE==="neon-sandbox" &&
-    process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com" &&
-    Boolean(process.env.DEMO_PAYPAL_RECEIVER_EMAIL);
+    sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar") &&
+    organizations.rows.some(row=>row.id==="org_demo");
   return <main className="shell">
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
@@ -61,6 +61,7 @@ export default async function InvoiceArtifactListPage(){
         <p>Start with a USD 1.01 Northstar test invoice, register its test
           source, verify the document, approve the exact payment details, and
           execute through PayPal Sandbox. This is test data, not a live supplier.</p>
+        <ConfigureSandboxRecipient/>
         <p><a href="/api/admin/sandbox-invoice-fixture">Download Northstar invoice, USD 1.01</a></p>
         <p className="muted">PayPal execution happens separately after authorization.
           A submitted payout must be confirmed by batch, item and webhook evidence.</p>
