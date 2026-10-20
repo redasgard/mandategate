@@ -5,6 +5,7 @@ import { auth } from "@/src/auth/auth";
 import { loadInvoiceArtifactForHumanReview } from "@/src/artifacts/postgres-store";
 import { loadStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
 import { pool } from "@/src/db/pool";
+import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
 import { PersistedInvoiceObservation } from "./persisted-observation";
@@ -59,15 +60,19 @@ export default async function InvoiceArtifactReviewPage({
       "join vendors v on v.id=ch.vendor_id and v.organization_id=ch.organization_id",
       "join invoice_artifacts art on art.id=$2 and art.organization_id=ch.organization_id",
       "where ch.organization_id=$1 and ch.active=true",
-      "and ch.kind <> 'SYNTHETIC_FIXTURE' and ch.created_at < art.created_at",
+      "and (ch.kind <> 'SYNTHETIC_FIXTURE' or ($3::boolean and ch.enrolled_by_user_id is not null",
+      "and ch.organization_id='org_demo' and ch.vendor_id='vendor_northstar'))",
+      "and ch.created_at < art.created_at",
       "order by v.name,ch.created_at",
-    ].join(" "),[artifact.organizationId,id]),
+    ].join(" "),[artifact.organizationId,id,
+      sandboxFictionalIssuerChannelAllowed(artifact.organizationId,"vendor_northstar")]),
     pool.query([
       "select id,created_at from invoice_verified_claim_sets",
       "where organization_id=$1 and artifact_id=$2",
       "and source_kind='PDF_TEXT' and verification_status='VERIFIED'",
       "order by created_at desc",
-    ].join(" "),[artifact.organizationId,id]),
+    ].join(" "),[artifact.organizationId,id,
+      sandboxFictionalIssuerChannelAllowed(artifact.organizationId,"vendor_northstar")]),
     pool.query([
       "select a.id,a.vendor_id,a.independent_evidence_reference,a.expires_at",
       "from invoice_origin_attestations a",
@@ -76,7 +81,9 @@ export default async function InvoiceArtifactReviewPage({
       "join invoice_artifacts art on art.id=a.artifact_id",
       "and art.organization_id=a.organization_id",
       "where a.organization_id=$1 and a.artifact_id=$2",
-      "and a.method='ADMIN_OUT_OF_BAND' and a.expires_at>now()",
+      "and (a.method='ADMIN_OUT_OF_BAND' or ($3::boolean and a.method='SYNTHETIC_FIXTURE'",
+      "and ch.enrolled_by_user_id is not null and a.vendor_id='vendor_northstar'))",
+      "and a.expires_at>now()",
       "and ch.active=true and ch.created_at<art.created_at",
       "order by a.created_at desc",
     ].join(" "),[artifact.organizationId,id]),
