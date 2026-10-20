@@ -113,6 +113,43 @@ describe("GLM-5.3 Flash image gateway", () => {
 
   afterEach(() => vi.unstubAllEnvs());
 
+  it("uses the normal provider route for hackathon invoices without paid account ZDR",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    const {gateway,calls}=mockGateway({
+      zdrEnabled:false,requireZdr:false,requireNoTraining:false,
+      modelZdr:false,captureEnabled:true,
+      servedResponse:successResponse({"x-gateway-zdr":"false"}),
+    });
+    const receipt=await gateway.verifyPrivacyAndModel();
+    expect(receipt).toMatchObject({
+      syntheticNonZdrTest:false,accountZdr:false,
+      documentBytesSubmitted:false,
+    });
+    expect(calls.some(x=>x.url.endsWith("/zero-data-retention"))).toBe(false);
+    expect(calls.some(x=>x.url.endsWith("/provider-policy"))).toBe(false);
+    expect(calls.some(x=>x.url.endsWith("/telemetry-settings"))).toBe(false);
+    const response=await gateway.observeImage(request);
+    expect(response.routeProof).toMatchObject({
+      zdr:false,syntheticNonZdrTest:false,
+      inputArtifactSha256:sha256,
+    });
+    const submissions=calls.filter(x=>x.url.endsWith("/v1/chat/completions"));
+    expect(submissions).toHaveLength(1);
+    const data=JSON.parse(String(submissions[0].init.body));
+    expect(data.provider).toBeUndefined();
+    expect(data.model).toBe(INVOICE_VISION_MODEL);
+    expect(data.response_format).toEqual(INVOICE_VISION_RESPONSE_FORMAT);
+  });
+  it("still rejects model identity drift when ZDR requirement is off",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    const {gateway}=mockGateway({
+      servedResponse:successResponse({"x-gateway-canonical-model":"wrong/model"}),
+    });
+    await expect(gateway.observeImage(request)).rejects.toMatchObject({
+      code:"EXPERIENTIAL_MODEL_MISMATCH",
+    });
+  });
+
   function allowExactSyntheticImage() {
     vi.stubEnv("MANDATEGATE_DEPLOYMENT_ROLE", "demo");
     vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_TEST", "1");
