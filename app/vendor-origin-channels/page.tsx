@@ -34,7 +34,7 @@ export default async function VendorOriginChannelPage(){
       <p className="eyebrow">Vendor source-of-truth registry</p>
       <h1>Issuer channels are enrolled before invoices arrive</h1>
       <p className="muted">
-        For real suppliers, an out-of-band record must exist. The clearly labeled fictional Sandbox option does not authenticate a vendor. Source document contents and AI
+        For real suppliers, an out-of-band record must exist. The clearly labeled Sandbox test supplier option does not authenticate a vendor. Source document contents and AI
         observations can never enroll or change a trusted channel.
       </p>
       <VendorOriginChannelEnroll sandboxDemoEnabled={sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar")} vendors={vendors.rows.map(row=>({
@@ -54,7 +54,7 @@ export default async function VendorOriginChannelPage(){
               <td>{row.vendor_name} <span className="mono">{row.id}</span></td>
               <td>{row.kind}</td>
               <td>{(row.created_at as Date).toISOString()}</td>
-              <td>{row.kind==="SYNTHETIC_FIXTURE"?"Fictional demo-only; no real issuer authentication":
+              <td>{row.kind==="SYNTHETIC_FIXTURE"?"PayPal Sandbox test source; no live supplier authentication":
                 row.active===true?"Admin-attested channel":"Revoked"}</td>
             </tr>)}
           </tbody></table>
