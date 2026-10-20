@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("../src/auth/auth", () => ({
   auth: { api: { getSession: mocks.session } },
 }));
+vi.mock("../src/auth/judge-dashboard", () => ({ isRestrictedJudge: async () => false }));
 vi.mock("../src/db/views", () => ({ listRecentDecisions: mocks.decisions }));
 vi.mock("../src/db/dashboard-incidents", () => ({
   readDashboardIncidents: mocks.incidents,
