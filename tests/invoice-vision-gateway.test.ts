@@ -150,6 +150,73 @@ describe("GLM-5.3 Flash image gateway", () => {
     });
   });
 
+  function responseWithIgnored(fields: unknown, value: unknown = candidate) {
+    const original=successResponse({"x-gateway-zdr":"false"});
+    return new Response(JSON.stringify({
+      model:"glm-5.3-flash",
+      "x-experiential-ignored-parameters":fields,
+      choices:[{finish_reason:"stop",message:{role:"assistant",content:JSON.stringify(value)}}],
+      usage:{prompt_tokens:120,completion_tokens:230},
+    }),{headers:original.headers});
+  }
+
+  it("accepts provider informational disclosures on hackathon route, without suppressing AI",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    const spy=vi.spyOn(console,"info").mockImplementation(()=>undefined);
+    try{
+      const {gateway,calls}=mockGateway({
+        servedResponse:responseWithIgnored([
+          "prompt_caching->best_effort(provider_caches_implicitly)",
+          "max_tokens->dropped(upstream_default)",
+        ]),
+      });
+      const observed=await gateway.observeImage(request);
+      expect(observed.candidate).toEqual(candidate);
+      expect(observed.routeProof.inputArtifactSha256).toBe(sha256);
+      expect(calls.filter(c=>c.url.endsWith("/v1/chat/completions"))).toHaveLength(1);
+      expect(spy).toHaveBeenCalledWith("EXPERIENTIAL_PROVIDER_FIELD_DISCLOSURE",
+        JSON.stringify({ignoredFields:["prompt_caching","max_tokens"],localSchemaChecked:false}));
+    }finally{spy.mockRestore();}
+  });
+
+  it("accepts an unenforced response_format only with independently valid invoice schema",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    const spy=vi.spyOn(console,"info").mockImplementation(()=>undefined);
+    try{
+      const {gateway}=mockGateway({
+        servedResponse:responseWithIgnored(["response_format->dropped(unsupported)"]),
+      });
+      const observed=await gateway.observeImage(request);
+      expect(observed.candidate).toEqual(candidate);
+      expect(spy).toHaveBeenCalledWith("EXPERIENTIAL_PROVIDER_FIELD_DISCLOSURE",
+        JSON.stringify({ignoredFields:["response_format"],localSchemaChecked:true}));
+    }finally{spy.mockRestore();}
+  });
+
+  it("rejects ignored response format when returned fields do not match the invoice schema",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    const {gateway}=mockGateway({
+      servedResponse:responseWithIgnored(["response_format"],{vendor_name:"fabricated"}),
+    });
+    await expect(gateway.observeImage(request)).rejects.toMatchObject({
+      code:"EXPERIENTIAL_EXTRACTION_INVALID_SCHEMA",
+    });
+  });
+
+  it("rejects dropped messages/model and malformed ignored-parameter metadata in hackathon",async()=>{
+    vi.stubEnv("MANDATEGATE_REQUIRE_ZDR","0");
+    for(const ignored of [
+      ["messages->dropped"],["messages[1].content->dropped"],
+      ["model->not_forwarded"],"not-array",[{user_supplied:"secret"}],
+      Array(33).fill("prompt_caching"),["* malicious content"],
+    ]){
+      const {gateway}=mockGateway({servedResponse:responseWithIgnored(ignored)});
+      await expect(gateway.observeImage(request)).rejects.toMatchObject({
+        code:"EXPERIENTIAL_REQUEST_FIELDS_IGNORED",
+      });
+    }
+  });
+
   function allowExactSyntheticImage() {
     vi.stubEnv("MANDATEGATE_DEPLOYMENT_ROLE", "demo");
     vi.stubEnv("MANDATEGATE_SYNTHETIC_NON_ZDR_TEST", "1");
