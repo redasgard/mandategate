@@ -1,40 +1,51 @@
-import { OperationsHeader } from "@/app/components/operations-header";
 import Link from "next/link";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
+import {OperationsHeader} from "@/app/components/operations-header";
 import {listAdminActivity} from "@/src/history/activity";
-export default async function ActivityPage(){
+
+function eventLabel(kind:string) {
+  if(kind==="AP_IMPORT")return "AP data imported";
+  if(kind==="DECISION")return "Policy decision";
+  if(kind==="PAYPAL_EVENT")return "PayPal provider event";
+  return "Administrator action";
+}
+export default async function ActivityPage() {
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
   const entries=await listAdminActivity(session.user.id);
   return <main className="shell mg-shell">
-    <OperationsHeader active="activity" title="Activity"
-      description="Understand every consequential decision, its source, and its recorded outcome."
+    <OperationsHeader active="activity" title="Activity" context="ACTIVITY"
+      description="A chronological view of consequential decisions, human actions, and recorded provider events."
       email={session.user.email}/>
-    <section className="panel detail">
-      <p className="eyebrow">Operational history / authoritative records</p>
-      <h2>Events and detection evidence</h2>
-      <p className="muted">Recent decisions, admin reviews, AP imports, and PayPal execution events. Linked payment details preserve original reason codes and evidence. This operational activity table is not proof of external Merkle anchoring.</p>
-      <div className="table-wrap">
-        <table className="dashboard-table"><thead><tr>
-          <th>Time (UTC)</th><th>Event / detector</th><th>Result</th>
-          <th>Evidence / explanation</th><th>Actor</th>
-        </tr></thead><tbody>
-          {entries.map(e=><tr key={e.kind+e.eventId}>
-            <td data-label="Time UTC">{e.occurredAt.toISOString()}</td>
-            <td data-label="Event">{e.kind==="AP_IMPORT"
-              ?<Link href="/ap-history">AP history import</Link>
-              :<Link href={"/payments/"+encodeURIComponent(e.referenceId)}>
-                {e.kind==="DECISION"?"Policy / behavior":e.kind==="PAYPAL_EVENT"?"PayPal execution":"Admin review"}
-              </Link>}</td>
-            <td data-label="Result"><strong>{e.summary}</strong></td>
-            <td data-label="Evidence" style={{maxWidth:360,overflowWrap:"anywhere"}}>{e.details}</td>
-            <td data-label="Actor" className="mono">{e.actorId??"System"}</td>
-          </tr>)}
-        </tbody></table>
-        {entries.length===0?<p className="muted">No recorded activity yet.</p>:null}
-      </div>
-    </section>
+    <div className="mg-dashboard">
+      <section className="mg-surface" aria-label="Operational activity timeline">
+        <div className="mg-table-head">
+          <div><h2>Events and detection evidence</h2>
+            <p>Stored operational activity. Individual records retain the original source and explanation.</p></div>
+          <span className="mg-mini-state">{entries.length} recent</span>
+        </div>
+        {entries.length ? <ol className="mg-activity-list">
+          {entries.map(e=><li key={e.kind+e.eventId} className="mg-activity-entry">
+            <span className="mg-activity-rail" aria-hidden="true"><span className="mg-activity-node"/></span>
+            <div className="mg-activity-content">
+              <div className="mg-activity-top"><span className="mg-mini-state">{eventLabel(e.kind)}</span>
+                <time dateTime={e.occurredAt.toISOString()}>{e.occurredAt.toISOString().slice(0,16).replace("T"," ")} UTC</time></div>
+              <h3>{e.summary}</h3>
+              <p>{e.details}</p>
+              <div className="mg-activity-meta"><span>Actor: {e.actorId??"System"}</span>
+                {e.kind==="AP_IMPORT"
+                  ? <Link href="/ap-history">Inspect AP source ↗</Link>
+                  : <Link href={"/payments/"+encodeURIComponent(e.referenceId)}>Inspect payment evidence ↗</Link>}
+              </div>
+            </div>
+          </li>)}
+        </ol> : <div className="mg-compact-empty">
+          No activity is recorded for your authorized organizations.
+        </div>}
+        <p className="mg-source-note">This is a read-side operational history, not proof of independent Merkle anchoring or immutable off-site recovery. A policy decision is not a PayPal settlement.</p>
+      </section>
+    </div>
   </main>;
 }
