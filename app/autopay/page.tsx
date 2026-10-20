@@ -1,3 +1,4 @@
+import { OperationsHeader } from "@/app/components/operations-header";
 import Link from "next/link";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
@@ -16,16 +17,9 @@ export default async function AutopayPage(){
   if(await isRestrictedJudge(session.user.id))redirect("/judge");
   const data=await readAutopayMandateConsole(session.user.id);
   return <main className="shell">
-    <Link href="/policies" className="back">← Policies</Link>
-    <header className="topbar">
-      <div><p className="eyebrow">MandateGate / standing automation</p>
-        <h1>Delegate authority once. Investigate exceptions.</h1>
-        <p className="muted">An exact, revocable vendor authorization is separate from
-          the organization spending policy. No mandate exists until you explicitly
-          activate it. Each authorization applies only to structured <code>agent_api</code>
-          requests, not GLM invoice observations.</p>
-      </div><div className="identity">{session.user.email}</div>
-    </header>
+    <OperationsHeader active="policies" title="Standing mandates"
+      description="Delegate bounded authority once. Mandates are individually scoped, expiring, revocable, and never granted by an AI recommendation."
+      context="POLICY / AUTONOMY" email={session.user.email}/>
     <section className="panel detail">
       <p className="eyebrow">Prepare / no payout</p>
       <h2>Propose a scoped standing mandate</h2>
