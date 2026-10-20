@@ -26,7 +26,7 @@ export function matchesPaymentView(row: PaymentListRow, view: PaymentView): bool
 
 export function paymentExecutionLabel(status: string | null): string {
   if (!status) return "No payout recorded";
-  if (status === "PAID") return "Paid · reconciled";
+  if (status === "PAID") return "Paid · recorded";
   if (status.startsWith("PAYMENT_UNKNOWN")) return "Unknown · investigate";
   return status.replaceAll("_", " ");
 }
