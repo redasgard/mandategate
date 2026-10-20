@@ -71,8 +71,7 @@ export default async function InvoiceArtifactReviewPage({
       "where organization_id=$1 and artifact_id=$2",
       "and source_kind='PDF_TEXT' and verification_status='VERIFIED'",
       "order by created_at desc",
-    ].join(" "),[artifact.organizationId,id,
-      sandboxFictionalIssuerChannelAllowed(artifact.organizationId,"vendor_northstar")]),
+    ].join(" "),[artifact.organizationId,id]),
     pool.query([
       "select a.id,a.vendor_id,a.independent_evidence_reference,a.expires_at",
       "from invoice_origin_attestations a",
@@ -86,7 +85,8 @@ export default async function InvoiceArtifactReviewPage({
       "and a.expires_at>now()",
       "and ch.active=true and ch.created_at<art.created_at",
       "order by a.created_at desc",
-    ].join(" "),[artifact.organizationId,id]),
+    ].join(" "),[artifact.organizationId,id,
+      sandboxFictionalIssuerChannelAllowed(artifact.organizationId,"vendor_northstar")]),
   ]);
   const eligibleChannels=channelRows.rows.map(r=>({
     id:r.id as string,vendorId:r.vendor_id as string,
