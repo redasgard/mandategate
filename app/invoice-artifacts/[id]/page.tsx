@@ -9,7 +9,7 @@ import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
 import { PersistedInvoiceObservation } from "./persisted-observation";
-import { isSyntheticNonZdrSourceAllowlisted, syntheticNonZdrTestEnvironmentEnabled } from "@/src/ai/gateway/non-zdr-test-policy";
+import { isSyntheticNonZdrSourceAllowlisted, syntheticNonZdrTestEnvironmentEnabled, sandboxInvoiceNonZdrEnvironmentEnabled, isExactSandboxPdfNonZdrSource } from "@/src/ai/gateway/non-zdr-test-policy";
 
 export default async function InvoiceArtifactReviewPage({
   params,
@@ -29,7 +29,10 @@ export default async function InvoiceArtifactReviewPage({
   ].join(" "), [artifact.organizationId,id]);
   const observation = savedObservation.rows[0] ?? null;
   const syntheticTestEnvironmentEnabled = syntheticNonZdrTestEnvironmentEnabled();
-  const syntheticTestAllowlisted = isSyntheticNonZdrSourceAllowlisted(artifact.sha256);
+  const syntheticTestAllowlisted=isSyntheticNonZdrSourceAllowlisted(artifact.sha256) &&
+    (!sandboxInvoiceNonZdrEnvironmentEnabled() || isExactSandboxPdfNonZdrSource({
+      organizationId:artifact.organizationId,mimeType:artifact.mimeType,sha256:artifact.sha256,
+    }));
   if(artifact.mimeType!=="application/pdf") {
     return <main className="shell narrow">
       <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
