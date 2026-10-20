@@ -64,7 +64,7 @@ export default async function PaymentDetailPage({
   const manualTestControl = showManualSandboxControl(displayState, payoutsDisabled);
   const paypalStatus = paymentDetailStatus(displayState);
 
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="payments" title="Payment investigation"
       description="Review the original request, the policy decision, and actual provider evidence before taking action."
       email={session.user.email} context="PAYMENTS / DETAIL"/>
