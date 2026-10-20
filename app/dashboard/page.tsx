@@ -48,7 +48,7 @@ export default async function DashboardPage({ searchParams }: {
 
       <nav className="panel" aria-label="Primary navigation" style={{display:"flex",gap:"1.2rem",flexWrap:"wrap",alignItems:"center"}}>
         <strong aria-current="page">Dashboard</strong>
-        <Link href="/requests">Payments</Link>
+        <Link href="/payments">Payments</Link>
         <Link href="/vendors">Vendors</Link>
         <Link href="/policies">Policies</Link>
         <Link href="/activity">Activity</Link>
@@ -65,7 +65,7 @@ export default async function DashboardPage({ searchParams }: {
         <div className="panel-body">
           <p>Agents submit invoice requests through the scoped API. MandateGate independently evaluates source evidence, vendor trust, historical behavior and active standing mandates. Authorized requests may execute automatically; exceptions require investigation.</p>
           <p className="muted">No invoice download and re-upload is required for the normal workflow. Manual document intake remains a support and testing tool, not the product's primary action.</p>
-          <p><Link href="/requests">Review payments →</Link>{" · "}<Link href="/policies">Manage standing authority →</Link></p>
+          <p><Link href="/payments">Review payments →</Link>{" · "}<Link href="/policies">Manage standing authority →</Link></p>
         </div>
       </section>
 
