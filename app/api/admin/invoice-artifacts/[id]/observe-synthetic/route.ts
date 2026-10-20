@@ -3,7 +3,7 @@ import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { isTrustedMutationOrigin } from "@/src/auth/same-origin";
 import { loadInvoiceArtifactForHumanReview } from "@/src/artifacts/postgres-store";
-import { syntheticNonZdrTestEnvironmentEnabled, isSyntheticNonZdrSourceAllowlisted } from "@/src/ai/gateway/non-zdr-test-policy";
+import { syntheticNonZdrTestEnvironmentEnabled, isSyntheticNonZdrSourceAllowlisted, sandboxInvoiceNonZdrEnvironmentEnabled, isExactSandboxPdfNonZdrSource } from "@/src/ai/gateway/non-zdr-test-policy";
 import { analyzeStoredInvoiceImage, InvoiceImageAnalysisError } from "@/src/invoices/image-analysis";
 import { InvoiceVisionGatewayError } from "@/src/ai/gateway/experiential-vision";
 
@@ -35,6 +35,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // This query checks the live active ADMIN membership of the document's org.
   const artifact = await loadInvoiceArtifactForHumanReview(session.user.id, id);
   if (!artifact) return Response.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (sandboxInvoiceNonZdrEnvironmentEnabled() && !isExactSandboxPdfNonZdrSource({
+    organizationId:artifact.organizationId,mimeType:artifact.mimeType,sha256:artifact.sha256,
+  })) {
+    return Response.json({error:"SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED"},{status:403});
+  }
   if (!isSyntheticNonZdrSourceAllowlisted(artifact.sha256)) {
     return Response.json({ error: "SYNTHETIC_NON_ZDR_TEST_NOT_ALLOWED" }, { status: 403 });
   }
