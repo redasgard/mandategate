@@ -1,5 +1,19 @@
 # MandateGate decision log
 
+## 2026-10-20 PT — UI/UX restart around the original PRD (PR #60)
+
+**Decision:** Discard the first upload-centric primary UX. Rebuild Dashboard, Payments, Vendors, Policies, Activity, sign-in and standing-mandate screens as one financial-operations product. Use a charcoal/copper shared design system, a consistent primary sidebar and incident-first dashboard, not cosmetic additions to old panels.
+
+**Why:** The approved PRD defines operations-agent invoice submission, MandateGate deterministic decisions, standing authority for unattended routine payouts and human exception resolution. A user manually downloading and re-uploading the fictional Northstar USD 1.01 invoice contradicts that design.
+
+**Alternatives rejected:** dashboard 'Upload invoice' hero, simulated finance totals, chatbot-first controls, decorative live-status claims, per-invoice acceptance for normal mandate-backed ALLOW, silent import-to-schedule conversion.
+
+**Grounded constraints:** Read data only from current membership-scoped projections; highlight unavailable balance, advisory GLM/document observations, historical AP import bounds and separate PayPal settlement. Keep source documents and manual Sandbox control as secondary test/investigation tools, with no changes to server-side financial authority.
+
+**Artifacts:** `devpost/ui-ux-v2.md`, `app/components/operations-header.tsx`, `app/operations-v2.css`, Dashboard and operational pages, `tests/operations-v2-navigation.test.tsx`, HTTP smoke selectors. No production deployment or PayPal POSTs.
+
+**Verification:** Original v2 UI branch isolated CI: 539 passing Vitest on earlier commit `442e7005`; Next build subsequently passed and signed-in smoke found stale vendor/policy/activity text assertions. Those selectors and cross-org count assertions have been repaired in newer commits. Reverify the **exact final SHA**, and perform real visual browser QA before release; never reuse earlier-run evidence for newer changes.
+
 ## 2026-10-20 PT — Restore PRD-first autonomous operations UX (PR #60)
 
 - **Owner direction:** Rebuild the application UI around the approved PRD, not the synthetic USD 1.01 invoice download/upload test loop. That fixture is a bounded payment-integration test, not the product's human journey.
