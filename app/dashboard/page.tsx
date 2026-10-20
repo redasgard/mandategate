@@ -9,7 +9,6 @@ import { ImportedObligations } from "./imported-obligations";
 import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-incidents";
 import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
-import { demoPreviewEnabled } from "@/src/demo/scenarios";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -27,7 +26,6 @@ export default async function DashboardPage({ searchParams }: {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
-  const demoMode = demoPreviewEnabled(process.env);
   const sandboxPayouts = process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox" &&
     process.env.MANDATEGATE_DISABLE_PAYMENTS === "0";
   const incidentFilter = parseIncidentFilter((await searchParams)?.risk);
@@ -41,9 +39,9 @@ export default async function DashboardPage({ searchParams }: {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">MandateGate / authority console</p>
+          <p className="eyebrow">MandateGate / PayPal + AI</p>
           <h1>The firewall between AI agents and your money.</h1>
-          <p className="muted">{demoMode ? <><Link href="/demo">Three-case demo lab</Link>{" · "}</> : null}<Link href="/invoice-artifacts">Review source invoices</Link>
+          <p className="muted"><Link href="/invoice-artifacts">Invoice intake</Link>
             {" · "}<Link href="/ap-history">Import historical AP evidence</Link>
             {" · "}<Link href="/obligations">Upcoming and overdue imports</Link>
             {" · "}<Link href="/vendors">Vendor trust and re-verification</Link>
@@ -55,24 +53,20 @@ export default async function DashboardPage({ searchParams }: {
 
       <section className="panel review-stage" aria-label="Invoice intake">
         <p className="eyebrow">Invoice intake / source evidence</p>
-        <h2>Upload and review an invoice</h2>
+        <h2>Analyze, approve and execute invoice payments</h2>
         <p className="muted">Start with the original PDF, PNG, or JPEG. Uploaded
-          documents remain untrusted; source review and issuer confirmation are
-          separate from payment approval. Nothing on the intake page sends a payout.</p>
-        <p><Link href="/invoice-artifacts">Open invoice intake and stored documents →</Link></p>
+          documents are untrusted; AI reads them, policy evaluates the risk,
+          and a reviewer controls authorization. Approved payments are executed
+          through PayPal Sandbox and tracked through provider receipts.</p>
+        <p><Link href="/invoice-artifacts">Open invoice workflow →</Link></p>
       </section>
 
-      {demoMode ? <section className="panel review-stage" aria-label="Demo preview status">
-        <p className="eyebrow">Synthetic policy demonstration / never payable</p>
-        <h2>See why an AI agent cannot authorize spending</h2>
-        <p className="muted">Replay three fictional invoice decisions. These three fixtures can never execute PayPal, even when a separate Sandbox payout is enabled.</p>
-        <p><Link href="/demo">Open the three-scenario demo →</Link></p>
-      </section> : null}
-      {sandboxPayouts ? <section className="panel review-stage" aria-label="Sandbox payout laboratory">
+
+      {sandboxPayouts ? <section className="panel review-stage" aria-label="PayPal Sandbox execution">
         <p className="eyebrow">PayPal Sandbox / actual API</p>
-        <h2>Execute a separately authorized 1.01 USD test payout</h2>
-        <p className="muted">Uses a distinct synthetic organization and a preconfigured Sandbox recipient. No production funds; the three policy-preview cases remain nonpayable.</p>
-        <p><Link href="/sandbox-payout">Open Sandbox payout lab →</Link></p>
+        <h2>Pay approved invoices through PayPal Sandbox</h2>
+        <p className="muted">Executes through the real PayPal Sandbox API after invoice verification and approval. Each payout is recorded with its batch, item, and webhook status. No live funds are moved.</p>
+        <p><Link href="/sandbox-payout">Open PayPal execution →</Link></p>
       </section> : null}
       <section className="metrics" aria-label="Current payment risk">
         <article className="metric danger"><span>AWAITING REVIEW</span><strong>{summary.pendingReview}</strong></article>
