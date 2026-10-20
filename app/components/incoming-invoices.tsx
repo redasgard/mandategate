@@ -14,7 +14,7 @@ export function IncomingInvoiceQueue({items}:{items:IncomingInvoice[]}) {
         aria-label={"Inspect invoice source in "+item.organization}>
         <span className="mg-document-icon" aria-hidden="true">DOC</span>
         <span className="mg-document-copy">
-          <span className="mg-document-title">{item.suggestedVendor??"Document awaiting analysis"}{item.suggestedInvoice?" · "+item.suggestedInvoice:""}</span>
+          <span className="mg-document-title">{item.suggestedVendor??"No AI suggestions"}{item.suggestedInvoice?" · "+item.suggestedInvoice:""}</span>
           <span className="mg-document-subtitle">
             {item.organization} · {item.suggestedCurrency&&item.suggestedAmount
               ?item.suggestedCurrency+" "+item.suggestedAmount
