@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {createSandboxInvoicePdf} from "../src/demo/sandbox-invoice-pdf";
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -152,5 +153,62 @@ describe("admin-only synthetic non-ZDR endpoint", () => {
     expect(mocks.analyze).toHaveBeenCalledWith(
       "org_demo", artifactId, undefined, { syntheticNonZdrTest: true },
     );
+  });
+});
+
+
+describe("exact fictional PDF on payment-capable PayPal Sandbox",()=>{
+  const receiver="sandbox-only-owner@example.test";
+  const exactSha=createSandboxInvoicePdf(receiver).sha256;
+  const exactConsent={
+    expectedArtifactSha256:exactSha,syntheticFixtureOnly:true,
+    acknowledgeProviderRetentionRisk:true,
+  };
+  function sandboxSetup(){
+    for(const [key,value] of Object.entries({
+      MANDATEGATE_DEPLOYMENT_ROLE:"",
+      MANDATEGATE_SYNTHETIC_NON_ZDR_TEST:"0",
+      MANDATEGATE_SYNTHETIC_NON_ZDR_SOURCE_SHA256_ALLOWLIST:sha,
+      RENDER_SERVICE_ID:"srv-db39vmm7bikc73c55nh0",
+      MANDATEGATE_RUNTIME_MODE:"neon-sandbox",
+      MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"1",
+      MANDATEGATE_ENABLE_INVOICE_AI:"1",
+      MANDATEGATE_DISABLE_PAYMENTS:"0",
+      PAYPAL_BASE_URL:"https://api-m.sandbox.paypal.com",
+      DEMO_PAYPAL_RECEIVER_EMAIL:receiver,
+    }))vi.stubEnv(key,value);
+    mocks.loadArtifact.mockResolvedValue({
+      sha256:exactSha,organizationId:"org_demo",mimeType:"application/pdf",
+    });
+  }
+  it("accepts only matching original SHA with explicit admin provider-risk consent",async()=>{
+    sandboxSetup();
+    const res=await POST(req(exactConsent),params);
+    expect(res.status).toBe(200);
+    expect((await res.json())).toMatchObject({
+      privacyMode:"SYNTHETIC_NON_ZDR_TEST",
+      paymentAuthorized:false,paymentExecuted:false,
+    });
+    expect(mocks.query).toHaveBeenCalledOnce();
+    expect(mocks.analyze).toHaveBeenCalledWith("org_demo",artifactId,undefined,{
+      syntheticNonZdrTest:true,
+    });
+  });
+  it("does not infer on real or foreign-tenant invoices, even if their bytes match",async()=>{
+    sandboxSetup();
+    for(const changed of [
+      {organizationId:"org_other"},
+      {mimeType:"image/png"},
+      {sha256:"0".repeat(64)},
+    ]){
+      mocks.loadArtifact.mockResolvedValueOnce({
+        sha256:exactSha,organizationId:"org_demo",mimeType:"application/pdf",
+        ...changed,
+      });
+      const res=await POST(req(exactConsent),params);
+      expect(res.status).toBe(403);
+    }
+    expect(mocks.query).not.toHaveBeenCalled();
+    expect(mocks.analyze).not.toHaveBeenCalled();
   });
 });
