@@ -8,17 +8,6 @@ export type IncomingInvoice = {
   createdAt: Date;
 };
 
-export function invoiceIntakeLabel(state: string): string {
-  switch (state) {
-    case "STORED_UNTRUSTED": return "Received · untrusted";
-    case "PENDING": return "Analysis pending";
-    case "EXTRACTED": return "Extracted · review required";
-    case "ESCALATED": return "Review required";
-    case "FAILED": return "Analysis failed";
-    default: return "Review state";
-  }
-}
-
 /** Operational inbox only. Current ADMIN membership is required inside SQL. */
 export async function readIncomingInvoices(actorId: string, limit = 12): Promise<IncomingInvoice[]> {
   const capped = Number.isFinite(limit) ? Math.max(1, Math.min(25, Math.trunc(limit))) : 12;
