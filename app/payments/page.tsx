@@ -9,7 +9,7 @@ import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
 import { OperationsHeader } from "@/app/components/operations-header";
 import { readIncomingInvoices } from "@/src/db/operations-inbox";
 import { IncomingInvoiceQueue } from "@/app/components/incoming-invoices";
-import { PAYMENT_VIEW_OPTIONS, parsePaymentView, matchesPaymentView, paymentExecutionLabel } from "@/src/ui/payments-view";
+import { PAYMENT_VIEW_OPTIONS, parsePaymentView, matchesPaymentView, paymentExecutionLabel, paymentSourceLabel } from "@/src/ui/payments-view";
 
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -34,7 +34,7 @@ export default async function PaymentsPage({searchParams}:{
 
   return <main className="shell">
     <OperationsHeader active="payments" title="Payments"
-      description="Follow agent-submitted invoices and payment decisions. Investigate exceptions rather than re-uploading documents."
+      description="Track incoming evidence, payment requests from each source, and their actual policy and PayPal outcomes."
       email={session.user.email}/>
     <section className="ops-summary-grid" aria-label="Recent request decisions">
       <article className="ops-summary-item"><span>Recent requests</span><strong>{rows.length}</strong><small>Latest 100 decision records at most</small></article>
@@ -45,7 +45,7 @@ export default async function PaymentsPage({searchParams}:{
     <IncomingInvoiceQueue items={incoming}/>
     <section className="panel ops-queue-panel">
       <div className="panel-head">
-        <div><p className="eyebrow">Decision ledger</p><h2>Agent payment requests</h2></div>
+        <div><p className="eyebrow">Decision ledger</p><h2>Payment decisions</h2></div>
         <span className="badge">{visible.length} shown / latest 100 maximum</span>
       </div>
       <nav aria-label="Payment decision filters" className="ops-table-toolbar">
@@ -54,10 +54,11 @@ export default async function PaymentsPage({searchParams}:{
           aria-current={view===filter.value?"page":undefined}>{filter.label}</Link>)}
       </nav>
       {visible.length ? <div className="table-wrap">
-        <table className="dashboard-table ops-queue-table" aria-label="Agent payment requests">
-          <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Request state</th><th>PayPal result</th><th>Recorded (UTC)</th></tr></thead>
+        <table className="dashboard-table ops-queue-table" aria-label="Payment requests by source">
+          <thead><tr><th>Invoice</th><th>Source</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Request state</th><th>PayPal result</th><th>Recorded (UTC)</th></tr></thead>
           <tbody>{visible.map(row=><tr key={row.requestId}>
             <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
+            <td data-label="Source">{paymentSourceLabel(row.source)}</td>
             <td data-label="Vendor">{row.vendorName}</td>
             <td data-label="Amount">{formatMoney(row.amountCents,row.currency)}</td>
             <td data-label="Decision"><span className={"decision "+row.outcome.toLowerCase()}>{row.outcome}</span></td>
@@ -68,7 +69,7 @@ export default async function PaymentsPage({searchParams}:{
         </table>
       </div> : <div className="empty">{rows.length
         ? "No recent payment requests match this filter."
-        : "No agent payment requests recorded yet. Connected operations agents submit them through the scoped API."}</div>}
+        : "No payment requests recorded yet. Operations agents use the scoped API; reviewed invoice tests can appear separately."}</div>}
       <p className="ops-context-note" style={{padding:"0 18px"}}>ALLOW is a policy decision, not a PayPal receipt. Open a payment for the exact authorization, execution state and provider evidence. Filters apply to the most recent 100 decisions only.</p>
     </section>
     <ImportedObligations overview={obligations} compact/>
