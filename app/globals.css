@@ -456,3 +456,6 @@ button.policy-outline {background:transparent;color:var(--amber);border:1px soli
   .ops-account{display:none;}
 }
 @media(prefers-reduced-motion:reduce){.ops-nav-link,.ops-alert{transition:none;}}
+
+.ops-state.is-paid{color:var(--green);border-color:#456b45;}
+.ops-state.is-unknown{color:var(--amber);border-color:#826439;}
