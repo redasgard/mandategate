@@ -1,5 +1,15 @@
 # MandateGate decision log
 
+## 2026-10-19 PT — Replace forensic invoice screens with a judge-friendly PayPal journey
+
+- **Decision:** The PayPal AI Hackathon UI must show **Upload → AI & Review → Approve → PayPal**. Its previous per-field forensic console, unqualified `ESCALATE` label and full database hashes obscured the functional user story.
+- **Implementation:** Introduce a shared progress indicator on intake, invoice detail, authorization and execution; make invoice details and PayPal amount/recipient the most visible content. Show GLM results as **AI suggestions / Review needed**, map model-risk codes into human language, and collapse raw evidence and provider hashes under an accessible disclosure.
+- **Review workflow:** Keep all five exact source-backed PDF fields, quotations, page numbers, explicit reviewer reason, pre-enrolled vendor-source acknowledgment and deterministic payment-proposal evaluation. Present them in three progressive steps rather than one page of controls. No user action or client-supplied value directly authorizes or executes PayPal.
+- **Execution:** Make a separately invoked, explicitly labeled real **PayPal Sandbox** action prominent on the payout page, with batch/item tracking and no false claim that an accepted or submitted request is paid. Never bypass payment idempotency, financial authorization, anomaly checks, or webhook reconciliation.
+- **Boundaries:** Image-only observations are advisory and cannot pass the PDF-source gate. Raw audit evidence remains available in expandable views. The four-stage progress bar is purely navigational, not an authorization or payment-status claim.
+- **Verification:** Validate in isolated Render PostgreSQL18 CI (Vitest, typecheck, production build and authenticated smoke) before moving the live branch. A real visual/browser walkthrough and exact PayPal provider proof remain separate requirements.
+- **Affected files:** `app/components/invoice-journey.tsx`, invoice intake/detail/review actions/AI observation, binding approval, payment details and execute button, `app/globals.css`, and new UI tests.
+
 ## 2026-10-19 PT — PayPal AI Hackathon is the primary release, not a separate demo
 
 - **Owner decision:** Prioritize a fully functioning PayPal AI Hackathon application over production readiness and artificial demo/preview distinctions. The acceptance proof is an actually executed **PayPal Sandbox payout** from a reviewed invoice, with provider batch/item status and webhook reconciliation. An ALLOW policy response, prepared request, fake gateway, or archived unrelated payout alone cannot satisfy this.
