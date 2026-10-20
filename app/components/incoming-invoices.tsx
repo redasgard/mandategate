@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { invoiceIntakeLabel, type IncomingInvoice } from "@/src/db/operations-inbox";
+import { type IncomingInvoice } from "@/src/db/operations-inbox";
+import { invoiceIntakeLabel } from "@/src/ui/invoice-intake-status";
 
 export function IncomingInvoiceQueue({items}: {items: IncomingInvoice[]}) {
   return <section className="panel ops-queue-panel" aria-label="Received invoice documents">
