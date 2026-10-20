@@ -1,5 +1,13 @@
 # MandateGate decision log
 
+## 2026-10-19 PT — PayPal AI Hackathon is the primary release, not a separate demo
+
+- **Owner decision:** Prioritize a fully functioning PayPal AI Hackathon application over production readiness and artificial demo/preview distinctions. The acceptance proof is an actually executed **PayPal Sandbox payout** from a reviewed invoice, with provider batch/item status and webhook reconciliation. An ALLOW policy response, prepared request, fake gateway, or archived unrelated payout alone cannot satisfy this.
+- **AI:** Set `MANDATEGATE_REQUIRE_ZDR=0` on the existing bounded PayPal Sandbox application. Send invoice content through the normal `/observe` gateway without account-level Zero Data Retention, provider/no-training/prompt-capture entitlement checks or `provider.zdr=true`. Only the correct GLM model, response schema, source digest, active admin access and outbound gateway identity remain necessary. External provider terms may permit retention; use test data, and never represent this as ZDR protection.
+- **Simplification:** One **Analyze invoice with AI** action for the primary invoice workflow. Hide retired privacy and synthetic-exception screens; the old privacy URL redirects to intake. Surface ordinary saved AI observations, still advisory T1. Remove "demo" framing from main screens. Test fixtures are still explicitly test data, never authenticated live suppliers.
+- **Safety:** Keep exact human payment authority, vendor destination registry, tenant and replay checks, PayPal sandbox-only host, idempotency fencing, signature-verified webhook and fail-closed reconciliation. Do not elevate model output into T2/T3/T4 or submit payouts through inference.
+- **Work:** Update app UI, provider routing and web runtime flag, regression tests, README/scope, then isolated CI and protected web deployment. Live invoice-derived payout remains unverified until the actual positive workflow is executed and reconciled.
+
 ## 2026-10-19 PT — Honor non-ZDR fictional invoice exemption in payment-capable Sandbox demo
 
 - **Decision:** The hackathon explicitly permits non-ZDR GLM observations for **exact, byte-identical fictional source documents with informed admin consent**. The standard external provider route still requires account ZDR. This exception does not authenticate a vendor or authorize PayPal.
