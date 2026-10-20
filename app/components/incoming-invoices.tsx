@@ -11,16 +11,23 @@ export function IncomingInvoiceQueue({items}: {items: IncomingInvoice[]}) {
     </div>
     {items.length ? <div className="table-wrap">
       <table className="dashboard-table ops-queue-table">
-        <thead><tr><th>Received (UTC)</th><th>Organization</th><th>Source document</th><th>Analysis state</th><th>Evidence</th></tr></thead>
+        <thead><tr><th>Received (UTC)</th><th>Organization</th><th>Unverified AI suggestions</th><th>Analysis state</th><th>Evidence</th></tr></thead>
         <tbody>{items.map(item=><tr key={item.id}>
           <td data-label="Received UTC">{item.createdAt.toISOString().slice(0,16).replace("T"," ")}</td>
           <td data-label="Organization">{item.organization}</td>
-          <td data-label="Document"><span className="mono">{item.id.slice(0,12)}</span> · {item.mimeType}</td>
+          <td data-label="Unverified AI suggestions">
+            <strong>{item.suggestedVendor??"No AI suggestions"}</strong>
+            <span className="ops-inbox-candidate">
+              {item.suggestedInvoice ? "Invoice "+item.suggestedInvoice+" · " : ""}
+              {item.suggestedAmount && item.suggestedCurrency
+                ? item.suggestedCurrency+" "+item.suggestedAmount : "Original "+item.mimeType}
+            </span>
+          </td>
           <td data-label="Analysis state"><span className="ops-state">{invoiceIntakeLabel(item.analysisStatus)}</span></td>
           <td data-label="Evidence"><Link href={"/invoice-artifacts/"+encodeURIComponent(item.id)}>Inspect source →</Link></td>
         </tr>)}</tbody>
       </table>
     </div> : <div className="empty">No received invoice documents yet. Operations agents can send source PDFs or images directly to the scoped invoice-ingestion API.</div>}
-    <p className="ops-context-note" style={{padding:"0 18px"}}>Includes both agent and admin uploads. Received or extracted documents are not authenticated suppliers or authorized payments. No invoice creation or payment occurs on this page.</p>
+    <p className="ops-context-note" style={{padding:"0 18px"}}>Includes both agent and admin uploads. Model-suggested names, invoice numbers and amounts are unverified. They cannot authenticate suppliers, update trusted recipients or authorize payment. No invoice or payout is created by this view.</p>
   </section>;
 }
