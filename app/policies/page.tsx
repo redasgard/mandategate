@@ -1,3 +1,4 @@
+import { OperationsHeader } from "@/app/components/operations-header";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,16 +16,9 @@ export default async function PoliciesPage(){
   if(await isRestrictedJudge(session.user.id))redirect("/judge");
   const data=await readPolicyConsole(session.user.id);
   return <main className="shell">
-    <Link href="/dashboard" className="back">← Dashboard</Link>
-    <header className="topbar">
-      <div><p className="eyebrow">MandateGate / policy authority</p>
-        <h1>Policies require a decision, not a suggestion.</h1>
-        <p className="muted">Imported vendor history may suggest a stricter spending cap, but only an
-          authenticated administrator can activate it. Proposals are inert.
-          Payment destinations and vendor trust cannot be changed here.</p>
-      </div>
-      <div className="identity">{session.user.email}</div>
-    </header>
+    <OperationsHeader active="policies" title="Policies & mandates"
+      description="Review standing payment authority, inspect proposals, and revoke unsafe rules. AI suggestions alone cannot change policy."
+      email={session.user.email}/>
     <section className="panel detail">
       <p className="eyebrow">Active policy authority</p>
       <h2>Standing auto-pay limits</h2>
