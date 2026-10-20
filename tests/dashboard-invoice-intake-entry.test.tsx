@@ -50,9 +50,9 @@ describe("judge and admin invoice-intake discovery", () => {
     const html = renderToStaticMarkup(await DashboardPage());
     expect(html).toContain('aria-label="Invoice intake"');
     expect(html).toContain('href="/invoice-artifacts"');
-    expect(html).toContain("Upload and review an invoice");
-    expect(html).toContain("Nothing on the intake page sends a payout");
-    expect(html).toContain("separate from payment approval");
+    expect(html).toContain("Analyze, approve and execute invoice payments");
+    expect(html).toContain("Approved payments are executed");
+    expect(html).toContain("a reviewer controls authorization");
     expect(mocks.decisions).toHaveBeenCalledWith("reviewer-admin");
     expect(mocks.summary).toHaveBeenCalledWith("reviewer-admin");
     expect(mocks.incidents).toHaveBeenCalledWith("reviewer-admin", "ALL");
