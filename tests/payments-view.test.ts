@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PAYMENT_VIEW_OPTIONS, matchesPaymentView, parsePaymentView,
-  paymentExecutionLabel, type PaymentListRow,
+  paymentExecutionLabel, paymentSourceLabel, type PaymentListRow,
 } from "../src/ui/payments-view";
 
 const allowed: PaymentListRow = {status:"ALLOWED",outcome:"ALLOW",executionStatus:null};
@@ -37,6 +37,13 @@ describe("PRD payment operations filters", () => {
     expect(matchesPaymentView(unknown,"PAID")).toBe(false);
     expect(paymentExecutionLabel(unknown.executionStatus)).toBe("Unknown · investigate");
     expect(paymentExecutionLabel("PAYMENT_FAILED")).toBe("PAYMENT FAILED");
+  });
+
+  it("distinguishes agent requests, reviewed invoices and test fixtures", () => {
+    expect(paymentSourceLabel("agent_api")).toBe("Agent API");
+    expect(paymentSourceLabel("verified_invoice")).toBe("Reviewed invoice");
+    expect(paymentSourceLabel("sandbox_fixture")).toBe("Sandbox fixture");
+    expect(paymentSourceLabel("future_source")).toBe("Other source");
   });
 
   it("shows denied decisions only in the denied filter", () => {
