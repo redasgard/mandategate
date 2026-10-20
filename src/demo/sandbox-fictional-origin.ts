@@ -17,6 +17,7 @@ export function sandboxFictionalIssuerChannelAllowed(
     env.MANDATEGATE_DISABLE_PAYMENTS==="0" &&
     env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com" &&
     typeof env.DEMO_PAYPAL_RECEIVER_EMAIL==="string" &&
+    env.DEMO_PAYPAL_RECEIVER_EMAIL!=="ap@northstar.example" &&
     /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(env.DEMO_PAYPAL_RECEIVER_EMAIL);
 }
 export function isExactSandboxFictionalInvoice(
