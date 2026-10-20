@@ -35,24 +35,22 @@ export default async function SandboxPayoutPage() {
     <Link className="back" href="/dashboard">← Dashboard</Link>
     <section className="panel detail">
       <p className="eyebrow">PayPal AI Hackathon / actual Sandbox API</p>
-      <h1>{invoiceMode?"Reviewed invoice to PayPal Sandbox":"One authorized, fictional $1.01 payout"}</h1>
+      <h1>{invoiceMode?"PayPal invoice execution":"PayPal Sandbox payout"}</h1>
       <p className="muted">
         {invoiceMode
-          ? "This experiment begins with a genuine test PDF containing a fictional invoice. Its source is simulated, and a human must approve the exact tuple. GLM cannot authorize a payment."
-          : "This is a standalone fictional payment, independent of invoice extraction."}
-        {" "}The three canonical ALLOW/ESCALATE/DENY scenarios remain nonpayable.
+          ? "Upload and verify an invoice, review the exact payment details, and submit an approved payout through PayPal Sandbox. AI observations cannot approve or send funds."
+          : "A prepared payment can be sent through the real PayPal Sandbox Payouts API."}
+        {" "}Each payout requires independent payment authority.
         PayPal Sandbox uses test balances only, never production funds.
       </p>
       {invoiceMode ? <section className="review-stage">
-        <h2>Invoice-linked Sandbox experiment</h2>
-        <p>Begin with the original fictional PDF, independently verified text,
-          an explicitly simulated source assertion, and exact administrator
-          approval. Preparing it creates no payout. Execute is a separate
-          action after the approved binding is consumed.</p>
-        <p><Link href="/invoice-artifacts">Start with fictional invoice intake →</Link></p>
-        <p className="muted">The standalone payment fixture is disabled in
-          this mode. A real PayPal Sandbox payout is not proven until its
-          batch, item and verified webhook reconciliation are observed.</p>
+        <h2>Invoice to PayPal execution</h2>
+        <p>Begin with the original PDF, source evidence and an exact administrator
+          approval. Preparing a payment request does not submit a payout.
+          Execute is a separate PayPal Sandbox action after approval.</p>
+        <p><Link href="/invoice-artifacts">Start invoice processing →</Link></p>
+        <p className="muted">Payment execution is confirmed only after PayPal returns batch and item
+          identifiers and webhook reconciliation validates the final state.</p>
         {!enabled ? <p role="alert">Sandbox execution credentials and the test
           recipient are not configured on this deployment.</p>:null}
       </section> : enabled ? <>
