@@ -53,39 +53,41 @@ export function InvoiceArtifactUpload({organizations}:{organizations:Organizatio
     }finally{setBusy(false);}
   }
 
-  return <section className="review-stage">
-    <p className="eyebrow">Invoice intake</p>
-    <h2>Upload invoice for analysis</h2>
-    <p className="muted">
-      Signed-in admin upload, without agent credentials. Original bytes are
-      hashed and stored as untrusted source material. No payment request,
-      issuer authentication, or payout is created. Text-based PDFs are parsed
-      automatically into unverified page evidence; scans remain unverified.
-    </p>
+  return <section className="invoice-task-card" aria-label="Upload an invoice">
+    <div className="invoice-task-card-head">
+      <span className="invoice-step-number">01</span>
+      <div><h2>Upload your invoice</h2>
+        <p className="muted">Drop in a PDF, PNG or JPEG.
+          MandateGate stores the original and prepares it for AI review.</p>
+      </div>
+    </div>
     {organizations.length===0?
-      <p className="error">No active admin organization membership is available.</p>:
-      <form className="review-grid" onSubmit={e=>void upload(e)}>
+      <p className="error">Your account has no active organization for invoice review.</p>:
+      <form className="invoice-upload-form" onSubmit={e=>void upload(e)}>
         <label>Organization
           <select value={organizationId} disabled={busy}
             onChange={e=>setOrganizationId(e.target.value)}>
             {organizations.map(org=><option key={org.id} value={org.id}>{org.name}</option>)}
           </select>
         </label>
-        <label>Original PDF, PNG, or JPEG (maximum 10 MiB)
+        <label>Invoice file (PDF, PNG, JPEG · max 10 MB)
           <input type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
             disabled={busy} onChange={e=>setFile(e.target.files?.[0]??null)}/>
         </label>
-        <button type="submit" disabled={busy || !file || !organizationId}>
-          {busy?"Storing and checking PDF source text…":"Store invoice for independent review"}
+        {file?<p className="invoice-small-note">Selected: <strong>{file.name}</strong>
+          {" · "}{(file.size/1024).toFixed(0)} KB</p>:null}
+        <button className="invoice-primary-action" type="submit"
+          disabled={busy||!file||!organizationId}>
+          {busy?"Uploading invoice…":"Upload & review invoice →"}
         </button>
       </form>}
-    {result?<div role="status">
-      <p>Stored as <strong>{result.artifact.analysisStatus}</strong>.
-        {result.artifact.replayed?" Existing artifact reused.":""}</p>
-      <p className="mono">SHA-256: {result.artifact.sha256}</p>
-      {result.reviewPath?
-        <Link href={result.reviewPath}>Open document review</Link>:
-        <p className="muted">Image retained as untrusted. It cannot directly authorize a payment.</p>}
+    {result?<div role="status" className="invoice-review-notes">
+      <strong>Invoice stored</strong>
+      <p>{result.artifact.replayed?"Existing invoice file reused.":"Ready for review."}</p>
+      {result.reviewPath?<Link href={result.reviewPath}>Open invoice →</Link>:null}
+      <details className="invoice-technical"><summary>File reference</summary>
+        <p className="mono">SHA-256 {result.artifact.sha256}</p>
+      </details>
     </div>:null}
     {error?<p role="alert" className="error">{error}</p>:null}
   </section>;
