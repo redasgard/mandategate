@@ -45,3 +45,27 @@ test('invalid synthetic configuration cannot relax the strict route',()=>{
     assert.equal(result.MANDATEGATE_SYNTHETIC_NON_ZDR_TEST,undefined);
   }
 });
+
+
+test('the PayPal Hackathon host can disable ZDR checks for ordinary invoice analysis',()=>{
+  const env={...base,
+    MANDATEGATE_REQUIRE_ZDR:'0',MANDATEGATE_DISABLE_PAYMENTS:'0',
+    PAYPAL_BASE_URL:'https://api-m.sandbox.paypal.com',
+  };
+  const allowed=invoiceAiEnvironment(env,'neon-sandbox');
+  assert.deepEqual(allowed,{
+    MANDATEGATE_ENABLE_INVOICE_AI:'1',
+    MANDATEGATE_REQUIRE_ZDR:'0',
+    EXPLABS_API_KEY:base.EXPLABS_API_KEY,
+  });
+  for(const [patch,mode] of [
+    [{RENDER_SERVICE_ID:'srv-other'},'neon-sandbox'],
+    [{PAYPAL_BASE_URL:'https://api-m.paypal.com'},'neon-sandbox'],
+    [{MANDATEGATE_DISABLE_PAYMENTS:'1'},'neon-sandbox'],
+    [{},'neon-preview'],
+    [{MANDATEGATE_REQUIRE_ZDR:'1'},'neon-sandbox'],
+  ]){
+    const result=invoiceAiEnvironment({...env,...patch},mode);
+    assert.equal(result.MANDATEGATE_REQUIRE_ZDR,undefined);
+  }
+});
