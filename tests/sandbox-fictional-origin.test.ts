@@ -4,6 +4,7 @@ import {
   sandboxOriginIsSynthetic,
 } from "../src/demo/sandbox-fictional-origin";
 const valid={
+  NODE_ENV:"test",
   RENDER_SERVICE_ID:"srv-db39vmm7bikc73c55nh0",
   MANDATEGATE_RUNTIME_MODE:"neon-sandbox",
   MANDATEGATE_SANDBOX_VERIFIED_INVOICE_DEMO:"1",
