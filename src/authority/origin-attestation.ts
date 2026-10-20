@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { pool } from "../db/pool";
+import {sandboxFictionalIssuerChannelAllowed} from "../demo/sandbox-fictional-origin";
 
 /**
  * Gate D: independent vendor-origin attestation.
@@ -66,7 +67,7 @@ export async function attestInvoiceIssuerFromTrustedChannel(input: {
 
     const enrolled = await client.query(
       [
-        "select ch.id,ch.kind,(ch.created_at < art.created_at) as predates_artifact",
+        "select ch.id,ch.kind,ch.enrolled_by_user_id,(ch.created_at < art.created_at) as predates_artifact",
         "from vendor_origin_channels ch",
         "join invoice_artifacts art on art.id=$4 and art.organization_id=ch.organization_id",
         "where ch.id=$1 and ch.organization_id=$2 and ch.vendor_id=$3 and ch.active=true",
@@ -91,9 +92,13 @@ export async function attestInvoiceIssuerFromTrustedChannel(input: {
       reject("EVIDENCE_CHANNEL_TYPE_MISMATCH", 422);
     }
     if (kind === "SYNTHETIC_FIXTURE") {
-      if (opts.allowSyntheticFixture !== true || process.env.NODE_ENV === "production") {
+      if (opts.allowSyntheticFixture !== true) reject("SYNTHETIC_ORIGIN_NOT_PERMITTED");
+      if (process.env.NODE_ENV === "production" &&
+        (!sandboxFictionalIssuerChannelAllowed(input.organizationId,input.vendorId) ||
+         !channel.enrolled_by_user_id))
         reject("SYNTHETIC_ORIGIN_NOT_PERMITTED");
-      }
+      // This is a FICTIONAL provenance marker and is not proof of contact.
+      // Approval requires a separate, exact human-reviewed USD 1.01 tuple.
     }
 
     const artifactHash: string = artifact.rows[0].sha256;
@@ -139,7 +144,9 @@ export async function attestInvoiceIssuerFromTrustedChannel(input: {
       evidenceHash: attestation.proof_sha256 as string,
       expiresAt: attestation.expires_at as Date,
       paymentAuthorized: false as const,
-      independentEvidenceClaim: "HUMAN_ATTESTATION" as const,
+      independentEvidenceClaim:kind === "SYNTHETIC_FIXTURE"
+        ? "FICTIONAL_SANDBOX_ASSERTION" as const
+        : "HUMAN_ATTESTATION" as const,
     };
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
