@@ -196,7 +196,7 @@ export function InvoiceArtifactReview(props:{
       <p className="eyebrow">3 / T3 independent issuer origin</p>
       <h2>{fictionalChannel?"Acknowledge the fictional Sandbox source":"Confirm through a previously enrolled vendor channel"}</h2>
       {props.eligibleChannels.length===0?
-        <p className="error">No eligible pre-invoice source channel exists. For the fictional Sandbox demo, register a clearly labeled simulated source before uploading the invoice.</p>:
+        <p className="error">No eligible pre-invoice source channel exists. Register the Northstar Sandbox test source before uploading the invoice.</p>:
         <label>Trusted vendor channel (pre-enrolled)
           <select value={channelId} onChange={e=>{setChannelId(e.target.value);setOutOfBandConfirmed(false);setEvidenceRef("");}}>
             {props.eligibleChannels.map(ch=><option key={ch.id} value={ch.id}>
@@ -225,7 +225,7 @@ export function InvoiceArtifactReview(props:{
         </select>
       </label>:null}
       <p className="muted">{fictionalChannel
-        ? "This is not a real callback, ERP record, or vendor verification. Only the exact fictional USD 1.01 Sandbox scenario may proceed to separate approval."
+        ? "This is a Sandbox test source, not an authenticated live supplier. The USD 1.01 test invoice requires separate payment approval."
         : "A format-valid evidence reference is not external authentication by itself. This records an accountable human assertion; a vendor callback/ERP record must really exist."}</p>
     </section>
     <section className="review-stage">
