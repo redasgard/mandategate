@@ -9,7 +9,7 @@ import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional
 import { InvoiceArtifactReview } from "./review-actions";
 import { InvoiceVisionObservation } from "./observation-actions";
 import { PersistedInvoiceObservation } from "./persisted-observation";
-import { isSyntheticNonZdrSourceAllowlisted, syntheticNonZdrTestEnvironmentEnabled, sandboxInvoiceNonZdrEnvironmentEnabled, isExactSandboxPdfNonZdrSource } from "@/src/ai/gateway/non-zdr-test-policy";
+
 
 export default async function InvoiceArtifactReviewPage({
   params,
@@ -28,11 +28,7 @@ export default async function InvoiceArtifactReviewPage({
     "from invoice_image_observations where organization_id=$1 and artifact_id=$2 limit 1",
   ].join(" "), [artifact.organizationId,id]);
   const observation = savedObservation.rows[0] ?? null;
-  const syntheticTestEnvironmentEnabled = syntheticNonZdrTestEnvironmentEnabled();
-  const syntheticTestAllowlisted=isSyntheticNonZdrSourceAllowlisted(artifact.sha256) &&
-    (!sandboxInvoiceNonZdrEnvironmentEnabled() || isExactSandboxPdfNonZdrSource({
-      organizationId:artifact.organizationId,mimeType:artifact.mimeType,sha256:artifact.sha256,
-    }));
+
   if(artifact.mimeType!=="application/pdf") {
     return <main className="shell narrow">
       <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
@@ -49,8 +45,7 @@ export default async function InvoiceArtifactReviewPage({
           <div><dt>Trust state</dt><dd>Untrusted document</dd></div>
         </dl>
         <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
-          syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
-          syntheticTestAllowlisted={syntheticTestAllowlisted}/>
+/>
         <PersistedInvoiceObservation record={observation}/>
       </section>
     </main>;
@@ -106,8 +101,8 @@ export default async function InvoiceArtifactReviewPage({
   return <main className="shell narrow">
     <Link href="/dashboard" className="back">← Dashboard</Link>
     <section className="panel detail">
-      <p className="eyebrow">Gate H / source &amp; origin review</p>
-      <h1>Verify invoice source before approving payment</h1>
+      <p className="eyebrow">Invoice verification and payment approval</p>
+      <h1>Review invoice and prepare PayPal payment</h1>
       <p className="muted">The PDF is untrusted. Read its exact original bytes, verify independently extracted text, then confirm the issuer using a channel that was enrolled before this invoice. None of these actions executes a payment.</p>
       <dl>
         <div><dt>Original media type</dt><dd>{artifact.mimeType}</dd></div>
@@ -115,12 +110,9 @@ export default async function InvoiceArtifactReviewPage({
         <div><dt>Source artifact SHA-256</dt><dd className="mono">{artifact.sha256}</dd></div>
         <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect original PDF (admin-only download)</a></dd></div>
       </dl>
-      <p className="muted">
-        PDF field verification below works without AI or any provider ZDR entitlement.
-        {syntheticTestAllowlisted
-          ? " This exact fictional Sandbox PDF may also use the separate, consented non-ZDR AI test. Its results remain advisory and cannot authorize payment."
-          : " Other documents still require full ZDR for external AI observation."}
-      </p>
+      <p className="muted">You can verify the source fields directly or use
+        AI to suggest invoice details. Neither step authorizes a payout.
+        Payment submission is a separate PayPal Sandbox operation after approval.</p>
       <InvoiceArtifactReview
         artifactId={id} artifactSha256={artifact.sha256}
         initialPages={pages?.pages ?? []}
@@ -129,8 +121,7 @@ export default async function InvoiceArtifactReviewPage({
         eligibleChannels={eligibleChannels}
       />
       <InvoiceVisionObservation artifactId={id} artifactSha256={artifact.sha256} mimeType={artifact.mimeType}
-        syntheticTestEnvironmentEnabled={syntheticTestEnvironmentEnabled}
-        syntheticTestAllowlisted={syntheticTestAllowlisted}/>
+/>
       <PersistedInvoiceObservation record={observation}/>
     </section>
   </main>;
