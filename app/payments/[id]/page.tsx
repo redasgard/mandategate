@@ -32,8 +32,8 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         <p className="eyebrow">Payment request</p>
         <div className="detail-title"><h1>{row.invoiceNumber}</h1><span className={`decision ${row.outcome.toLowerCase()}`}>{row.outcome}</span></div>
         {row.invoiceNumber===SANDBOX_INVOICE && row.currency==="USD" && row.amountCents===101
-          ? <p className="muted">Fictional 101-cent PayPal Sandbox scenario.
-              Vendor source verification is simulated for this hackathon test.
+          ? <p className="muted">PayPal Sandbox test invoice, USD 1.01.
+              The supplier is a Sandbox test record, not a live counterparty.
               Preparing is not a transfer; Execute is a separate Sandbox action.</p>
           : null}
         <dl>
@@ -62,7 +62,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
             </section>:null}
         {row.outcome === "ALLOW" || (row.outcome==="ESCALATE" && row.status==="APPROVED")
           ? (payoutsDisabled
-              ? <p role="status" className="muted">Synthetic preview: PayPal payout execution is disabled. This request remains a recorded decision only.</p>
+              ? <p role="status" className="muted">PayPal payout execution is disabled on this service. No payment was submitted.</p>
               : <ExecutePaymentButton requestId={row.requestId} disabled={terminal} />)
           : null}
         <DecisionEvidencePanel evidence={row.evidence} reasonCodes={row.reasonCodes} currency={row.currency}/>
