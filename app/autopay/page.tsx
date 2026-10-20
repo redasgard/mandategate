@@ -15,7 +15,7 @@ export default async function AutopayPage(){
   if(!session)redirect("/sign-in");
   if(await isRestrictedJudge(session.user.id))redirect("/judge");
   const data=await readAutopayMandateConsole(session.user.id);
-  return <main className="shell">
+  return <main className="shell mg-shell">
     <OperationsHeader active="policies" title="Standing mandates"
       description="Delegate bounded authority once. Mandates are individually scoped, expiring, revocable, and never granted by an AI recommendation."
       context="POLICY / AUTONOMY" email={session.user.email}/>
