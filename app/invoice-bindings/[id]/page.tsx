@@ -5,6 +5,7 @@ import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
 import { InvoiceReviewActions } from "./review-actions";
+import { InvoiceJourney } from "@/app/components/invoice-journey";
 import {PrepareSandboxInvoiceButton} from "./prepare-sandbox-invoice-button";
 import {DEMO_ORG_ID,DEMO_VENDOR_ID} from "@/src/demo/scenarios";
 import {SANDBOX_INVOICE,SANDBOX_AMOUNT_CENTS} from "@/src/demo/sandbox-payout-constants";
@@ -63,52 +64,88 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
     amount===SANDBOX_AMOUNT_CENTS &&
     binding.currency==="USD" &&
     binding.trusted_destination===process.env.DEMO_PAYPAL_RECEIVER_EMAIL;
-  return <main className="shell narrow">
-    <Link href="/dashboard" className="back">← Dashboard</Link>
-    <section className="panel detail">
-      <p className="eyebrow">Exact-tuple invoice review</p>
-      <h1>Review {binding.invoice_number}</h1>
-      <p>Source assertions are not payment authority. Verify the vendor, source channel, and exact payment fields independently before approving.</p>
-      <dl>
-        <div><dt>Status</dt><dd>{binding.authorization_status}</dd></div>
-        <div><dt>Vendor (trusted registry)</dt><dd>{binding.vendor_name}</dd></div>
-        <div><dt>Amount</dt><dd>{binding.currency} {(amount/100).toFixed(2)}</dd></div>
-        <div><dt>Receiver (trusted registry)</dt><dd>{binding.trusted_destination}</dd></div>
-        <div><dt>Claim verification</dt><dd>{binding.verification_status} ({binding.source_kind})</dd></div>
-        <div><dt>Origin attestation</dt><dd>{binding.origin_method} / {binding.origin_channel}</dd></div>
-        <div><dt>Independent source reference</dt><dd>{binding.independent_evidence_reference ?? "Not supplied"}</dd></div>
-        <div><dt>Expires</dt><dd>{new Date(binding.expires_at).toISOString()}</dd></div>
-        <div><dt>Artifact digest</dt><dd className="mono">{binding.artifact_sha256}</dd></div>
-        <div><dt>Original source</dt><dd><a href={"/api/admin/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)+"/source"} target="_blank" rel="noopener noreferrer">Inspect stored artifact (admin only)</a></dd></div>
-        <div><dt>Frozen tuple digest</dt><dd className="mono">{binding.tuple_sha256}</dd></div>
-      </dl>
-      <h2>Payment-critical field evidence</h2>
-      <div className="chips">{fields.rows.map((f,i)=><span key={i}>
-        {f.field_name}: {f.normalized_value} · page {f.source_page ?? "?"} · T{f.trust_tier}
-        · evidence SHA {String(f.source_quote_sha256 ?? "missing").slice(0,12)}
-      </span>)}</div>
-      <h2>Policy findings</h2>
-      <pre>{JSON.stringify(binding.proposed_reason_codes,null,2)}</pre>
-      <h2>Imported paid-history findings (current)</h2>
-      {historyBlocked?<p role="alert">Historical AP risk or unavailable history prevents approval. Reject or investigate the original paid import before starting a new review.</p>
-        :<p>No replay, confusable duplicate, or amount anomaly found in the evaluated paid-history window.</p>}
-      <pre>{JSON.stringify({reasonCodes:historicalRisk.reasonCodes,evidence:historicalRisk.evidence},null,2)}</pre>
-      {binding.authorization_status==="PROPOSED"
-        ? <InvoiceReviewActions id={id} expectedTupleSha256={binding.tuple_sha256} approvalBlocked={historyBlocked} />
-        : <p>This binding cannot be reviewed again. Its existing authorization is immutable.</p>}
-      {sandboxInvoiceDemo && binding.authorization_status==="AUTHORIZED"
-        ? <PrepareSandboxInvoiceButton bindingId={id}/>
-        : null}
-      {sandboxInvoiceDemo && binding.authorization_status==="CONSUMED" && binding.linked_payment_request_id
-        ? <p><Link href={"/payments/"+encodeURIComponent(binding.linked_payment_request_id)}>
-            Open the prepared PayPal Sandbox payment
-          </Link></p>
-        : null}
-      {sandboxInvoiceDemo
-        ? <p className="muted">This recipient is a Sandbox test account, not an independently
-            authenticated live supplier. Only the reviewed USD 1.01 payment
-            can reach the PayPal Sandbox execution endpoint.</p>
-        : null}
+  const amountText=new Intl.NumberFormat("en-US",{
+    style:"currency",currency:binding.currency,
+  }).format(amount/100);
+  return <main className="shell invoice-product">
+    <Link href={"/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)}
+      className="back">← Invoice review</Link>
+    <InvoiceJourney stage="approve"/>
+    <section className="panel invoice-main">
+      <header className="invoice-overview">
+        <div><p className="eyebrow">Approval required</p>
+          <h1>Authorize this payment</h1>
+          <p className="muted">Invoice {binding.invoice_number} from {binding.vendor_name}.
+            Verify the exact recipient and amount before approving.</p>
+          <a className="invoice-secondary-link" target="_blank" rel="noopener noreferrer"
+            href={"/api/admin/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)+"/source"}>
+            View original invoice ↗</a>
+        </div>
+        <div className="invoice-overview-aside">
+          <span>Requested payment</span>
+          <strong>{amountText}</strong>
+          <span className={"invoice-status "+(binding.authorization_status==="AUTHORIZED"?"approved":"needs-review")}>
+            {binding.authorization_status==="PROPOSED"?"Awaiting your approval":
+              binding.authorization_status==="AUTHORIZED"?"Approved":
+              binding.authorization_status==="CONSUMED"?"Payment prepared":
+              "Payment not approved"}
+          </span>
+        </div>
+      </header>
+      <div className="invoice-workspace-body">
+        <div className="invoice-payment-preview">
+          <div><span>Supplier</span><strong>{binding.vendor_name}</strong></div>
+          <div><span>Invoice</span><strong>{binding.invoice_number}</strong></div>
+          <div><span>Amount</span><strong>{amountText}</strong></div>
+          <div><span>PayPal recipient</span><strong>{binding.trusted_destination}</strong></div>
+        </div>
+        {historyBlocked ? <div className="invoice-review-notes" role="alert">
+          <strong>Payment held for review</strong>
+          <p>Paid-invoice history is incomplete or contains a possible duplicate.
+            Investigate this before approving.</p>
+        </div> : <p className="invoice-small-note">No blocking duplicates or
+          amount anomalies found in the available paid-invoice history.</p>}
+        {binding.authorization_status==="PROPOSED"
+          ? <InvoiceReviewActions id={id} expectedTupleSha256={binding.tuple_sha256}
+              approvalBlocked={historyBlocked}/>
+          : null}
+        {sandboxInvoiceDemo && binding.authorization_status==="AUTHORIZED"
+          ? <PrepareSandboxInvoiceButton bindingId={id}/>:null}
+        {sandboxInvoiceDemo && binding.authorization_status==="CONSUMED" &&
+          binding.linked_payment_request_id
+          ? <a className="invoice-primary-link"
+              href={"/payments/"+encodeURIComponent(binding.linked_payment_request_id)}>
+              Continue to PayPal execution →
+            </a>:null}
+        {binding.authorization_status!=="PROPOSED"&&
+          binding.authorization_status!=="AUTHORIZED"&&
+          binding.authorization_status!=="CONSUMED"
+          ? <p role="status">This payment cannot be approved again.
+              Previous decisions are immutable.</p>:null}
+        <details className="invoice-technical">
+          <summary>Security evidence and complete audit details</summary>
+          <dl>
+            <div><dt>Binding status</dt><dd>{binding.authorization_status}</dd></div>
+            <div><dt>Verified source</dt><dd>{binding.verification_status} ({binding.source_kind})</dd></div>
+            <div><dt>Origin check</dt><dd>{binding.origin_method} / {binding.origin_channel}</dd></div>
+            <div><dt>Source reference</dt><dd>{binding.independent_evidence_reference??"Not supplied"}</dd></div>
+            <div><dt>Approval expires</dt><dd>{new Date(binding.expires_at).toISOString()}</dd></div>
+            <div><dt>Invoice SHA-256</dt><dd className="mono">{binding.artifact_sha256}</dd></div>
+            <div><dt>Frozen payment tuple SHA-256</dt><dd className="mono">{binding.tuple_sha256}</dd></div>
+          </dl>
+          <h3>Verified source fields</h3>
+          <div className="chips">{fields.rows.map((field,index)=><span key={index}>
+            {field.field_name}: {field.normalized_value} · page {field.source_page??"?"} ·
+            T{field.trust_tier} · evidence SHA {String(field.source_quote_sha256??"missing").slice(0,12)}
+          </span>)}</div>
+          <h3>Policy reasons</h3>
+          <pre>{JSON.stringify(binding.proposed_reason_codes,null,2)}</pre>
+          <h3>Imported paid-history findings</h3>
+          <pre>{JSON.stringify({
+            reasons:historicalRisk.reasonCodes,evidence:historicalRisk.evidence,
+          },null,2)}</pre>
+        </details>
+      </div>
     </section>
   </main>;
 }
