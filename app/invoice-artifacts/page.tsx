@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactUpload } from "./upload-form";
+import { InvoiceJourney } from "@/app/components/invoice-journey";
 import {ConfigureSandboxRecipient} from "./configure-sandbox-recipient";
 import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 
@@ -46,37 +47,51 @@ export default async function InvoiceArtifactListPage(){
   const sandboxFixtureAvailable=
     sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar") &&
     organizations.rows.some(row=>row.id==="org_demo");
-  return <main className="shell">
+  return <main className="shell invoice-product">
     <Link className="back" href="/dashboard">← Dashboard</Link>
-    <section className="panel detail">
-      <p className="eyebrow">Invoice origin review</p>
-      <h1>Invoices</h1>
-      <p className="muted">Only artifacts in your active admin organizations are shown.
-        AI suggestions are unverified and may be wrong. The invoice's original
-        source, vendor, amount and recipient must be checked before payment.
-        Viewing the list does not initiate an AI request or a PayPal payout.</p>
-      <p><Link href="/vendor-origin-channels">1. Enroll independently known vendor origin channel (before invoice intake)</Link></p>
-      {sandboxFixtureAvailable ? <section className="review-stage">
-        <h2>PayPal Sandbox test invoice</h2>
+    <InvoiceJourney stage="upload"/>
+    <section className="panel invoice-main">
+      <div className="invoice-overview">
+        <div><p className="eyebrow">Invoices</p>
+          <h1>Process an invoice</h1>
+          <p className="muted">Upload an invoice, let AI read the details, review the payment,
+            and execute through PayPal Sandbox after approval.</p></div>
+        <div className="invoice-overview-aside"><span>Payment flow</span>
+          <strong>AI → PayPal</strong><span className="invoice-status pending">Human approval required</span>
+        </div>
+      </div>
+      <div className="invoice-workspace-body">
+      <p className="invoice-small-note">AI can suggest invoice details, but it cannot
+        approve a payment or select a new trusted recipient.</p>
+      <details className="invoice-technical">
+        <summary>Supplier source setup</summary>
+        <p>For a new supplier, register the known source channel before uploading
+          invoices. Existing verified sources remain selectable during review.</p>
+        <Link href="/vendor-origin-channels">Manage supplier sources →</Link>
+      </details>
+      {sandboxFixtureAvailable ? <section className="invoice-task-card">
+        <h2>Start with the Northstar test invoice</h2>
         <p>Start with a USD 1.01 Northstar test invoice, register its test
           source, verify the document, approve the exact payment details, and
           execute through PayPal Sandbox. This is test data, not a live supplier.</p>
         <ConfigureSandboxRecipient/>
-        <p><a href="/api/admin/sandbox-invoice-fixture">Download Northstar invoice, USD 1.01</a></p>
+        <p><a className="invoice-secondary-link" href="/api/admin/sandbox-invoice-fixture">Download Northstar invoice, USD 1.01 ↗</a></p>
         <p className="muted">PayPal execution happens separately after authorization.
           A submitted payout must be confirmed by batch, item and webhook evidence.</p>
       </section> : null}
       <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
         id:row.id as string,name:row.name as string,
       }))}/>
-      {result.rows.length===0?<p>No stored invoice artifacts found for your authorized organizations.</p>:
-        <div className="table-wrap"><table>
+      {result.rows.length===0?<p className="muted">No invoices yet. Upload the first one above.</p>:
+        <div className="table-wrap"><table className="dashboard-table invoice-list-table">
           <thead><tr><th>Document</th><th>Saved AI suggestions (unverified)</th><th>Review status</th><th>Created</th></tr></thead>
           <tbody>{result.rows.map(row=><tr key={row.id}>
             <td data-label="Document"><Link href={"/invoice-artifacts/"+encodeURIComponent(row.id)}>
-              Review document →</Link>
-              <p className="mono">{String(row.id).slice(0,18)}…</p>
-              <p className="muted">{row.mime_type} / SHA {String(row.sha256).slice(0,12)}…</p>
+              Open invoice →</Link>
+              <details className="invoice-technical"><summary>Document ID and SHA-256</summary>
+                <p className="mono">{String(row.id)}</p>
+                <p className="mono">{row.mime_type} / {String(row.sha256)}</p>
+              </details>
             </td>
             <td data-label="Unverified AI suggestions">
               {row.ai_invoice || row.ai_vendor || row.ai_amount ?
@@ -86,13 +101,15 @@ export default async function InvoiceArtifactListPage(){
                   <p><strong>Amount suggestion:</strong> {
                     row.ai_currency && ["USD","EUR","GBP"].includes(row.ai_currency)
                       ? row.ai_currency+" " : ""}{row.ai_amount ?? "Not observed"}</p>
-                  <p className="muted">Saved AI only. Not T2 verification, issuer proof, or payment approval.</p>
+                  <p className="muted">AI suggestions; verify before payment.</p>
                 </div> : <span className="muted">No eligible saved AI suggestions.</span>}
             </td>
-            <td data-label="Review status">{row.analysis_status}</td>
+            <td data-label="Review status">{row.analysis_status==="FAILED"?"Needs AI retry":
+              row.ai_invoice?"AI ready for review":row.analysis_status==="STORED"?"Ready for AI":"Review pending"}</td>
             <td data-label="Created">{(row.created_at as Date).toISOString()}</td>
           </tr>)}</tbody>
         </table></div>}
+      </div>
     </section>
   </main>;
 }
