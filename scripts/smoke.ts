@@ -549,6 +549,22 @@ if(historicalDecision.decision.outcome!=="ESCALATE" ||
    !historicalDecision.decision.reasonCodes.includes("AP_INVOICE_NUMBER_REPLAY")||
    historicalDecision.paymentExecuted!==false)
   throw Error("imported paid invoice replay did not deterministically escalate without payout");
+// An agent-origin escalation is an investigation, not a mandatory manual
+// invoice-upload or Send-PayPal step. This read-only UI check never pays.
+const detailPath=`${baseUrl}/payments/${historicalDecision.requestId}`;
+const anonDetail=await fetch(detailPath,{redirect:"manual"});
+if(![302,303,307,308].includes(anonDetail.status))
+  throw Error("payment investigation exposed without login");
+const paymentDetail=await fetch(detailPath,{headers:{cookie:adminCookie}});
+const paymentMarkup=await paymentDetail.text();
+if(paymentDetail.status!==200 ||
+   !paymentMarkup.includes("Payment investigation") ||
+   !paymentMarkup.includes("Why MandateGate made this decision") ||
+   !paymentMarkup.includes("Agent API") ||
+   !paymentMarkup.includes("Human review required") ||
+   paymentMarkup.includes("Send this payment")) {
+  throw Error("payment investigation UI does not match agent-first PRD");
+}
 const historicalReviewPath=`${baseUrl}/api/admin/payments/${historicalDecision.requestId}/review`;
 const unsignedReview=await fetch(historicalReviewPath);
 if(unsignedReview.status!==401)throw Error("anonymous reviewer could read financial decision snapshot");
