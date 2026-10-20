@@ -30,6 +30,7 @@ describe("PRD payment operations filters", () => {
     expect(matchesPaymentView(allowed,"PAID")).toBe(false);
     expect(paymentExecutionLabel(allowed.executionStatus)).toBe("No payout recorded");
     expect(matchesPaymentView(paid,"PAID")).toBe(true);
+    expect(paymentExecutionLabel(paid.executionStatus)).toBe("Paid · recorded");
   });
 
   it("shows unknown payout outcome without falsely marking it PAID", () => {
