@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const PRIMARY_OPERATIONS_AREAS = [
-  { key: "dashboard", label: "Overview", href: "/dashboard", icon: "overview" },
+  { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: "overview" },
   { key: "payments", label: "Payments", href: "/payments", icon: "payments" },
   { key: "vendors", label: "Vendors", href: "/vendors", icon: "vendors" },
   { key: "policies", label: "Policies", href: "/policies", icon: "policies" },
