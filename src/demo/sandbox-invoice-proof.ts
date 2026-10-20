@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {DEMO_ORG_ID,DEMO_VENDOR_ID} from "./scenarios";
 import {SANDBOX_AMOUNT_CENTS,SANDBOX_INVOICE} from "./sandbox-payout-constants";
+import {isExactSandboxFictionalInvoice,sandboxOriginIsSynthetic} from "./sandbox-fictional-origin";
 
 const sha=z.string().regex(/^[a-f0-9]{64}$/);
 const uuid=z.string().uuid();
@@ -60,12 +61,21 @@ export function assertSandboxInvoiceReviewedBinding(
     b.artifactSha256!==expected.artifactSha256 ||
     b.tupleSha256!==expected.tupleSha256)
     throw new SandboxInvoiceDemoError("SANDBOX_INVOICE_EXPECTED_DIGEST_MISMATCH");
+  const synthetic=sandboxOriginIsSynthetic(b.originChannelKind,b.originMethod);
+  const provenanceAllowed=synthetic
+    ? b.originMethod==="SYNTHETIC_FIXTURE" &&
+      b.originChannelKind==="SYNTHETIC_FIXTURE" &&
+      isExactSandboxFictionalInvoice({
+        organizationId:b.organizationId,vendorId:b.vendorId,
+        invoiceNumber:b.invoiceNumber,amountCents:b.amountCents,
+        currency:b.currency,recipient:b.receiver,
+      })
+    : b.originMethod==="ADMIN_OUT_OF_BAND";
   if(b.authorizationStatus!=="AUTHORIZED" ||
     b.linkedPaymentRequestId!==null ||
     b.sourceKind!=="PDF_TEXT"||
     b.verificationStatus!=="VERIFIED"||
-    b.originMethod!=="ADMIN_OUT_OF_BAND"||
-    b.originChannelKind==="SYNTHETIC_FIXTURE"||
+    !provenanceAllowed||
     !b.channelPredatesArtifact||
     !b.approvalActor)
     throw new SandboxInvoiceDemoError("SANDBOX_INVOICE_UNAPPROVED_OR_UNVERIFIED");
