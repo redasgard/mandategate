@@ -10,7 +10,6 @@ const DISPLAY_FIELDS = [
 ] as const;
 
 const EXPLANATIONS: Record<string, string> = {
-  SYNTHETIC_NON_ZDR_TEST_ONLY: "Fictional test using a non-ZDR provider route. Real invoice privacy was not established.",
   SCANNED_PDF_VISUAL_OBSERVATION_UNVERIFIED: "Rasterized PDF observations need separate document-source verification.",
   IMAGE_EVIDENCE_NOT_VERIFIED: "Model-proposed quotes are not independently verified against the source.",
   EXTRACTION_INVALID: "The returned fields did not satisfy the strict invoice schema.",
@@ -44,14 +43,16 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
   const data = record as RecordView;
   const codes = Array.isArray(data.reason_codes)
     ? data.reason_codes.filter((s): s is string => typeof s === "string" &&
-      /^[A-Z][A-Z0-9_]{0,119}$/.test(s)).slice(0, 24)
+      /^[A-Z][A-Z0-9_]{0,119}$/.test(s) &&
+      s !== "SYNTHETIC_NON_ZDR_TEST_ONLY").slice(0,24)
     : [];
   const parsed = invoiceExtractionSchema.safeParse(data.extraction);
   // Valid-shaped fields alone do not establish a completed observation.
   const hasCompletedObservation = data.state === "ESCALATE" || data.state === "EXTRACTED_UNTRUSTED";
   const hasNoRecordedError = data.error_code === null || data.error_code === undefined || data.error_code === "";
   const state = stringOr(data.state, "UNKNOWN");
-  const synthetic = codes.includes("SYNTHETIC_NON_ZDR_TEST_ONLY");
+  const previousPrivacyBlock=typeof data.error_code==="string" &&
+    /^EXPERIENTIAL_(ACCOUNT_ZDR|NO_TRAINING|PROMPT_CAPTURE)/.test(data.error_code);
   const promptHash = shaOrNull(data.prompt_sha256);
   const inputHash = shaOrNull(data.input_sha256);
   const imageHash = shaOrNull(data.rendered_input_sha256);
@@ -64,12 +65,11 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
       verification and vendor-origin checks below before preparing any payment review.</p>
     <p>Recorded state: <strong>{state}</strong>.
       {typeof data.error_code === "string" && data.error_code.length > 0
-        ? <> Failure: <code>{stringOr(data.error_code)}</code>.</> : null}
+        ? <> Failure: {previousPrivacyBlock
+          ? "Previous provider policy prevented analysis. Retry using the current invoice workflow."
+          : <code>{stringOr(data.error_code)}</code>}.</> : null}
     </p>
-    {synthetic ? <p className="muted" role="note">
-      Synthetic non-ZDR test only. Provider retention may apply.
-      This result is not a production privacy or issuer-authentication proof.
-    </p> : null}
+
     {codes.length ? <div aria-label="Stored advisory risk reasons">
       <div className="chips">{codes.map(code => <span key={code}>{code}</span>)}</div>
       {codes.filter(code => EXPLANATIONS[code]).map(code =>
@@ -106,11 +106,7 @@ export function PersistedInvoiceObservation({ record }: { record: unknown }) {
         {promptHash ? <div><dt>Prompt SHA-256</dt><dd className="mono">{promptHash}</dd></div> : null}
         {inputHash ? <div><dt>Model input SHA-256</dt><dd className="mono">{inputHash}</dd></div> : null}
         {imageHash ? <div><dt>Rendered PDF PNG SHA-256</dt><dd className="mono">{imageHash}</dd></div> : null}
-        <div><dt>Gateway ZDR metadata</dt><dd>{synthetic
-          ? "Synthetic exception: ZDR metadata is not compliance proof"
-          : data.gateway_zdr === true
-            ? "Provider reported true; account-level policy verification is separate"
-            : data.gateway_zdr === false ? "Provider reported false" : "Unverified"}</dd></div>
+
       </dl>
     </details>
   </section>;
