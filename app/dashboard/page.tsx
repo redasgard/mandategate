@@ -9,6 +9,7 @@ import { ImportedObligations } from "./imported-obligations";
 import { parseIncidentFilter, readDashboardIncidents } from "@/src/db/dashboard-incidents";
 import { IncidentInvestigation } from "./incident-cards";
 import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
+import { OperationsHeader } from "@/app/components/operations-header";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -20,120 +21,128 @@ function exactCents(cents: string, currency: string) {
     (value % 100n).toString().padStart(2, "0");
 }
 
+function SnapshotMetric({label,value,detail}: {
+  label:string; value:string; detail:string;
+}) {
+  return <article className="ops-summary-item">
+    <span>{label}</span><strong>{value}</strong><small>{detail}</small>
+  </article>;
+}
+
 export default async function DashboardPage({ searchParams }: {
   searchParams?: Promise<{ risk?: string | string[] }>;
 } = {}) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
   if (await isRestrictedJudge(session.user.id)) redirect("/judge");
-  const sandboxPayouts = process.env.MANDATEGATE_RUNTIME_MODE === "neon-sandbox" &&
-    process.env.MANDATEGATE_DISABLE_PAYMENTS === "0";
+
   const incidentFilter = parseIncidentFilter((await searchParams)?.risk);
   const [rows, summary, incidents, obligations] = await Promise.all([
-    listRecentDecisions(session.user.id), readDashboardSummary(session.user.id),
+    listRecentDecisions(session.user.id),
+    readDashboardSummary(session.user.id),
     readDashboardIncidents(session.user.id, incidentFilter),
     readImportedObligations(session.user.id),
   ]);
 
-  return (
-    <main className="shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">MANDATEGATE / OPERATIONS CONTROL</p>
-          <h1>Payment operations</h1>
-          <p className="muted">Autonomous accounts payable. Investigate exceptions, monitor execution, and manage standing authority.</p>
-        </div>
-        <div className="identity">{session.user.email}</div>
-      </header>
+  const paidThisMonth = summary.paidThisMonth.length
+    ? summary.paidThisMonth.map(p => exactCents(p.cents, p.currency)).join(" · ")
+    : "None observed";
+  const importNote = obligations.incomplete
+    ? "Partial imported AP evidence; more than 200 open rows."
+    : "From unverified imported AP rows, not scheduled payments.";
 
-      <nav className="panel" aria-label="Primary navigation" style={{display:"flex",gap:"1.2rem",flexWrap:"wrap",alignItems:"center"}}>
-        <strong aria-current="page">Dashboard</strong>
-        <Link href="/payments">Payments</Link>
-        <Link href="/vendors">Vendors</Link>
-        <Link href="/policies">Policies</Link>
-        <Link href="/activity">Activity</Link>
-      </nav>
+  return <main className="shell">
+    <OperationsHeader active="dashboard" title="Payment operations"
+      description="Monitor company money, investigate exceptions, and keep autonomous agents within approved payment authority."
+      email={session.user.email} context="OVERVIEW"/>
 
-      <section className="panel" aria-label="Operations workflow">
-        <div className="panel-head">
-          <div>
-            <p className="eyebrow">Agent-driven processing</p>
-            <h2>Payments arrive from your operations agents</h2>
-          </div>
-          <span className="badge">Exception-first</span>
-        </div>
-        <div className="panel-body">
-          <p>Agents submit invoice requests through the scoped API. MandateGate independently evaluates source evidence, vendor trust, historical behavior and active standing mandates. Authorized requests may execute automatically; exceptions require investigation.</p>
-          <p className="muted">No invoice download and re-upload is required for the normal workflow. Manual document intake remains a support and testing tool, not the product's primary action.</p>
-          <p><Link href="/payments">Review payments →</Link>{" · "}<Link href="/policies">Manage standing authority →</Link></p>
-        </div>
-      </section>
+    <section aria-label="Attention required" className="ops-alert-strip">
+      <Link className="ops-alert" href="/dashboard?risk=REVIEW#incidents">
+        <span className="ops-alert-copy"><strong>Awaiting review</strong><small>Escalated payment requests</small></span>
+        <span className="ops-alert-count">{summary.pendingReview}</span>
+      </Link>
+      <Link className="ops-alert blocked" href="/dashboard?risk=BLOCKED#incidents">
+        <span className="ops-alert-copy"><strong>Blocked payments</strong><small>Denied by policy or trust checks</small></span>
+        <span className="ops-alert-count">{summary.denied}</span>
+      </Link>
+      <Link className="ops-alert" href="/dashboard?risk=PAYOUT#incidents">
+        <span className="ops-alert-copy"><strong>Uncertain payouts</strong><small>Manual reconciliation required</small></span>
+        <span className="ops-alert-count">{summary.payoutUnknown}</span>
+      </Link>
+    </section>
 
-      <section className="metrics" aria-label="Current payment risk">
-        <article className="metric danger"><span>AWAITING REVIEW</span><strong>{summary.pendingReview}</strong></article>
-        <article className="metric blocked"><span>DENIED REQUESTS</span><strong>{summary.denied}</strong></article>
-        <article className="metric danger"><span>UNKNOWN PAYOUT OUTCOME</span><strong>{summary.payoutUnknown}</strong></article>
-      </section>
-
-      <div className="dashboard-panels">
-        <ImportedObligations overview={obligations} compact />
-        <IncidentInvestigation incidents={incidents} activeFilter={incidentFilter} />
-        <section className="panel">
-          <div className="panel-head">
-            <div><p className="eyebrow">Payment reporting</p><h2>Money position</h2></div>
-            <span className="badge">Sandbox / live PostgreSQL</span>
-          </div>
-          <div className="panel-body">
-            <p><strong>Available balance:</strong> Unavailable. Authenticated PayPal balance reporting is not connected.</p>
-            <p><strong>Upcoming / overdue:</strong> Displayed above as imported AP evidence. Not a validated financial obligation or a scheduled payout.</p>
-            <p><strong>Confirmed payouts submitted this UTC month:</strong>{" "}
-              {summary.paidThisMonth.length
-                ? summary.paidThisMonth.map(p => <span key={p.currency}>{exactCents(p.cents,p.currency)} ({p.count} paid){" "}</span>)
-                : "None observed"}
-            </p>
-            <p className="muted">Gross paid payout records only, grouped by currency. Not net cash flow or account balance.</p>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head">
-            <div><p className="eyebrow">Action required</p><h2>Unresolved escalations</h2></div>
-            <span className="badge">{summary.pendingReview} pending across your organizations</span>
-          </div>
-          {summary.pendingInvoices.length ? <div className="table-wrap">
-            <table className="dashboard-table" aria-label="Escalations awaiting review"><thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Risk evidence</th></tr></thead>
-              <tbody>{summary.pendingInvoices.map(p => <tr key={p.id}>
-                <td data-label="Invoice"><Link href={"/payments/" + encodeURIComponent(p.id)}>{p.invoice}</Link></td>
-                <td data-label="Vendor">{p.vendor}</td><td data-label="Amount">{money(p.cents,p.currency)}</td>
-                <td data-label="Risk evidence">{p.reasons.join(", ")}</td>
-              </tr>)}</tbody>
-            </table>
-          </div> : <div className="empty">No escalations currently awaiting review.</div>}
-        </section>
-
-        <section className="panel">
-          <div className="panel-head">
-            <div><p className="eyebrow">Recent activity</p><h2>Agent requests and policy outcomes</h2></div>
-            <span className="badge">Payment execution requires separate authorization</span>
-          </div>
-          {rows.length === 0 ? (
-            <div className="empty"><p>No requests yet.</p><code>POST /api/agent/payment-requests</code></div>
-          ) : (
-            <div className="table-wrap">
-              <table className="dashboard-table" aria-label="Recent authority decisions">
-                <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead>
-                <tbody>{rows.map(row => <tr key={row.requestId}>
-                  <td data-label="Invoice"><Link href={"/payments/" + encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
-                  <td data-label="Vendor">{row.vendorName}</td>
-                  <td data-label="Amount">{money(row.amountCents,row.currency)}</td>
-                  <td data-label="Decision"><span className={"decision " + row.outcome.toLowerCase()}>{row.outcome}</span></td>
-                  <td data-label="Reason">{row.reasonCodes.join(", ")}</td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-          )}
-        </section>
+    <section aria-label="Financial position" className="ops-financial-section">
+      <div className="ops-section-head"><h2>Money position</h2>
+        <Link className="ops-subtle-link" href="/payments">All payments →</Link>
       </div>
-    </main>
-  );
+      <div className="ops-summary-grid">
+        <SnapshotMetric label="Available balance" value="Not connected"
+          detail="No authenticated PayPal balance feed. Never assumed to be zero."/>
+        <SnapshotMetric label="Confirmed paid · UTC month" value={paidThisMonth}
+          detail="Reconciled local payout records; not cash balance or net spend."/>
+        <SnapshotMetric label="Upcoming · next 14 days"
+          value={exactCents(obligations.upcoming.cents,"USD")}
+          detail={obligations.upcoming.count+" imported open rows. Not authorized payouts."}/>
+        <SnapshotMetric label="Overdue · imported AP"
+          value={exactCents(obligations.overdue.cents,"USD")}
+          detail={obligations.overdue.count+" imported open rows. Not verified liabilities."}/>
+      </div>
+      <p className="ops-context-note">{importNote} Due dates and amounts are historical observations; <Link href="/obligations">inspect provenance</Link>.</p>
+    </section>
+
+    <div className="dashboard-panels">
+      <IncidentInvestigation incidents={incidents} activeFilter={incidentFilter}/>
+
+      <section className="panel ops-queue-panel" aria-label="Payment requests awaiting review">
+        <div className="panel-head">
+          <div><p className="eyebrow">Exception queue</p><h2>Escalations awaiting a decision</h2></div>
+          <span className="badge">{summary.pendingReview} open</span>
+        </div>
+        {summary.pendingInvoices.length ? <div className="table-wrap">
+          <table className="dashboard-table ops-queue-table">
+            <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Why flagged</th></tr></thead>
+            <tbody>{summary.pendingInvoices.map(item => <tr key={item.id}>
+              <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(item.id)}>{item.invoice}</Link></td>
+              <td data-label="Vendor">{item.vendor}</td>
+              <td data-label="Amount">{money(item.cents,item.currency)}</td>
+              <td data-label="Why flagged">{item.reasons.join(", ") || "Review required"}</td>
+            </tr>)}</tbody>
+          </table>
+        </div> : <div className="empty">No open escalation requests.</div>}
+        {summary.pendingReview>summary.pendingInvoices.length
+          ? <p className="ops-context-note" style={{padding:"0 18px"}}>Showing the six most recent escalations. <Link href="/payments?view=REVIEW">Open the payment queue →</Link></p>
+          : null}
+      </section>
+
+      <section className="panel" aria-label="Recent payment decisions">
+        <div className="panel-head">
+          <div><p className="eyebrow">Agent requests</p><h2>Recent payment decisions</h2></div>
+          <Link className="ops-muted-link" href="/payments">View payment requests →</Link>
+        </div>
+        {rows.length===0
+          ? <div className="empty">No agent payment requests have been recorded for your organizations yet.</div>
+          : <div className="table-wrap"><table className="dashboard-table ops-queue-table">
+              <thead><tr><th>Invoice</th><th>Vendor</th><th>Amount</th><th>Decision</th><th>Current request state</th></tr></thead>
+              <tbody>{rows.slice(0,8).map(row=><tr key={row.requestId}>
+                <td data-label="Invoice"><Link href={"/payments/"+encodeURIComponent(row.requestId)}>{row.invoiceNumber}</Link></td>
+                <td data-label="Vendor">{row.vendorName}</td>
+                <td data-label="Amount">{money(row.amountCents,row.currency)}</td>
+                <td data-label="Decision"><span className={"decision "+row.outcome.toLowerCase()}>{row.outcome}</span></td>
+                <td data-label="Request state">{row.status}</td>
+              </tr>)}</tbody>
+            </table></div>}
+      </section>
+
+      <ImportedObligations overview={obligations} compact/>
+    </div>
+
+    <section className="ops-handoff" aria-label="Supporting tools" style={{marginTop:18}}>
+      <div><h3>Source evidence and integration tools</h3>
+        <p className="muted">Operations agents submit payment requests. Human document upload and AP import are supporting investigation tools, not the normal payment intake journey. Automatic payout dispatch requires verified trust and an active mandate; it is not yet end-to-end accepted.</p>
+      </div>
+      <div><Link href="/policies">Standing authority →</Link>{" · "}
+        <Link href="/invoice-artifacts">Document evidence</Link>{" · "}
+        <Link href="/ap-history">AP import</Link></div>
+    </section>
+  </main>;
 }
