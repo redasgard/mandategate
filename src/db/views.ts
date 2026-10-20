@@ -24,6 +24,7 @@ export async function getDecisionDetail(requestId: string, userId: string) {
     requestId: paymentRequests.id,
     logicalPaymentId: paymentRequests.logicalPaymentId,
     invoiceNumber: paymentRequests.invoiceNumber,
+    source: paymentRequests.source,
     vendorName: vendors.name,
     amountCents: paymentRequests.amountCents,
     currency: paymentRequests.currency,
