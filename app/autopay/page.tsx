@@ -9,7 +9,10 @@ import { MandatePrepareForm, MandateDecisionForm } from "./mandate-actions";
 
 export const dynamic="force-dynamic";
 function money(cents:number|string){
-  return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(cents)/100);
+  const n=BigInt(cents);
+  const abs=n<0n?-n:n;
+  return (n<0n?"-":"")+"USD "+(abs/100n).toLocaleString("en-US")+"."+
+    (abs%100n).toString().padStart(2,"0");
 }
 export default async function AutopayPage(){
   const session=await auth.api.getSession({headers:await headers()});
