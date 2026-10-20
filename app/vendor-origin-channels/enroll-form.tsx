@@ -9,7 +9,7 @@ const hints:Record<ChannelKind,string>={
   KNOWN_CALLBACK:"callback-record:verified-event-id",
   TRUSTED_PORTAL:"portal-event:verified-portal-event-id",
   ERP_INTEGRATION:"erp-entry:verified-entry-id",
-  SYNTHETIC_FIXTURE:"synthetic-fixture:mandategate-demo-issuer-001",
+  SYNTHETIC_FIXTURE:"synthetic-fixture:northstar-sandbox-001",
 };
 export function VendorOriginChannelEnroll({vendors,sandboxDemoEnabled}:{vendors:Vendor[];sandboxDemoEnabled:boolean}) {
   const router=useRouter();
@@ -77,7 +77,7 @@ export function VendorOriginChannelEnroll({vendors,sandboxDemoEnabled}:{vendors:
             <option value="KNOWN_CALLBACK">Previously known callback contact</option>
             <option value="TRUSTED_PORTAL">Trusted vendor portal</option>
             <option value="ERP_INTEGRATION">Pre-existing ERP integration</option>
-            {demoVendor?<option value="SYNTHETIC_FIXTURE">Fictional Sandbox-only source (no real callback)</option>:null}
+            {demoVendor?<option value="SYNTHETIC_FIXTURE">Sandbox test supplier (no live callback)</option>:null}
           </select>
         </label>
         <label>{fictional?"Fictional test reference":"Existing out-of-band enrollment evidence reference"}
@@ -88,7 +88,7 @@ export function VendorOriginChannelEnroll({vendors,sandboxDemoEnabled}:{vendors:
           <input type="checkbox" checked={confirmed} disabled={busy}
             onChange={e=>setConfirmed(e.target.checked)}/>
           {fictional
-            ? "I confirm this is a fictional Sandbox demo. No supplier was contacted or authenticated."
+            ? "I confirm this is a PayPal Sandbox test supplier. No live supplier was contacted or authenticated."
             : "I independently verified the source channel outside the invoice. This reference corresponds to a real callback, portal, or ERP record."}
         </label>
         <button type="submit" disabled={busy || !vendor || !confirmed || reference.trim().length<16}>
