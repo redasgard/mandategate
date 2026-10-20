@@ -1,3 +1,4 @@
+import { OperationsHeader } from "@/app/components/operations-header";
 import Link from "next/link";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
@@ -24,10 +25,12 @@ export default async function VendorsPage(){
     ].join(" "),[session.user.id]),
   ]);
   return <main className="shell">
-    <Link className="back" href="/dashboard">← Dashboard</Link>
+    <OperationsHeader active="vendors" title="Vendors"
+      description="Inspect trusted payment destinations and investigate changes before they can affect payouts."
+      email={session.user.email}/>
     <section className="panel detail">
-      <p className="eyebrow">Vendor destination authority</p>
-      <h1>Trusted vendors and payment re-verification</h1>
+      <p className="eyebrow">Vendor directory / current authority</p>
+      <h2>Trusted recipients</h2>
       <p className="muted">
         A printed or agent-supplied payment destination never changes a trusted
         vendor record. A destination mismatch is DENIED, opens a separate
