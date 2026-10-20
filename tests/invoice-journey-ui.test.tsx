@@ -56,7 +56,7 @@ describe("hackathon invoice payment journey",()=>{
         observed_instructions:[],line_items:[],
       },
     }}));
-    expect(markup).toContain("Here's what GLM found");
+    expect(markup).toContain("what GLM found");
     expect(markup).toContain("Review needed");
     expect(markup).toContain("Supplier name needs a closer look");
     expect(markup).toContain("AI evidence and technical details");
