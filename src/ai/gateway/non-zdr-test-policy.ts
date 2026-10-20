@@ -37,6 +37,9 @@ function historicalSyntheticTestEnvironmentEnabled():boolean{
     (localDev||boundDemoService);
 }
 export function syntheticNonZdrTestEnvironmentEnabled():boolean{
+  // The hackathon has one AI observation API. The old separate synthetic
+  // exception cannot be opened when the normal invoice route is enabled.
+  if(process.env.MANDATEGATE_REQUIRE_ZDR==="0")return false;
   return historicalSyntheticTestEnvironmentEnabled() ||
     sandboxFixtureSha256()!==null;
 }
