@@ -41,7 +41,7 @@ export default function SignInPage() {
         <div className="brand-mark">MG</div>
         <p className="eyebrow">MandateGate</p>
         <h1>Financial authority stays here.</h1>
-        <p className="muted">Authorized demo and restricted judge access. Public sign-up is disabled.</p>
+        <p className="muted">Authorized MandateGate access. Public sign-up is disabled.</p>
         <form onSubmit={submit} className="stack">
           <label>
             Email
