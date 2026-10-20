@@ -5,6 +5,7 @@ import { PDF_SOURCE_PARSER_VERSION } from "../invoices/pdf-text";
 import { evaluatePayment, type DecisionEvidence } from "../policy/decision";
 import { assessHistoricalPaymentRisk } from "../history/anomaly";
 import { hashPaymentAuthorityTuple } from "./contracts";
+import {isExactSandboxFictionalInvoice,sandboxOriginIsSynthetic} from "../demo/sandbox-fictional-origin";
 
 const requiredFields = [
   "vendor_name", "invoice_number", "currency",
@@ -136,7 +137,7 @@ export async function prepareInvoicePaymentProposal(input: {
     const att = await client.query(
       [
         "select a.id,a.vendor_id,a.method,a.verifier_actor,a.expires_at,a.artifact_sha256,",
-        "ch.kind,ch.active,(ch.created_at < art.created_at) as channel_predates_artifact",
+        "ch.kind,ch.active,ch.enrolled_by_user_id,(ch.created_at < art.created_at) as channel_predates_artifact",
         "from invoice_origin_attestations a",
         "join vendor_origin_channels ch on ch.id=a.origin_channel_id",
         "and ch.organization_id=a.organization_id and ch.vendor_id=a.vendor_id",
@@ -159,13 +160,25 @@ export async function prepareInvoicePaymentProposal(input: {
       await client.query("commit");
       return held;
     }
-    if (attested.kind === "SYNTHETIC_FIXTURE" || attested.method === "SYNTHETIC_FIXTURE") {
-      // Test-only fixture issuer claims must never become real proposal authority.
-      const held = await refuse("ESCALATE",["SYNTHETIC_ISSUER_NOT_REAL_AUTHORITY"]);
-      await client.query("commit");
-      return held;
-    }
-    if (attested.method !== "ADMIN_OUT_OF_BAND") {
+    const fictionalOrigin=sandboxOriginIsSynthetic(attested.kind,attested.method);
+    if (fictionalOrigin) {
+      const exactSandbox=attested.kind==="SYNTHETIC_FIXTURE" &&
+        attested.method==="SYNTHETIC_FIXTURE" &&
+        Boolean(attested.enrolled_by_user_id) &&
+        isExactSandboxFictionalInvoice({
+          organizationId:input.organizationId,vendorId:attested.vendor_id,
+          invoiceNumber:found.get("invoice_number")??"",
+          amountCents:invoiceDecimalToCents(found.get("total_amount_decimal")??"")??0,
+          currency:found.get("currency")??"",
+          recipient:found.get("invoice_payment_destination")??"",
+        });
+      if (!exactSandbox) {
+        const held=await refuse("ESCALATE",["SYNTHETIC_ISSUER_NOT_REAL_AUTHORITY"]);
+        await client.query("commit");return held;
+      }
+      // The simulated origin is only a marker for an exact fictional Sandbox
+      // invoice. It is never a real vendor authentication claim.
+    }else if (attested.method !== "ADMIN_OUT_OF_BAND") {
       const held = await refuse("ESCALATE",["UNSUPPORTED_ORIGIN_ATTESTATION"]);
       await client.query("commit");
       return held;
@@ -178,6 +191,16 @@ export async function prepareInvoicePaymentProposal(input: {
       const held = await refuse("ESCALATE",["ISSUER_ATTESTOR_NOT_AUTHORIZED"]);
       await client.query("commit");
       return held;
+    }
+    if (fictionalOrigin) {
+      const enroller=await client.query(
+        "select 1 from organization_admin_memberships where organization_id=$1 and user_id=$2 and role='ADMIN' and active=true for share",
+        [input.organizationId,attested.enrolled_by_user_id],
+      );
+      if (enroller.rowCount!==1) {
+        const held=await refuse("ESCALATE",["SANDBOX_CHANNEL_ENROLLER_REVOKED"]);
+        await client.query("commit");return held;
+      }
     }
 
     const vendor = await client.query(
