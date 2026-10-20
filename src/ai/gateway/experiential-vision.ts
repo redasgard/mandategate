@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { loadInvoiceVisionPrompt, invoiceImageUserInstruction } from "../../invoices/prompts";
 import { INVOICE_VISION_RESPONSE_FORMAT } from "../../invoices/vision-json-schema";
+import { invoiceExtractionSchema } from "../../invoices/schema";
 import type { InvoiceArtifactMime } from "../../artifacts/admission";
 import { isSyntheticNonZdrSourceAllowlisted } from "./non-zdr-test-policy";
 
@@ -105,6 +106,38 @@ function safeModelIdentifier(value: unknown): string {
 
 function safeTokenCount(value: unknown): number | null {
   return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : null;
+}
+
+/**
+ * The gateway also returns informational notices such as
+ * prompt_caching->best_effort(provider_caches_implicitly). Those are not
+ * evidence that the invoice image, model identity or response was dropped.
+ * Normalize only the *field names*: never log response text, invoice content
+ * or arbitrary provider-supplied explanation strings.
+ */
+function ignoredFieldNames(disclosures: unknown): string[] {
+  if (disclosures === undefined) return [];
+  if (!Array.isArray(disclosures) || disclosures.length > 32) {
+    refused("EXPERIENTIAL_REQUEST_FIELDS_IGNORED");
+  }
+  const fields: string[] = [];
+  for (const entry of disclosures) {
+    if (typeof entry !== "string" || entry.length > 200) {
+      refused("EXPERIENTIAL_REQUEST_FIELDS_IGNORED");
+    }
+    const field = entry.split("->", 1)[0];
+    if (!/^[a-z][a-z0-9_.\[\]-]{0,95}$/.test(field)) {
+      refused("EXPERIENTIAL_REQUEST_FIELDS_IGNORED");
+    }
+    fields.push(field);
+  }
+  return [...new Set(fields)];
+}
+
+function criticalFieldDropped(field: string): boolean {
+  return field === "model" || field === "messages" ||
+    field.startsWith("messages.") || field.startsWith("messages[") ||
+    field === "image_url" || field.startsWith("image_url.");
 }
 
 export class ExperientialInvoiceVisionGateway {
@@ -326,8 +359,14 @@ export class ExperientialInvoiceVisionGateway {
     const requestId = response.headers.get("x-request-id");
     if (!provider || !requestId) refused("EXPERIENTIAL_ROUTE_PROOF_INCOMPLETE");
 
-    const ignored = body?.["x-experiential-ignored-parameters"];
-    if (ignored !== undefined && (!Array.isArray(ignored) || ignored.length !== 0)) {
+    const ignored = ignoredFieldNames(body?.["x-experiential-ignored-parameters"]);
+    // Retain the strict route's original full-field enforcement.
+    // The hackathon route permits provider adaptation only where local
+    // schema validation can replace the dropped format guarantee. GLM
+    // observations are still T1 advisory and can never authorize PayPal.
+    if (ignored.some(field => criticalFieldDropped(field) ||
+        (requireZdr && field === "provider")) ||
+        (requireZdr && ignored.length > 0)) {
       refused("EXPERIENTIAL_REQUEST_FIELDS_IGNORED");
     }
     const choice = body?.choices?.[0];
@@ -340,6 +379,19 @@ export class ExperientialInvoiceVisionGateway {
       candidate = JSON.parse(choice.message.content);
     } catch {
       refused("EXPERIENTIAL_EXTRACTION_INVALID_JSON");
+    }
+    // If a provider cannot enforce response_format, only a locally validated
+    // exact-schema JSON object can enter the untrusted observation pipeline.
+    // Without this check, a gateway capability downgrade would be silent.
+    if (ignored.includes("response_format") &&
+        !invoiceExtractionSchema.safeParse(candidate).success) {
+      refused("EXPERIENTIAL_EXTRACTION_INVALID_SCHEMA");
+    }
+    if (ignored.length > 0) {
+      console.info("EXPERIENTIAL_PROVIDER_FIELD_DISCLOSURE", JSON.stringify({
+        ignoredFields: ignored,
+        localSchemaChecked: ignored.includes("response_format"),
+      }));
     }
 
     return {
