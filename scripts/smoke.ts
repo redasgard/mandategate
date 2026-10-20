@@ -143,7 +143,7 @@ const signedInReviewer=await fetch(`${baseUrl}/invoice-artifacts/${adminId}`,{
   headers:{cookie:adminCookie},
 });
 if(signedInReviewer.status!==200 ||
-   !(await signedInReviewer.text()).includes("Observe this stored document"))
+   !(await signedInReviewer.text()).includes("Analyze invoice with AI"))
   throw new Error("signed-in document observation UI is inaccessible");
 
 const parse=await fetch(`${adminUploadPath}/${adminId}/pdf-pages`,{
