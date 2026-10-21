@@ -38,7 +38,7 @@ export function IncidentInvestigation({incidents,activeFilter}:{
           <span className="mg-case-caption">
             {incident.vendor} · {incident.invoice} · {incident.organization}
           </span>
-          <span className="mg-case-caption">{incident.explanation}</span>
+          {incident.kind==="PAYOUT" ? <span className="mg-case-caption">{incident.explanation}</span> : null}
           <span className="mg-case-caption">{incident.discoveredBy} · {incident.reasons.join(", ")||incident.state}</span>
         </span>
         <span className="mg-case-money">{formatAmount(incident.amountCents,incident.currency)}</span>
