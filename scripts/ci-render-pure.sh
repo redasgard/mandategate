@@ -39,7 +39,7 @@ mkdir -p "$CI_PG_DATA_DIR"
 pg_pid=''
 web_pid=''
 cleanup() {
-  if [[ -n "$web_pid" ]]; then kill "$web_pid" 2>/dev/null || true; wait "$web_pid" 2>/dev/null || true; fi
+  if [[ -n "$web_pid" ]]; then kill -- "-$web_pid" 2>/dev/null || true; wait "$web_pid" 2>/dev/null || true; fi
   if [[ -n "$pg_pid" ]]; then kill "$pg_pid" 2>/dev/null || true; wait "$pg_pid" 2>/dev/null || true; fi
   if [[ -n "${CI_PG_TEMP:-}" && -d "$CI_PG_TEMP" ]]; then rm -rf -- "$CI_PG_TEMP"; fi
 }
@@ -75,8 +75,10 @@ step judge-smoke-fixture node scripts/test-judge-smoke-fixture.mjs
 step typecheck pnpm typecheck
 step complete-unit-and-database-tests pnpm test
 step full-production-build pnpm build
+if ! command -v setsid >/dev/null 2>&1; then echo CI_SETSID_REQUIRED >&2; exit 27; fi
 echo 'CI_STEP=authenticated-loopback-smoke'
-pnpm start > "$CI_PG_TEMP/next.log" 2>&1 &
+# Dedicated process group: kill both pnpm and every Next descendant on reset.
+setsid pnpm start > "$CI_PG_TEMP/next.log" 2>&1 &
 web_pid=$!
 healthy=0
 for i in $(seq 1 70); do
@@ -98,7 +100,7 @@ step visual-browser-shell env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-b
 export CI_VISUAL_BROWSER_ROOT="$CI_PG_TEMP/visual-browser"
 step visual-browser-qa env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-visual-qa.mjs
 echo 'CI_STEP=reset-local-next-auth-rate-limiter'
-kill "$web_pid" 2>/dev/null || true
+kill -- "-$web_pid" 2>/dev/null || true
 wait "$web_pid" 2>/dev/null || true
 web_pid=''
 closed=0
@@ -107,7 +109,7 @@ for i in $(seq 1 40); do
   sleep 1
 done
 if [[ "$closed" != "1" ]]; then echo CI_WEB_NOT_STOPPED >&2; exit 28; fi
-pnpm start > "$CI_PG_TEMP/next-smoke.log" 2>&1 &
+setsid pnpm start > "$CI_PG_TEMP/next-smoke.log" 2>&1 &
 web_pid=$!
 healthy=0
 for i in $(seq 1 70); do
