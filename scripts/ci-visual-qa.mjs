@@ -116,6 +116,7 @@ try {
           viewportWidth:viewport,
           documentWidth:bodyWidth,
           globalOverflowPx:Math.max(0,bodyWidth-viewport),
+          moneyMetricsTop:document.querySelector(".mg-stats")?.getBoundingClientRect().top??null,
           headingBounds:h1?.getBoundingClientRect().toJSON(),
           mainBounds:main?.getBoundingClientRect().toJSON(),
           primaryNavCount:nav?.querySelectorAll("a").length??0,
@@ -129,6 +130,12 @@ try {
         throw Error("VISUAL_NAVIGATION_A11Y_"+vp.name+"_"+item.id);
       if((layout.headingBounds?.right??0)>layout.viewportWidth+2)
         throw Error("VISUAL_HEADING_CLIPPED_"+vp.name+"_"+item.id);
+      // Both PRD landing questions must be visible in the first viewport:
+      // risk shortcuts first, money position beginning before the fold.
+      if(item.id==="dashboard" &&
+          (typeof layout.moneyMetricsTop!=="number" ||
+           layout.moneyMetricsTop>vp.height-100))
+        throw Error("VISUAL_MONEY_BELOW_FIRST_FOLD_"+vp.name+"_top="+layout.moneyMetricsTop);
       const filename=item.id+"-"+vp.name+".jpg";
       await page.screenshot({path:join(output,filename),type:"jpeg",
         quality:76,fullPage:true,animations:"disabled"});
