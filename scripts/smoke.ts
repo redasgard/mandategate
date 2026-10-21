@@ -42,15 +42,33 @@ if(![302,303,307,308].includes(unauthMandates.status))
   throw Error("anonymous autopay mandate console was not restricted");
 const mandateScreen=await fetch(baseUrl+"/autopay",{headers:{cookie:adminCookie}});
 if(mandateScreen.status!==200 ||
-    !(await mandateScreen.text()).includes("Delegate authority once. Investigate exceptions."))
+    !(await mandateScreen.text()).includes("Standing mandates"))
   throw Error("signed-in autopay mandate console not rendered");
 console.log("autopay UI smoke passed: session required, inert grant preparation only, zero payouts");
 
 const signedDashboard=await fetch(`${baseUrl}/dashboard`,{headers:{cookie:adminCookie}});
 if(signedDashboard.status!==200 ||
-   !(await signedDashboard.text()).includes("Current payment risk")) {
+   !(await signedDashboard.text()).includes("Attention required")) {
   throw Error("signed-in dashboard risk view failed to render");
 }
+// PRD-first operations shell: authenticated main navigation, agent and admin
+// invoice evidence in the same bounded read-only Payments surface.
+for (const [route,expected] of [
+  ["/dashboard","Payment operations"],
+  ["/payments","Incoming invoices"],
+  ["/vendors","Trusted recipients"],
+  ["/policies","Policies &amp; mandates"],
+  ["/activity","Events and detection evidence"],
+] as const) {
+  const page=await fetch(baseUrl+route,{headers:{cookie:adminCookie}});
+  const markup=await page.text();
+  if(page.status!==200 || !markup.includes(expected) ||
+     !markup.includes('aria-label="Primary navigation"')) {
+    throw Error("operations UI smoke failed: "+route+" ("+page.status+")");
+  }
+}
+console.log("operations UI smoke passed: authenticated PRD navigation, incoming invoices and decision ledger");
+
 const adminUploadPath=`${baseUrl}/api/admin/invoice-artifacts`;
 const enrollment=await fetch(`${baseUrl}/api/admin/vendor-origin-channels`,{
   method:"POST",headers:{
@@ -531,6 +549,22 @@ if(historicalDecision.decision.outcome!=="ESCALATE" ||
    !historicalDecision.decision.reasonCodes.includes("AP_INVOICE_NUMBER_REPLAY")||
    historicalDecision.paymentExecuted!==false)
   throw Error("imported paid invoice replay did not deterministically escalate without payout");
+// An agent-origin escalation is an investigation, not a mandatory manual
+// invoice-upload or Send-PayPal step. This read-only UI check never pays.
+const detailPath=`${baseUrl}/payments/${historicalDecision.requestId}`;
+const anonDetail=await fetch(detailPath,{redirect:"manual"});
+if(![302,303,307,308].includes(anonDetail.status))
+  throw Error("payment investigation exposed without login");
+const paymentDetail=await fetch(detailPath,{headers:{cookie:adminCookie}});
+const paymentMarkup=await paymentDetail.text();
+if(paymentDetail.status!==200 ||
+   !paymentMarkup.includes("Payment investigation") ||
+   !paymentMarkup.includes("Why MandateGate made this decision") ||
+   !paymentMarkup.includes("Agent API") ||
+   !paymentMarkup.includes("Human review required") ||
+   paymentMarkup.includes("Send this payment")) {
+  throw Error("payment investigation UI does not match agent-first PRD");
+}
 const historicalReviewPath=`${baseUrl}/api/admin/payments/${historicalDecision.requestId}/review`;
 const unsignedReview=await fetch(historicalReviewPath);
 if(unsignedReview.status!==401)throw Error("anonymous reviewer could read financial decision snapshot");
@@ -605,12 +639,12 @@ console.log("obligation smoke passed: signed-in imported AP view and dashboard, 
 
 const trustPage=await fetch(`${baseUrl}/vendors`,{headers:{cookie:adminCookie}});
 if(trustPage.status!==200 ||
-   !(await trustPage.text()).includes("Trusted vendors and payment re-verification"))
+   !(await trustPage.text()).includes("Destination change investigations"))
   throw Error("signed-in vendor trust case dashboard unavailable");
 
 const activityPage=await fetch(`${baseUrl}/activity`,{headers:{cookie:adminCookie}});
 if(activityPage.status!==200 ||
-   !(await activityPage.text()).includes("Activity and consequential decisions"))
+   !(await activityPage.text()).includes("Events and detection evidence"))
   throw Error("signed-in activity and evidence view unavailable");
 
 // S8 product path: an authenticated admin can prepare an inert proposal and
@@ -620,7 +654,7 @@ if(![302,303,307,308].includes(policiesNoSession.status))
   throw Error("policy console accepted anonymous access");
 const policyPage=await fetch(baseUrl+"/policies",{headers:{cookie:adminCookie}});
 if(policyPage.status!==200 ||
-   !(await policyPage.text()).includes("Policies require a decision"))
+   !(await policyPage.text()).includes("Prepared policy changes"))
   throw Error("signed-in policy console did not render");
 const proposalOriginHeaders={cookie:adminCookie,origin:baseUrl,"content-type":"application/json"};
 const badPolicyOrigin=await fetch(baseUrl+"/api/admin/policy-proposals",{
@@ -691,7 +725,7 @@ if (process.env.CI === "true") {
       // Demo admin may have access to other test organizations. Revocation
       // must remove this organization's data, not require a globally empty UI.
       if(markup.includes(historicalDecision.requestId) ||
-         !markup.includes("Current payment risk")) {
+         !markup.includes("Attention required")) {
         throw Error("revoked session retained target invoice or failed to render dashboard");
       }
     } finally {

@@ -19,7 +19,7 @@ export async function readDashboardSummary(userId: string): Promise<DashboardSum
     pool.query([
       "select count(*) filter (where pr.status='ESCALATED')::int as pending_review,",
       "count(*) filter (where pr.status='DENIED')::int as denied,",
-      "count(*) filter (where e.status='PAYMENT_UNKNOWN_MANUAL_RECONCILIATION')::int as payout_unknown",
+      "count(*) filter (where e.status in ('PAYMENT_UNKNOWN','PAYMENT_UNKNOWN_MANUAL_RECONCILIATION'))::int as payout_unknown",
       "from payment_requests pr left join payment_executions e on e.payment_request_id=pr.id",
       "where", scope,
     ].join(" "), [userId]),

@@ -60,8 +60,8 @@ export async function readDashboardIncidents(
     "'PAYMENT_FAILED','PAYMENT_BLOCKED','PAYMENT_RETURNED','PAYMENT_REFUNDED','PAYMENT_REVERSED')))",
     "order by case",
     "when e.status like 'PAYMENT_UNKNOWN%' then 0",
-    "when pr.status='DENIED' then 1",
-    "when pr.status='ESCALATED' and r.id is null then 2",
+    "when pr.status='ESCALATED' and r.id is null then 1",
+    "when pr.status='DENIED' then 2",
     "else 3 end, pr.created_at desc, pr.id desc",
     "limit $3",
   ].join(" "), [actorId, mode, capped]);

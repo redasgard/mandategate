@@ -67,12 +67,12 @@ export async function verifyDashboardCrossOrgHttp(baseUrl: string, pool: Pool) {
     ] as Array<[string,boolean]>) {
       if(html.includes(marker)!==allowed)throw Error(phase+": cross-org invoice exposure");
     }
-    for(const [label,expected] of [
-      ["AWAITING REVIEW",n],["DENIED REQUESTS",n],["UNKNOWN PAYOUT OUTCOME",0],
+    for(const [key,expected] of [
+      ["review",n],["denied",n],["unknown",0],
     ] as Array<[string,number]>) {
-      const m=html.match(new RegExp(label+"</span><strong>(\\d+)</strong>"));
+      const m=html.match(new RegExp('data-mg-count="'+key+'"[^>]*>(\\d+)</strong>'));
       if(!m||Number(m[1])!==expected)
-        throw Error(phase+": incorrect "+label+" expected="+expected+" actual="+(m?.[1]??"missing"));
+        throw Error(phase+": incorrect "+key+" expected="+expected+" actual="+(m?.[1]??"missing"));
     }
   }
   async function detail(cookie:string,i:number,expected:number,phase:string) {

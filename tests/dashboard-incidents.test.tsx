@@ -20,6 +20,10 @@ describe("incident investigations are tenant-scoped and read-only", () => {
       expect(sql).toContain("m.role='ADMIN' and m.active=true");
       expect(sql).toContain("e.status");
       expect(sql).toContain("pr.created_at desc");
+      // Human review is actionable; a completed deterministic DENY is not.
+      const priority = sql.slice(sql.lastIndexOf("order by case"));
+      expect(priority.indexOf("when pr.status='ESCALATED'")).toBeLessThan(
+        priority.indexOf("when pr.status='DENIED'"));
       expect(params[0]).toBe("actor-1");
       expect(params[2]).toBe(40);
     }

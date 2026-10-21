@@ -13,15 +13,17 @@ const activeAdmin = (userId: string) => sql`exists (
 
 export async function listRecentDecisions(userId: string, limit = 25) {
   return db.select({
-    requestId: paymentRequests.id, invoiceNumber: paymentRequests.invoiceNumber, vendorName: vendors.name,
+    requestId: paymentRequests.id, invoiceNumber: paymentRequests.invoiceNumber, vendorName: vendors.name, source: paymentRequests.source,
     amountCents: paymentRequests.amountCents, currency: paymentRequests.currency, requestedDestination: paymentRequests.requestedDestination,
-    status: paymentRequests.status, outcome: paymentDecisions.outcome, reasonCodes: paymentDecisions.reasonCodes, createdAt: paymentRequests.createdAt,
-  }).from(paymentRequests).innerJoin(vendors, eq(paymentRequests.vendorId, vendors.id)).innerJoin(paymentDecisions, eq(paymentRequests.id, paymentDecisions.paymentRequestId)).where(activeAdmin(userId)).orderBy(desc(paymentRequests.createdAt)).limit(limit);
+    status: paymentRequests.status, executionStatus: paymentExecutions.status, outcome: paymentDecisions.outcome, reasonCodes: paymentDecisions.reasonCodes, createdAt: paymentRequests.createdAt,
+  }).from(paymentRequests).innerJoin(vendors, eq(paymentRequests.vendorId, vendors.id)).innerJoin(paymentDecisions, eq(paymentRequests.id, paymentDecisions.paymentRequestId)).leftJoin(paymentExecutions, eq(paymentRequests.id, paymentExecutions.paymentRequestId)).where(activeAdmin(userId)).orderBy(desc(paymentRequests.createdAt)).limit(limit);
 }
 
 export async function getDecisionDetail(requestId: string, userId: string) {
   const [row] = await db.select({
     requestId: paymentRequests.id,
+    vendorId: paymentRequests.vendorId,
+    organizationId: paymentRequests.organizationId,
     logicalPaymentId: paymentRequests.logicalPaymentId,
     invoiceNumber: paymentRequests.invoiceNumber,
     source: paymentRequests.source,
