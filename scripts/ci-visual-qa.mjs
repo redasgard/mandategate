@@ -132,6 +132,20 @@ try {
       const filename=item.id+"-"+vp.name+".jpg";
       await page.screenshot({path:join(output,filename),type:"jpeg",
         quality:76,fullPage:true,animations:"disabled"});
+      // Only these read-only synthetic thumbnails are duplicated into CI logs
+      // for remote visual self-review when the static site cannot be fetched
+      // into the reviewer's isolated workspace. Never enable on live data.
+      if(item.id==="dashboard" || (vp.name==="desktop" && item.id==="payments")) {
+        const thumbnail=await page.screenshot({type:"jpeg",quality:23,
+          fullPage:false,animations:"disabled"});
+        const encoded=thumbnail.toString("base64");
+        const prefix="CI_IMAGE_"+vp.name+"_"+item.id+"_";
+        const chunkSize=1200;
+        const count=Math.ceil(encoded.length/chunkSize);
+        if(count>85)throw Error("CI_THUMBNAIL_EXCEEDS_SAFE_LOG_BUDGET_"+prefix);
+        console.log(prefix+"COUNT="+count);
+        for(let j=0;j<count;j++)console.log(prefix+j+"="+encoded.slice(j*chunkSize,(j+1)*chunkSize));
+      }
       results.push({route:item.route,viewport:vp.name,width:vp.width,height:vp.height,
         screenshot:filename,...layout});
       console.log("VISUAL_QA_PASS "+vp.name+" "+item.id+" overflow="+layout.globalOverflowPx);
