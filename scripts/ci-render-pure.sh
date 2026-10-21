@@ -85,7 +85,8 @@ for i in $(seq 1 70); do
   sleep 1
 done
 if [[ "$healthy" != "1" ]]; then echo CI_APP_HEALTH_FAILED >&2; tail -n 24 "$CI_PG_TEMP/next.log" >&2; exit 26; fi
-step signed-in-http-smoke pnpm smoke
+# The browser signs in first, then launches the existing synthetic HTTP
+# smoke inside ci-visual-qa.mjs; this avoids the genuine auth rate-limit 429.
 # Real desktop/mobile browser capture happens while this synthetic local
 # database and signed-in Next server are still alive. No provider keys exist.
 # Browser package and Chromium shell are installed only in disposable CI temp.
