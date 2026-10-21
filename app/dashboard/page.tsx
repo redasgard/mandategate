@@ -52,7 +52,7 @@ export default async function DashboardPage({searchParams}:{
 
     <div className="mg-dashboard">
       <p className="mg-dashboard-topnote"><span className="mg-tiny-dot" aria-hidden="true"/>
-        Current organization-scoped records · No simulated account balances · UTC period boundaries
+        Current organization records · Balance feed not connected
       </p>
 
       <section className="mg-attention" aria-label="Attention required">
@@ -80,7 +80,6 @@ export default async function DashboardPage({searchParams}:{
             <strong className="mg-status-count is-unknown" data-mg-count="unknown">{summary.payoutUnknown}</strong>
           </Link>
         </div>
-        <IncidentInvestigation incidents={incidents} activeFilter={filter}/>
       </section>
 
       <section aria-label="Money position">
@@ -119,6 +118,10 @@ export default async function DashboardPage({searchParams}:{
         {obligations.incomplete ? <p className="mg-horizon-warning" role="status">
           Historical AP values are partial: only the first 200 imported open records are included.
         </p> : null}
+      </section>
+
+      <section className="mg-queue-surface" aria-label="Payment exceptions and evidence">
+        <IncidentInvestigation incidents={incidents} activeFilter={filter}/>
       </section>
 
       <section aria-label="Activity and intake">
