@@ -4,6 +4,7 @@
  * No network navigation is permitted beyond 127.0.0.1:3000.
  */
 import {createRequire} from "node:module";
+import {spawnSync} from "node:child_process";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 
@@ -35,54 +36,75 @@ const viewports=[
 const results=[];
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
 try {
+  // Sign in once against a fresh, synthetic server. The subsequent HTTP smoke
+  // intentionally exercises rate limits; signing in afterward would receive
+  // 429 and falsely appear to be a broken login.
+  const signInContext=await browser.newContext({
+    viewport:{width:1440,height:900},deviceScaleFactor:1,
+    colorScheme:"dark",reducedMotion:"reduce",
+  });
+  await signInContext.route("**/*",route=>{
+    const url=new URL(route.request().url());
+    return url.origin===origin?route.continue():route.abort("blockedbyclient");
+  });
+  const login=await signInContext.newPage();
+  const loginErrors=[];
+  const authResponses=[];
+  login.on("pageerror",error=>loginErrors.push(String(error.message||error).slice(0,160)));
+  login.on("response",response=>{
+    const url=new URL(response.url());
+    if(url.origin===origin && url.pathname.startsWith("/api/auth/"))
+      authResponses.push({path:url.pathname,status:response.status()});
+  });
+  const signedOut=await login.goto(origin+"/sign-in",{waitUntil:"networkidle",timeout:45000});
+  if(signedOut?.status()!==200)throw Error("VISUAL_SIGNIN_HTTP_"+signedOut?.status());
+  await login.getByRole("heading",{name:"Financial authority stays here."}).waitFor({timeout:30000});
+  await login.waitForTimeout(250);
+  await login.screenshot({path:join(output,"signin-desktop.jpg"),type:"jpeg",
+    quality:77,fullPage:true,animations:"disabled"});
+  await login.getByLabel("Work email").fill(process.env.DEMO_ADMIN_EMAIL);
+  await login.getByLabel("Password").fill(process.env.DEMO_ADMIN_PASSWORD);
+  await login.getByRole("button",{name:/Sign in to MandateGate/}).click();
+  try{
+    await login.waitForURL(url=>url.pathname==="/dashboard",{
+      waitUntil:"domcontentloaded",timeout:25000,
+    });
+  }catch{
+    const alerts=await login.locator('[role="alert"], .mg-login-error').allTextContents();
+    console.error("VISUAL_SIGNIN_DIAGNOSTIC "+JSON.stringify({
+      pathname:new URL(login.url()).pathname,
+      alerts:alerts.map(x=>x.slice(0,100)),authResponses,jsErrors:loginErrors,
+    }));
+    throw Error("VISUAL_SIGNIN_BROWSER_FLOW_BLOCKED");
+  }
+  if(loginErrors.length)throw Error("VISUAL_SIGNIN_CLIENT_ERRORS");
+  const signedInState=await signInContext.storageState();
+  await signInContext.close();
+  console.log("VISUAL_SIGNIN_UI_PASS");
+
+  // HTTP integration smoke writes only synthetic records and restores role
+  // membership after revocation checks. Keep browser auth state from before
+  // these calls exhaust Better Auth's local per-IP rate limiter.
+  console.log("CI_STEP=signed-in-http-smoke");
+  const smoke=spawnSync("pnpm",["smoke"],{
+    env:process.env,stdio:"inherit",timeout:300000,
+  });
+  if(smoke.error || smoke.status!==0)
+    throw Error("VISUAL_PRIOR_HTTP_SMOKE_FAILED_"+(smoke.status??"unknown"));
+
   for (const vp of viewports) {
     const ctx=await browser.newContext({
       viewport:{width:vp.width,height:vp.height},
       deviceScaleFactor:vp.scale, colorScheme:"dark",reducedMotion:"reduce",
+      storageState:signedInState,
     });
     const page=await ctx.newPage();
     const jsErrors=[];
-    const authResponses=[];
     page.on("pageerror",error=>jsErrors.push(String(error.message||error).slice(0,180)));
-    page.on("response",response=>{
-      const url=new URL(response.url());
-      if(url.origin===origin && url.pathname.startsWith("/api/auth/"))
-        authResponses.push({path:url.pathname,status:response.status()});
-    });
-    // Deny external images, scripts, pixels, providers and favicon downloads.
-    await ctx.route("**/*",async route=>{
+    await ctx.route("**/*",route=>{
       const u=new URL(route.request().url());
-      if(u.origin!==origin) return route.abort("blockedbyclient");
-      return route.continue();
+      return u.origin===origin?route.continue():route.abort("blockedbyclient");
     });
-    const signedOut=await page.goto(origin+"/sign-in",{waitUntil:"domcontentloaded",timeout:45000});
-    if(signedOut?.status()!==200)throw Error("VISUAL_SIGNIN_HTTP_"+signedOut?.status());
-    await page.getByRole("heading",{name:"Financial authority stays here."}).waitFor({timeout:30000});
-    // SSR markup can be interactive-looking before the React event handler
-    // is hydrated. A premature click gives a false login failure.
-    await page.waitForLoadState("networkidle",{timeout:25000});
-    await page.waitForTimeout(250);
-    if(vp.name==="desktop") {
-      await page.screenshot({path:join(output,"signin-desktop.jpg"),type:"jpeg",
-        quality:77,fullPage:true,animations:"disabled"});
-    }
-    await page.getByLabel("Work email").fill(process.env.DEMO_ADMIN_EMAIL);
-    await page.getByLabel("Password").fill(process.env.DEMO_ADMIN_PASSWORD);
-    await page.getByRole("button",{name:/Sign in to MandateGate/}).click();
-    try {
-      await page.waitForURL(url=>url.pathname==="/dashboard",{
-        waitUntil:"domcontentloaded",timeout:25000,
-      });
-    } catch {
-      const alerts=await page.locator('[role="alert"], .mg-login-error').allTextContents();
-      const button=await page.locator('button[type="submit"]').allTextContents();
-      console.error("VISUAL_SIGNIN_DIAGNOSTIC "+JSON.stringify({
-        viewport:vp.name,pathname:new URL(page.url()).pathname,
-        alerts:alerts.map(x=>x.slice(0,100)),button:button.map(x=>x.slice(0,80)),
-        authResponses,jsErrors,
-      }));
-      throw Error("VISUAL_SIGNIN_BROWSER_FLOW_BLOCKED");
-    }
     const passes=vp.name==="desktop"?cases:cases.filter(x=>["dashboard","payments","vendors","policies"].includes(x.id));
     for (const item of passes) {
       const res=await page.goto(origin+item.route,{waitUntil:"domcontentloaded",timeout:45000});
