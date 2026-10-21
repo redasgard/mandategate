@@ -425,3 +425,25 @@ body:has(.mg-login-page)::before{display:none;}
   .mg-login-panel{padding:45px 25px 65px;place-items:start center;border-left:0;border-top:1px solid #333f40;}
   .mg-login-card{max-width:480px;}
 }
+
+/* Actual rendered-screen review: risk status and money position must both
+   appear before the long decision queue on desktop and narrow viewports. */
+.mg-attention .mg-status-shortcuts{margin-bottom:0;}
+.mg-queue-surface{min-width:0;border:1px solid var(--mg-stroke);border-radius:10px;
+  background:var(--mg-surface);padding:23px;}
+.mg-queue-surface .mg-section-title{margin:0 0 17px;}
+.mg-queue-surface .mg-case-list{border-radius:8px;}
+.mg-queue-surface .mg-case-meta{padding-top:13px;}
+@media(max-width:760px){
+  .mg-queue-surface{padding:16px;}
+  .mg-queue-surface .mg-section-title{align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .mg-dashboard-topnote{line-height:1.5;}
+}
+@media(max-width:460px){
+  .mg-attention .mg-status-shortcuts{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+  .mg-attention .mg-status-shortcut{min-height:108px;padding:10px;gap:8px;
+    flex-direction:column;justify-content:space-between;align-items:flex-start;}
+  .mg-attention .mg-status-name{font-size:10px;line-height:1.25;}
+  .mg-attention .mg-status-hint{font-size:9px;line-height:1.25;margin-top:5px;}
+  .mg-attention .mg-status-count{font-size:24px;}
+}
