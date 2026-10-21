@@ -4,7 +4,6 @@
  * No network navigation is permitted beyond 127.0.0.1:3000.
  */
 import {createRequire} from "node:module";
-import {spawnSync} from "node:child_process";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 
@@ -82,15 +81,9 @@ try {
   await signInContext.close();
   console.log("VISUAL_SIGNIN_UI_PASS");
 
-  // HTTP integration smoke writes only synthetic records and restores role
-  // membership after revocation checks. Keep browser auth state from before
-  // these calls exhaust Better Auth's local per-IP rate limiter.
-  console.log("CI_STEP=signed-in-http-smoke");
-  const smoke=spawnSync("pnpm",["smoke"],{
-    env:process.env,stdio:"inherit",timeout:300000,
-  });
-  if(smoke.error || smoke.status!==0)
-    throw Error("VISUAL_PRIOR_HTTP_SMOKE_FAILED_"+(smoke.status??"unknown"));
+  // Capture visual evidence on this fresh synthetic server. The separate
+  // authenticated integration suite restarts the same local app afterward,
+  // retaining normal Better Auth rate limiting in both test phases.
 
   for (const vp of viewports) {
     const ctx=await browser.newContext({
