@@ -85,8 +85,9 @@ for i in $(seq 1 70); do
   sleep 1
 done
 if [[ "$healthy" != "1" ]]; then echo CI_APP_HEALTH_FAILED >&2; tail -n 24 "$CI_PG_TEMP/next.log" >&2; exit 26; fi
-# The browser signs in first, then launches the existing synthetic HTTP
-# smoke inside ci-visual-qa.mjs; this avoids the genuine auth rate-limit 429.
+# Browser signs in first on a fresh isolated app. After screenshots we
+# restart that app and run HTTP smoke in a separate fresh process so normal
+# Better Auth per-IP rate limiting remains enforced for both test phases.
 # Real desktop/mobile browser capture happens while this synthetic local
 # database and signed-in Next server are still alive. No provider keys exist.
 # Browser package and Chromium shell are installed only in disposable CI temp.
@@ -96,6 +97,26 @@ step visual-browser-package npm install --prefix "$CI_PG_TEMP/visual-browser" --
 step visual-browser-shell env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" "$CI_PG_TEMP/visual-browser/node_modules/.bin/playwright" install chromium-headless-shell
 export CI_VISUAL_BROWSER_ROOT="$CI_PG_TEMP/visual-browser"
 step visual-browser-qa env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-visual-qa.mjs
+echo 'CI_STEP=reset-local-next-auth-rate-limiter'
+kill "$web_pid" 2>/dev/null || true
+wait "$web_pid" 2>/dev/null || true
+web_pid=''
+closed=0
+for i in $(seq 1 40); do
+  if ! node -e 'fetch("http://127.0.0.1:3000/api/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))' >/dev/null 2>&1; then closed=1; break; fi
+  sleep 1
+done
+if [[ "$closed" != "1" ]]; then echo CI_WEB_NOT_STOPPED >&2; exit 28; fi
+pnpm start > "$CI_PG_TEMP/next-smoke.log" 2>&1 &
+web_pid=$!
+healthy=0
+for i in $(seq 1 70); do
+  if node -e 'fetch("http://127.0.0.1:3000/api/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))' >/dev/null 2>&1; then healthy=1; break; fi
+  if ! kill -0 "$web_pid" 2>/dev/null; then break; fi
+  sleep 1
+done
+if [[ "$healthy" != "1" ]]; then echo CI_APP_RESTART_HEALTH_FAILED >&2; tail -n 24 "$CI_PG_TEMP/next-smoke.log" >&2; exit 29; fi
+step signed-in-http-smoke pnpm smoke
 echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
