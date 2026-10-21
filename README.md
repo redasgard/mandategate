@@ -7,28 +7,42 @@ invoices; deterministic vendor, source, risk and payment-authority rules
 control whether a requested payout may execute. Agents never receive
 PayPal credentials or independent payment authority.
 
-## Main workflow: invoice → AI → policy → PayPal
+## Operational workflow: agent → MandateGate → PayPal
 
-1. Sign in to the [MandateGate application](https://mandategate-web.onrender.com/dashboard).
-2. Upload a PDF, PNG or JPEG invoice at **/invoice-artifacts**. The
-   original is hashed and stored; text-based PDFs receive independent
-   source-text suggestions.
-3. Run **Analyze invoice with AI** using Experiential Labs GLM-5.3 Flash.
-   The hackathon does **not** require paid provider Zero Data Retention.
-   External provider terms may permit content retention. Use test invoices,
-   not sensitive production data.
-4. Review the exact original invoice evidence, register/attest the vendor
-   source, and evaluate a deterministic `ALLOW` / `ESCALATE` / `DENY`
-   decision. The LLM cannot authenticate a supplier or approve payments.
-5. For an authorized invoice, **Prepare** the exact canonical payment and
-   separately **Execute PayPal Sandbox payout**. Record PayPal batch and
-   item IDs, validate webhook authenticity, and reconcile the final state.
-   A prepared request or `ALLOW` decision is **not** a completed payment.
+MandateGate is **agent-driven**. A company operations agent, not the dashboard
+operator, supplies invoice evidence and payment requests. The application is a
+monitoring, exception-review and standing-authority control surface.
 
-The currently bounded Northstar USD 1.01 invoice uses a PayPal Sandbox
-test supplier and recipient. This **is not a live supplier authentication**.
-Other vendors and arbitrary recipient changes cannot silently inherit that
-test authority.
+1. An authorized agent can send a PDF, PNG or JPEG invoice directly to
+   `POST /api/agent/invoice-artifacts` using its scoped `invoice:upload` key.
+   The untrusted original is stored with a content hash. Structured requests
+   enter via a separate `POST /api/agent/payment-requests` endpoint with
+   `payment:submit` scope and an idempotency key.
+2. **Dashboard → Payments** exposes received documents and canonical requests.
+   Document extraction/GLM interpretation is untrusted evidence, not payment
+   approval; independently sourced issuer/trust checks and policies own authority.
+3. MandateGate records `ALLOW`, `ESCALATE` or `DENY`. A trusted routine
+   request should pay automatically **only under a separately activated, current
+   standing mandate**. Exceptions require human investigation; changed recipients
+   are blocked pending independent re-verification.
+4. The server-side PayPal Sandbox executor owns the payout, permanent
+   idempotency and signed webhook/reconciliation. An `ALLOW` decision or a
+   submitted batch is not proof of final PayPal settlement.
+
+A prepared request or an `ALLOW` policy decision is not a completed payout. Only authenticated provider evidence can establish its remote status.
+
+**Implementation limit:** Both scoped agent ingress endpoints exist, but the
+complete raw-agent-invoice → AI → authoritative verification → autonomous payout
+handoff has **not** been verified end to end. The standing-mandate preflight
+does not itself mean an unattended payment job is running.
+
+### Separate Sandbox test lane, not the product workflow
+
+The fictional Northstar USD 1.01 invoice and manual source/approval/Execute
+buttons are a bounded integration test. They remain under supporting invoice
+evidence tools; they are **not** an invoice the user is meant to download and
+upload as ordinary accounts-payable processing. The fictional source assertion
+does not authenticate a real supplier.
 
 ## Current execution evidence
 
@@ -69,7 +83,7 @@ pnpm demo:seed
 pnpm dev
 ```
 
-Sign in at http://localhost:3000/sign-in and use **/dashboard**, **/invoice-artifacts** and **/ap-history** for supported local workflows.
+Sign in at http://localhost:3000/sign-in and use **/dashboard**, **/payments**, **/vendors**, **/policies** and **/activity** as the primary operational surfaces. Invoice evidence upload and AP history import remain supporting tools.
 
 **Important:** read-only test fixtures are isolated and cannot pay. Actual PayPal execution is available only with explicit Sandbox credentials and payment authorization.
 

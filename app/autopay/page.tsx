@@ -1,63 +1,76 @@
 import Link from "next/link";
-import {headers} from "next/headers";
-import {redirect} from "next/navigation";
-import {auth} from "@/src/auth/auth";
-import {isRestrictedJudge} from "@/src/auth/judge-dashboard";
-import {readAutopayMandateConsole} from "@/src/autonomy/mandates";
-import {MandatePrepareForm,MandateDecisionForm} from "./mandate-actions";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/src/auth/auth";
+import { isRestrictedJudge } from "@/src/auth/judge-dashboard";
+import { OperationsHeader } from "@/app/components/operations-header";
+import { readAutopayMandateConsole } from "@/src/autonomy/mandates";
+import { MandatePrepareForm, MandateDecisionForm } from "./mandate-actions";
 
 export const dynamic="force-dynamic";
-const money=(cents:number)=>"USD "+(cents/100).toLocaleString("en-US",{
-  minimumFractionDigits:2,maximumFractionDigits:2,
-});
+function money(cents:number|string){
+  const n=BigInt(cents);
+  const abs=n<0n?-n:n;
+  return (n<0n?"-":"")+"USD "+(abs/100n).toLocaleString("en-US")+"."+
+    (abs%100n).toString().padStart(2,"0");
+}
 export default async function AutopayPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
   if(await isRestrictedJudge(session.user.id))redirect("/judge");
   const data=await readAutopayMandateConsole(session.user.id);
-  return <main className="shell">
-    <Link href="/policies" className="back">← Policies</Link>
-    <header className="topbar">
-      <div><p className="eyebrow">MandateGate / standing automation</p>
-        <h1>Delegate authority once. Investigate exceptions.</h1>
-        <p className="muted">An exact, revocable vendor authorization is separate from
-          the organization spending policy. No mandate exists until you explicitly
-          activate it. Each authorization applies only to structured <code>agent_api</code>
-          requests, not GLM invoice observations.</p>
-      </div><div className="identity">{session.user.email}</div>
-    </header>
-    <section className="panel detail">
-      <p className="eyebrow">Prepare / no payout</p>
-      <h2>Propose a scoped standing mandate</h2>
-      <p className="muted">Pick a trusted vendor, select a maximum per-payment amount,
-        and choose a 1 to 30 day validity. Preparation never moves money. Activation
-        requires a second exact-scope confirmation within 15 minutes. The current
-        hackathon Sandbox payment fence still prevents automatic payouts.</p>
-      {data.vendors.length===0?<p className="empty">No eligible vendors with exactly one
-        trusted destination, one active policy and no unresolved vendor trust case.</p>:
-        <MandatePrepareForm vendors={data.vendors}/>}
-    </section>
-    <section className="panel detail">
-      <p className="eyebrow">Authority ledger / admin only</p>
-      <h2>Prepared, active and revoked mandates</h2>
-      {data.mandates.length===0?<p className="empty">No standing mandates. A general
-        policy cap does not automatically grant unattended payment authority.</p>:
-        <div className="policy-list">{data.mandates.map(g=><article className="policy-card" key={g.id}>
-          <div className="incident-heading"><span className="badge">{g.state}</span>
-            <span className="muted">{g.organizationId}</span></div>
-          <h3>{g.vendorName}</h3>
-          <p>Maximum per payment: <strong>{money(g.maxAmountCents)}</strong></p>
-          <p>Lifetime budget: <strong>{money(g.maxTotalAmountCents)}</strong>
-            {" · "}Payments: {g.maxPaymentCount}</p>
-          <p className="muted">Reserved: {money(Number(g.reservedCents))}
-            {" · "}{g.reservedCount} payment(s). Reservation is not proof of PayPal submission.</p>
-          <p>Trusted recipient: <code>{g.destination}</code></p>
-          <p className="muted">Source: <code>agent_api</code> · Expires {g.expiresAt}</p>
-          <p className="muted">Exact digest: <code>{g.digest.slice(0,18)}…</code></p>
-          <MandateDecisionForm mandate={g} currentUserId={session.user.id}/>
-        </article>)}</div>}
-      <p className="muted">Revocation prevents future dispatch selection. It cannot undo
-        a PayPal payout already submitted. This page cannot submit payments.</p>
-    </section>
+  const active=data.mandates.filter(g=>g.state==="ACTIVE").length;
+  return <main className="shell mg-shell">
+    <OperationsHeader active="policies" title="Standing mandates" context="POLICY / AUTONOMY"
+      description="Bounded, revocable payment authority for agents. Every request must still satisfy current vendor trust and policy."
+      email={session.user.email}/>
+    <div className="mg-dashboard">
+      <section className="mg-vendor-summary" aria-label="Mandate state overview">
+        <div className="mg-surface mg-vendor-summary-item"><span>Active mandates</span><strong>{active}</strong>
+          <small>Still subject to limits, trust, and execution checks</small></div>
+        <div className="mg-surface mg-vendor-summary-item"><span>Recorded mandates</span>
+          <strong>{data.mandates.length}</strong><small>Includes prepared, revoked, expired and active</small></div>
+        <div className="mg-surface mg-vendor-summary-item"><span>Eligible vendors</span>
+          <strong>{data.vendors.length}</strong><small>Current recipient and policy prerequisites met</small></div>
+      </section>
+      <section className="mg-surface" aria-label="Current standing mandate ledger">
+        <div className="mg-table-head"><div><h2>Mandate authority ledger</h2>
+          <p>Exact vendor, amount, budget, expiry and recipient scope. A grant is never generated by AI.</p></div>
+          <Link className="mg-view-link" href="/policies">Payment policies ↗</Link>
+        </div>
+        {data.mandates.length ? <div className="mg-policy-grid">
+          {data.mandates.map(g=><article key={g.id} className="mg-policy-card">
+            <div className="mg-policy-card-top"><span className={"mg-mini-state "+(g.state==="ACTIVE"?"allow":"")}>{g.state}</span>
+              <span className="mg-policy-meta">{g.organizationId}</span></div>
+            <h3>{g.vendorName}</h3>
+            <span className="mg-policy-amount">{money(g.maxAmountCents)} <small>/ payment</small></span>
+            <dl className="mg-mandate-facts">
+              <div><dt>Lifetime budget</dt><dd>{money(g.maxTotalAmountCents)}</dd></div>
+              <div><dt>Payment count cap</dt><dd>{g.maxPaymentCount}</dd></div>
+              <div><dt>Reserved, not settled</dt><dd>{money(String(g.reservedCents))} · {g.reservedCount} item(s)</dd></div>
+              <div><dt>Expires</dt><dd>{g.expiresAt}</dd></div>
+              <div><dt>Trusted recipient</dt><dd className="mono">{g.destination}</dd></div>
+            </dl>
+            <details className="mg-policy-detail">
+              <summary>Authority digest and permitted actions</summary>
+              <p>Source: <code>agent_api</code> · digest: <code>{g.digest}</code></p>
+              <MandateDecisionForm mandate={g} currentUserId={session.user.id}/>
+            </details>
+          </article>)}
+        </div> : <div className="mg-compact-empty">No standing mandates recorded. An active policy cap alone cannot authorize unattended payment.</div>}
+        <p className="mg-source-note">Revoking a mandate stops future dispatch selection. It cannot reverse an already submitted PayPal payout.</p>
+      </section>
+      <section className="mg-surface" aria-label="Prepare a new standing mandate">
+        <div className="mg-table-head"><div><h2>Prepare bounded authority</h2>
+          <p>Preparation does not pay, and activation requires a second exact-scope confirmation.</p></div></div>
+        <div className="mg-case-content">
+          <p className="mg-policy-description">Select an eligible trusted vendor and a time-limited budget.
+            Grants last 1 to 30 days; activation confirmation expires after 15 minutes.
+            The hackathon Sandbox execution fence still prevents automatic provider payouts.</p>
+          {data.vendors.length ? <MandatePrepareForm vendors={data.vendors}/> :
+            <div className="mg-compact-empty">No eligible vendors. A vendor needs exactly one trusted recipient, one active policy, and no unresolved trust case.</div>}
+        </div>
+      </section>
+    </div>
   </main>;
 }

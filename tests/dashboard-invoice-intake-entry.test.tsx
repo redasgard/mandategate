@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const mocks = vi.hoisted(() => ({
-  session: vi.fn(), decisions: vi.fn(), summary: vi.fn(), incidents: vi.fn(), obligations: vi.fn(),
+  session: vi.fn(), decisions: vi.fn(), summary: vi.fn(), incidents: vi.fn(),
+  obligations: vi.fn(), incoming: vi.fn(),
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -11,9 +12,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("../src/auth/auth", () => ({
   auth: { api: { getSession: mocks.session } },
 }));
-vi.mock("../src/db/views", () => ({
-  listRecentDecisions: mocks.decisions,
-}));
+vi.mock("../src/auth/judge-dashboard", () => ({ isRestrictedJudge: async () => false }));
+vi.mock("../src/db/views", () => ({ listRecentDecisions: mocks.decisions }));
 vi.mock("../src/db/dashboard-incidents", () => ({
   readDashboardIncidents: mocks.incidents,
   parseIncidentFilter: (raw: unknown) => raw === "PAYOUT" ? "PAYOUT" : "ALL",
@@ -25,17 +25,18 @@ vi.mock("../src/db/imported-obligations", () => ({
 vi.mock("../src/db/dashboard-overview", () => ({
   readDashboardSummary: mocks.summary,
 }));
+vi.mock("../src/db/operations-inbox", () => ({ readIncomingInvoices: mocks.incoming }));
 import DashboardPage from "../app/dashboard/page";
 
 beforeEach(() => {
-  mocks.session.mockReset();
-  mocks.decisions.mockReset();
-  mocks.summary.mockReset();
-  mocks.incidents.mockReset().mockResolvedValue([]);
-  mocks.obligations.mockReset().mockResolvedValue({
-    asOfUtc:"2026-10-19",upcomingHorizon:"2026-11-02",items:[],
-    overdue:{count:0,cents:"0"},upcoming:{count:0,cents:"0"},later:{count:0,cents:"0"},
-    incomplete:false,basis:"UNVERIFIED_IMPORTED_AP_HISTORY",
+  for (const key of ["session","decisions","summary","incidents","obligations","incoming"] as const)
+    mocks[key].mockReset();
+  mocks.incidents.mockResolvedValue([]);
+  mocks.incoming.mockResolvedValue([]);
+  mocks.obligations.mockResolvedValue({
+    asOfUtc:"2026-10-19", upcomingHorizon:"2026-11-02", items:[],
+    overdue:{count:0,cents:"0"}, upcoming:{count:0,cents:"0"}, later:{count:0,cents:"0"},
+    incomplete:false, basis:"UNVERIFIED_IMPORTED_AP_HISTORY",
   });
   mocks.session.mockResolvedValue({ user: { id: "reviewer-admin", email: "admin@example.test" } });
   mocks.decisions.mockResolvedValue([]);
@@ -45,27 +46,30 @@ beforeEach(() => {
   });
 });
 
-describe("judge and admin invoice-intake discovery", () => {
-  it("exposes direct upload/review access without implying payment authorization", async () => {
+describe("PRD-first operations dashboard", () => {
+  it("prioritizes risks, money and agent intake without requiring a human invoice-upload journey", async () => {
     const html = renderToStaticMarkup(await DashboardPage());
-    expect(html).toContain('aria-label="Invoice intake"');
+    for(const link of ["/payments","/vendors","/policies","/activity"])
+      expect(html).toContain('href="'+link+'"');
+    expect(html).toContain('aria-label="Primary navigation"');
+    expect(html).toContain('aria-label="Attention required"');
+    expect(html).toContain("Money position");
+    expect(html).toContain("Incoming invoices");
     expect(html).toContain('href="/invoice-artifacts"');
-    expect(html).toContain("Analyze, approve and execute invoice payments");
-    expect(html).toContain("Approved payments are executed");
-    expect(html).toContain("a reviewer controls authorization");
+    expect(html).not.toContain('aria-label="Invoice intake"');
+    expect(html).not.toContain("Download Northstar invoice");
+
     expect(mocks.decisions).toHaveBeenCalledWith("reviewer-admin");
     expect(mocks.summary).toHaveBeenCalledWith("reviewer-admin");
     expect(mocks.incidents).toHaveBeenCalledWith("reviewer-admin", "ALL");
     expect(mocks.obligations).toHaveBeenCalledWith("reviewer-admin");
-    expect(html).toContain('aria-label="Incident investigation"');
+    expect(mocks.incoming).toHaveBeenCalledWith("reviewer-admin", 5);
   });
 
-  it("does not expose the invoice intake to unauthenticated visitors", async () => {
+  it("never loads organization projections for visitors without sessions", async () => {
     mocks.session.mockResolvedValue(null);
     await expect(DashboardPage()).rejects.toThrow("REDIRECT:/sign-in");
-    expect(mocks.decisions).not.toHaveBeenCalled();
-    expect(mocks.summary).not.toHaveBeenCalled();
-    expect(mocks.incidents).not.toHaveBeenCalled();
-    expect(mocks.obligations).not.toHaveBeenCalled();
+    for(const key of ["decisions","summary","incidents","obligations","incoming"] as const)
+      expect(mocks[key]).not.toHaveBeenCalled();
   });
 });
