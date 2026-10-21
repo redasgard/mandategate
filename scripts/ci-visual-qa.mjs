@@ -42,7 +42,13 @@ try {
     });
     const page=await ctx.newPage();
     const jsErrors=[];
+    const authResponses=[];
     page.on("pageerror",error=>jsErrors.push(String(error.message||error).slice(0,180)));
+    page.on("response",response=>{
+      const url=new URL(response.url());
+      if(url.origin===origin && url.pathname.startsWith("/api/auth/"))
+        authResponses.push({path:url.pathname,status:response.status()});
+    });
     // Deny external images, scripts, pixels, providers and favicon downloads.
     await ctx.route("**/*",async route=>{
       const u=new URL(route.request().url());
@@ -52,6 +58,10 @@ try {
     const signedOut=await page.goto(origin+"/sign-in",{waitUntil:"domcontentloaded",timeout:45000});
     if(signedOut?.status()!==200)throw Error("VISUAL_SIGNIN_HTTP_"+signedOut?.status());
     await page.getByRole("heading",{name:"Financial authority stays here."}).waitFor({timeout:30000});
+    // SSR markup can be interactive-looking before the React event handler
+    // is hydrated. A premature click gives a false login failure.
+    await page.waitForLoadState("networkidle",{timeout:25000});
+    await page.waitForTimeout(250);
     if(vp.name==="desktop") {
       await page.screenshot({path:join(output,"signin-desktop.jpg"),type:"jpeg",
         quality:77,fullPage:true,animations:"disabled"});
@@ -59,7 +69,20 @@ try {
     await page.getByLabel("Work email").fill(process.env.DEMO_ADMIN_EMAIL);
     await page.getByLabel("Password").fill(process.env.DEMO_ADMIN_PASSWORD);
     await page.getByRole("button",{name:/Sign in to MandateGate/}).click();
-    await page.waitForURL(url=>url.pathname==="/dashboard",{timeout:35000});
+    try {
+      await page.waitForURL(url=>url.pathname==="/dashboard",{
+        waitUntil:"domcontentloaded",timeout:25000,
+      });
+    } catch {
+      const alerts=await page.locator('[role="alert"], .mg-login-error').allTextContents();
+      const button=await page.locator('button[type="submit"]').allTextContents();
+      console.error("VISUAL_SIGNIN_DIAGNOSTIC "+JSON.stringify({
+        viewport:vp.name,pathname:new URL(page.url()).pathname,
+        alerts:alerts.map(x=>x.slice(0,100)),button:button.map(x=>x.slice(0,80)),
+        authResponses,jsErrors,
+      }));
+      throw Error("VISUAL_SIGNIN_BROWSER_FLOW_BLOCKED");
+    }
     const passes=vp.name==="desktop"?cases:cases.filter(x=>["dashboard","payments","vendors","policies"].includes(x.id));
     for (const item of passes) {
       const res=await page.goto(origin+item.route,{waitUntil:"domcontentloaded",timeout:45000});
