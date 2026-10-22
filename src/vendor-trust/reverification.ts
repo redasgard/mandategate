@@ -8,26 +8,37 @@ export class VendorTrustCaseError extends Error{
 }
 const digest=(value:string)=>createHash("sha256").update(value).digest("hex");
 const reject=(code:string,status=409):never=>{throw new VendorTrustCaseError(code,status);};
-export type VendorTrustAction="REJECT"|"SIMULATE_VERIFY";
-const approvedSimulationRef=/^synthetic-demo:[A-Za-z0-9._:/-]{12,112}$/;
+export type VendorTrustAction="REJECT"|"VERIFY";
+export type VendorVerificationMethod=
+  "KNOWN_CONTACT_CALLBACK"|"TRUSTED_VENDOR_PORTAL"|"SIGNED_VENDOR_INSTRUCTION";
+const verificationMethods=new Set<VendorVerificationMethod>([
+  "KNOWN_CONTACT_CALLBACK","TRUSTED_VENDOR_PORTAL","SIGNED_VENDOR_INSTRUCTION",
+]);
+const evidenceRef=/^[A-Za-z0-9][A-Za-z0-9._:/-]{7,127}$/;
 
 export async function resolveVendorReverificationCase(input:{
   actorUserId:string;caseId:string;
   action:VendorTrustAction;reason:string;evidenceReference:string;
-  confirmedSyntheticSimulation:boolean;
+  verificationMethod:VendorVerificationMethod|null;
+  confirmedIndependentVerification:boolean;
 }){
   if(!input.actorUserId||!input.caseId ||
-     !["REJECT","SIMULATE_VERIFY"].includes(input.action)||
+     !["REJECT","VERIFY"].includes(input.action)||
      input.reason.trim().length<16||input.reason.length>2000||
-     !approvedSimulationRef.test(input.evidenceReference))
+     !evidenceRef.test(input.evidenceReference))
     reject("VENDOR_REVERIFICATION_INPUT_INVALID",422);
-  if(input.action==="SIMULATE_VERIFY"){
-    // A fake issuer is NEVER evidence for live PayPal or a production vendor.
-    // This action is gated to a concrete Sandbox PayPal base URL.
+  if(input.action==="VERIFY"){
+    // This is a REAL, separately recorded administrator attestation of
+    // independently obtained evidence, not an automated issuer check.
+    // This hackathon deployment must never use live PayPal credentials.
     if(process.env.PAYPAL_BASE_URL!=="https://api-m.sandbox.paypal.com")
-      reject("SYNTHETIC_REVERIFICATION_SANDBOX_ONLY",403);
-    if(input.confirmedSyntheticSimulation!==true)
-      reject("SYNTHETIC_REVERIFICATION_NOT_ACKNOWLEDGED",422);
+      reject("VENDOR_VERIFICATION_PAYMENT_ENV_UNSUPPORTED",403);
+    if(!input.verificationMethod || !verificationMethods.has(input.verificationMethod))
+      reject("VENDOR_VERIFICATION_METHOD_REQUIRED",422);
+    if(input.confirmedIndependentVerification!==true)
+      reject("VENDOR_VERIFICATION_ATTESTATION_REQUIRED",422);
+  }else if(input.verificationMethod!==null || input.confirmedIndependentVerification!==false){
+    reject("VENDOR_REJECTION_HAS_VERIFICATION_ATTESTATION",422);
   }
   const client=await pool.connect();
   try{
@@ -73,9 +84,9 @@ export async function resolveVendorReverificationCase(input:{
     if(digest(row.requested_destination)!==row.observed_destination_sha256)
       reject("VENDOR_DESTINATION_SOURCE_TAMPERED");
     let newDestinationId:string|null=null;
-    if(input.action==="SIMULATE_VERIFY"){
-      // A request cannot mutate vendor trust without an explicit, separately
-      // logged verification workflow and organization-admin membership.
+    if(input.action==="VERIFY"){
+      // A request cannot mutate vendor trust without an authenticated
+      // organization admin attesting to independently checked evidence.
       const vendor=await client.query(
         "select id from vendors where id=$1 and organization_id=$2 for update",
         [row.vendor_id,row.organization_id],
@@ -85,7 +96,9 @@ export async function resolveVendorReverificationCase(input:{
         "select id,destination from vendor_destinations where vendor_id=$1 and trusted=true for update",
         [row.vendor_id],
       );
-      if(previousDestination.rows.some(x=>x.destination===row.requested_destination))
+      if(previousDestination.rows.length!==1)
+        reject("VENDOR_TRUSTED_DESTINATION_NOT_UNIQUE");
+      if(previousDestination.rows[0].destination===row.requested_destination)
         reject("DESTINATION_ALREADY_TRUSTED");
       await client.query(
         "update vendor_destinations set trusted=false where vendor_id=$1 and trusted=true",
@@ -100,23 +113,26 @@ export async function resolveVendorReverificationCase(input:{
     await client.query([
       "insert into vendor_reverification_resolutions",
       "(organization_id,case_id,actor_user_id,resolution,reason,",
-      "evidence_reference_sha256,new_destination_id)",
-      "values($1,$2,$3,$4,$5,$6,$7)",
+      "evidence_reference_sha256,new_destination_id,verification_method)",
+      "values($1,$2,$3,$4,$5,$6,$7,$8)",
     ].join(" "),[
       row.organization_id,input.caseId,input.actorUserId,
-      input.action==="SIMULATE_VERIFY"?"SIMULATED_REVERIFIED":"REJECTED",
+      input.action==="VERIFY"?"VERIFIED":"REJECTED",
       input.reason.trim(),digest(input.evidenceReference),newDestinationId,
+      input.action==="VERIFY"?input.verificationMethod:null,
     ]);
     await client.query("commit");
     return{
       caseId:input.caseId,organizationId:row.organization_id,
       vendorId:row.vendor_id,requestId:row.payment_request_id,
-      status:input.action==="SIMULATE_VERIFY"?"SIMULATED_REVERIFIED":"REJECTED",
+      status:input.action==="VERIFY"?"VERIFIED":"REJECTED",
       newDestinationId,
+      verificationMethod:input.action==="VERIFY"?input.verificationMethod:null,
+      verificationBasis:input.action==="VERIFY"?"ADMIN_ATTESTATION":"NOT_APPLICABLE",
       originalPaymentDecision:row.outcome as "DENY"|"ESCALATE",
       originalPaymentExecuted:false as const,
-      externallyVerified:false as const,
-      syntheticEvidenceOnly:true as const,
+      originalPaymentStatus:row.status as "DENIED"|"DECLINED",
+      paymentAuthorized:false as const,
     };
   }catch(error){
     await client.query("rollback").catch(()=>undefined);
@@ -133,6 +149,8 @@ export async function listVendorTrustCases(adminUserId:string,focusPaymentId?:st
     "pr.requested_destination,pr.status as original_payment_status,",
     "pd.outcome as original_outcome,",
     "r.resolution,r.created_at as resolution_time,",
+    "r.actor_user_id as resolution_actor_id,",
+    "r.verification_method,r.evidence_reference_sha256,",
     "r.new_destination_id,trust.destination as current_trusted_destination",
     "from vendor_reverification_cases c",
     "join vendors v on v.id=c.vendor_id and v.organization_id=c.organization_id",
