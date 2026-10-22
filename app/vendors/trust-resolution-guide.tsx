@@ -17,8 +17,10 @@ export function VendorTrustResolutionGuide({paymentId,context}:{
   const mismatch=context?(
     n!==1 || context.trustedDestination!==context.requestedDestination
   ):false;
-  const caseIsActionable=context?.caseId && !context.caseResolution &&
-    context.outcome==="DENY" && context.requestStatus==="DENIED";
+  const caseIsActionable=context?.caseId && !context.caseResolution && (
+    (context.outcome==="DENY" && context.requestStatus==="DENIED") ||
+    (context.outcome==="ESCALATE" && context.requestStatus==="DECLINED")
+  );
   const caseHref=context?.caseId?"#vendor-case-"+context.caseId:null;
   return <section id="trust-review" className="mg-surface mg-trust-walkthrough" aria-label="How to resolve vendor trust">
     <p className="mg-eyebrow">TRUST INVESTIGATION / STEP BY STEP</p>
@@ -68,12 +70,13 @@ export function VendorTrustResolutionGuide({paymentId,context}:{
           {caseIsActionable && caseHref
             ?<a href={caseHref}>Open this exact recorded trust case ↓</a>:null}
           <small>Sandbox simulation does not authenticate a real vendor and never
-            authorizes the original denied payment.</small>
+            authorizes the original denied or declined payment.</small>
         </>:<p className="mg-trust-limit">
           {context?"No re-verification case exists for this payment. ":""}
-          This version does not offer a real, independent recipient-verification
-          and trust-update action. In particular, an ESCALATE request whose
-          trusted destination later changed cannot use the DENY-only case form below.
+          The application still does not implement independent real-world
+          recipient verification. {context?.outcome==="ESCALATE" && context.requestStatus==="ESCALATED"
+            ?" To open a Sandbox-only investigation for this escalation, first use Decline without payout on its payment page. After declining, choose Open vendor trust investigation to create an exact case here."
+            :" An eligible originally denied or explicitly declined escalation can open a Sandbox-only case. Real destination changes require an independently approved external trust process."}
           Do not treat a new channel enrollment as permission to pay.
         </p>}
       </li>
