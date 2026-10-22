@@ -1,5 +1,14 @@
 # MandateGate decision log
 
+## 2026-10-21 PT — Escalation acceptance blocked by changed vendor recipient
+
+- **Observed:** The payment review showed an unavailable Accept & Execute action and the warning `Trusted destination changed`, with no direct navigation or actionable explanation. The free-text reason was long enough; typing a reason cannot restore recipient trust.
+- **Decision:** Preserve the hard block for destination mismatches and show the exact next steps. A mismatched ESCALATE must first be DECLINED with recorded human explanation. Only then may an active ADMIN open a separate recipient case, choose to reject the attempt or (in PayPal Sandbox only) deliberately simulate out-of-band confirmation, and have the operations agent submit a new request. The original payment is never revived or executed, and real recipient verification remains outside the application's current capabilities.
+- **Rationale:** A human anomaly override is not authorization to change vendor identity/payment destination. Re-verification is separate and must not retroactively approve the flagged request.
+- **Scope:** UI and case lifecycle only. Added a new authenticated, same-origin, tenant-scoped, nonpaying POST endpoint that creates an immutable recipient investigation case **only after** a reviewer has already declined an ESCALATE. An eligible case may then use the existing, explicitly synthetic PayPal Sandbox recipient simulation or reject action. Existing payment status stays DECLINED, recorded original outcome stays ESCALATE, and zero payment or new recipient trust is created by opening the case. Existing sandbox-only recipient change remains explicitly **not independent real-world verification**. Added source-context guide, case-specific navigation, and database/UI/route regression tests. This is no longer a UI-only PR.
+- **Rejected alternative:** Enable Accept by ignoring `trustedDestinationCurrent` or by treating the explanation as vendor verification.
+
+
 ## 2026-10-20 PT — UI/UX restart around the original PRD (PR #60)
 
 **Decision:** Discard the first upload-centric primary UX. Rebuild Dashboard, Payments, Vendors, Policies, Activity, sign-in and standing-mandate screens as one financial-operations product. Use a charcoal/copper shared design system, a consistent primary sidebar and incident-first dashboard, not cosmetic additions to old panels.
