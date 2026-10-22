@@ -447,3 +447,27 @@ body:has(.mg-login-page)::before{display:none;}
   .mg-attention .mg-status-hint{font-size:9px;line-height:1.25;margin-top:5px;}
   .mg-attention .mg-status-count{font-size:24px;}
 }
+
+
+/* Financial review: an untrusted recipient is a hard authority boundary,
+   not an accidentally disabled button. Keep the remedy obvious and linked. */
+.mg-shell .mg-review-block {
+  border:1px solid #825348;
+  border-left:4px solid #e4a08b;
+  border-radius:8px;
+  padding:18px 20px;
+  margin:20px 0;
+  background:#312622;
+  color:#f4ddd4;
+}
+.mg-shell .mg-review-block strong {display:block;font-size:15px;line-height:1.45;}
+.mg-shell .mg-review-block p {margin:10px 0 0;color:#e1c4b6;font-size:13px;line-height:1.6;}
+.mg-shell .mg-review-block a {
+  display:inline-flex;gap:8px;align-items:center;
+  margin-top:15px;color:#f5ce9b;font-size:13px;font-weight:800;
+}
+.mg-shell .mg-review-block .mg-review-block-note {font-size:11px;color:#cbb9ae;}
+.mg-shell .mg-review-block-note {font-size:12px;color:#c3aea0;line-height:1.6;}
+@media(max-width:560px) {
+  .mg-shell .mg-review-block {padding:15px;}
+}
