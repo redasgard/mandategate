@@ -23,8 +23,8 @@ describe("vendor trust remediation walkthrough",()=>{
     expect(html).toContain("invoice-requested@example.invalid");
     expect(html).toContain("original-known@example.test");
     expect(html).toContain("No re-verification case exists");
-    expect(html).toContain("does not implement independent real-world");
-    expect(html).toContain("first use Decline without payout");
+    expect(html).toContain("To open an investigation");
+    expect(html).toContain("first decline the blocked payment without payout");
     expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("fresh payment request");
     expect(html).toContain('href="/payments/'+ctx.requestId+'"');
@@ -37,15 +37,15 @@ describe("vendor trust remediation walkthrough",()=>{
     };
     const html=render(denied,ctx.requestId);
     expect(html).toContain('href="#vendor-case-22222222-2222-4222-8222-222222222222"');
-    expect(html).toContain("reject the attempted recipient");
-    expect(html).toContain("simulate out-of-band verification in PayPal Sandbox only");
-    expect(html).toContain("does not authenticate a real vendor");
+    expect(html).toContain("reject the change");
+    expect(html).toContain("approve the independently verified recipient");
+    expect(html).toContain("original denied or declined payment remains stopped");
   });
   it("does not offer an action for already resolved or ineligible cases",()=>{
     const resolved={...ctx,caseId:"22222222-2222-4222-8222-222222222222",
-      caseResolution:"SIMULATED_REVERIFIED",outcome:"DENY",requestStatus:"DENIED"};
+      caseResolution:"VERIFIED",outcome:"DENY",requestStatus:"DENIED"};
     const html=render(resolved,ctx.requestId);
-    expect(html).toContain("Resolution already recorded: SIMULATED_REVERIFIED");
+    expect(html).toContain("Resolution already recorded: VERIFIED");
     expect(html).not.toContain("Open this exact recorded trust case");
     const escalated={...ctx,caseId:"22222222-2222-4222-8222-222222222222"};
     expect(render(escalated,ctx.requestId)).toContain("No eligible case action");

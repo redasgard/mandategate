@@ -41,7 +41,7 @@ async function deny(dest:string){
 async function current(){
   return pool.query("select id,destination,trusted from vendor_destinations where vendor_id=$1 order by created_at,id",[vendorId]);
 }
-function proof(ref:string){return "synthetic-demo:"+ref;}
+function proof(ref:string){return "vendor-case/"+ref;}
 describe("separate verified vendor destination workflow",()=>{
   it("creates re-verification-required case atomically with DENY, not payment",async()=>{
     const denied=await deny(receiverA);
@@ -68,10 +68,11 @@ describe("separate verified vendor destination workflow",()=>{
       explanation:"Cannot override destination mismatch using review",
     })).rejects.toMatchObject({code:"ESCALATION_NOT_PENDING"});
     await expect(resolveVendorReverificationCase({
-      actorUserId:randomUUID(),caseId:caseA,action:"SIMULATE_VERIFY",
+      actorUserId:randomUUID(),caseId:caseA,action:"VERIFY",
       reason:"Unauthorized foreign account changes are forbidden",
-      evidenceReference:proof("external-evidence-is-synthetic-123"),
-      confirmedSyntheticSimulation:true,
+      evidenceReference:proof("external-contact-ticket-123"),
+      verificationMethod:"KNOWN_CONTACT_CALLBACK",
+      confirmedIndependentVerification:true,
     })).rejects.toMatchObject({code:"VENDOR_REVERIFICATION_NOT_AUTHORIZED"});
   });
   it("reject action leaves trusted destination untouched and is terminal",async()=>{
@@ -79,7 +80,8 @@ describe("separate verified vendor destination workflow",()=>{
       actorUserId:actor,caseId:caseA,action:"REJECT",
       reason:"Retarget attempt rejected; vendor was not independently confirmed",
       evidenceReference:proof("rejected-suspicious-invoice-123"),
-      confirmedSyntheticSimulation:false,
+      verificationMethod:null,
+      confirmedIndependentVerification:false,
     });
     expect(resolved).toMatchObject({status:"REJECTED",originalPaymentDecision:"DENY",originalPaymentExecuted:false});
     expect((await current()).rows.find(x=>x.trusted)?.destination).toBe(trusted);
@@ -87,36 +89,41 @@ describe("separate verified vendor destination workflow",()=>{
       actorUserId:actor,caseId:caseA,action:"REJECT",
       reason:"Second terminal resolution must always be rejected",
       evidenceReference:proof("duplicate-case-resolution-987"),
-      confirmedSyntheticSimulation:false,
+      verificationMethod:null,
+      confirmedIndependentVerification:false,
     })).rejects.toMatchObject({code:"VENDOR_REVERIFICATION_ALREADY_RESOLVED"});
   });
-  it("sandbox-only simulation is distinct, creates new trust but cannot execute old DENY",async()=>{
+  it("independent recipient approval never executes an original DENY",async()=>{
     const next=await deny(receiverB);
     requestB=next.requestId;
     const q=await pool.query("select id from vendor_reverification_cases where payment_request_id=$1",[requestB]);
     caseB=q.rows[0].id;
     const arg={
-      actorUserId:actor,caseId:caseB,action:"SIMULATE_VERIFY" as const,
-      reason:"This is a sandbox-only fake out-of-band vendor confirmation",
-      evidenceReference:proof("demo-confirmed-new-recipient-1234"),
-      confirmedSyntheticSimulation:true,
+      actorUserId:actor,caseId:caseB,action:"VERIFY" as const,
+      reason:"Reviewer checked registered vendor contact and obtained signed instructions",
+      evidenceReference:proof("verified-new-recipient-1234"),
+      verificationMethod:"KNOWN_CONTACT_CALLBACK" as const,
+      confirmedIndependentVerification:true,
     };
     await expect(resolveVendorReverificationCase({
-      ...arg,confirmedSyntheticSimulation:false,
-    })).rejects.toMatchObject({code:"SYNTHETIC_REVERIFICATION_NOT_ACKNOWLEDGED"});
+      ...arg,confirmedIndependentVerification:false,
+    })).rejects.toMatchObject({code:"VENDOR_VERIFICATION_ATTESTATION_REQUIRED"});
+    await expect(resolveVendorReverificationCase({
+      ...arg,verificationMethod:null,
+    })).rejects.toMatchObject({code:"VENDOR_VERIFICATION_METHOD_REQUIRED"});
     process.env.PAYPAL_BASE_URL="https://api-m.paypal.com";
     await expect(resolveVendorReverificationCase(arg))
-      .rejects.toMatchObject({code:"SYNTHETIC_REVERIFICATION_SANDBOX_ONLY"});
+      .rejects.toMatchObject({code:"VENDOR_VERIFICATION_PAYMENT_ENV_UNSUPPORTED"});
     process.env.PAYPAL_BASE_URL="https://api-m.sandbox.paypal.com";
     const resolved=await resolveVendorReverificationCase(arg);
     expect(resolved).toMatchObject({
-      status:"SIMULATED_REVERIFIED",originalPaymentDecision:"DENY",
-      externallyVerified:false,syntheticEvidenceOnly:true,
+      status:"VERIFIED",originalPaymentDecision:"DENY",
+      verificationMethod:"KNOWN_CONTACT_CALLBACK",verificationBasis:"ADMIN_ATTESTATION",
     });
     const versions=await current();
     expect(versions.rows.filter(x=>x.trusted).map(x=>x.destination)).toEqual([receiverB]);
     const cases=await listVendorTrustCases(actor);
-    expect(cases.some(x=>x.id===caseB && x.resolution==="SIMULATED_REVERIFIED")).toBe(true);
+    expect(cases.some(x=>x.id===caseB && x.resolution==="VERIFIED")).toBe(true);
     expect((await pool.query("select status from payment_requests where id=$1",[requestB])).rows[0].status).toBe("DENIED");
     const p=await postgresExecutionStore.getAuthoritativePayment(requestB);
     expect(p?.decisionOutcome).toBe("DENY");

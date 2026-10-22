@@ -109,21 +109,22 @@ describe("post-decision recipient change -> safe independent trust investigation
       id:caseId,original_outcome:"ESCALATE",original_payment_status:"DECLINED",
     });
   });
-  it("simulated verification is sandbox-only and can never reopen original payment",async()=>{
+  it("recorded independent recipient verification never reopens the original payment",async()=>{
     const request={
-      actorUserId:actor,caseId,action:"SIMULATE_VERIFY" as const,
-      reason:"Synthetic-only confirmed recipient in sandbox demonstration",
-      evidenceReference:"synthetic-demo:posthoc-escalation-recipient-1234",
-      confirmedSyntheticSimulation:true,
+      actorUserId:actor,caseId,action:"VERIFY" as const,
+      reason:"Reviewer confirmed recipient by callback to known vendor contact",
+      evidenceReference:"external-record/posthoc-escalation-recipient-1234",
+      verificationMethod:"KNOWN_CONTACT_CALLBACK" as const,
+      confirmedIndependentVerification:true,
     };
     process.env.PAYPAL_BASE_URL="https://api-m.paypal.com";
     await expect(resolveVendorReverificationCase(request))
-      .rejects.toMatchObject({code:"SYNTHETIC_REVERIFICATION_SANDBOX_ONLY"});
+      .rejects.toMatchObject({code:"VENDOR_VERIFICATION_PAYMENT_ENV_UNSUPPORTED"});
     process.env.PAYPAL_BASE_URL="https://api-m.sandbox.paypal.com";
     const result=await resolveVendorReverificationCase(request);
     expect(result).toMatchObject({
       originalPaymentDecision:"ESCALATE",originalPaymentExecuted:false,
-      syntheticEvidenceOnly:true,externallyVerified:false,
+      verificationBasis:"ADMIN_ATTESTATION",verificationMethod:"KNOWN_CONTACT_CALLBACK",
     });
     const status=await pool.query("select status from payment_requests where id=$1",[paymentId]);
     expect(status.rows[0].status).toBe("DECLINED");
@@ -133,7 +134,7 @@ describe("post-decision recipient change -> safe independent trust investigation
     await expect(recordPaymentEscalationReview({
       requestId:paymentId,reviewerId:actor,action:"ACCEPT",
       expectedSnapshotSha256:"a".repeat(64),
-      explanation:"Cannot resurrect a declined request after trust simulation",
+      explanation:"Cannot resurrect a declined request after destination review",
     })).rejects.toMatchObject({code:"ESCALATION_NOT_PENDING"});
     const newTrust=await pool.query(
       "select destination from vendor_destinations where vendor_id=$1 and trusted=true",

@@ -66,7 +66,7 @@ export default async function AutopayPage(){
         <div className="mg-case-content">
           <p className="mg-policy-description">Select an eligible trusted vendor and a time-limited budget.
             Grants last 1 to 30 days; activation confirmation expires after 15 minutes.
-            The hackathon Sandbox execution fence still prevents automatic provider payouts.</p>
+            Automatic provider dispatch is not enabled on this deployment. A standing mandate never bypasses policy and recipient-trust checks.</p>
           {data.vendors.length ? <MandatePrepareForm vendors={data.vendors}/> :
             <div className="mg-compact-empty">No eligible vendors. A vendor needs exactly one trusted recipient, one active policy, and no unresolved trust case.</div>}
         </div>
