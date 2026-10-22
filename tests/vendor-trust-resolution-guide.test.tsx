@@ -24,7 +24,8 @@ describe("vendor trust remediation walkthrough",()=>{
     expect(html).toContain("original-known@example.test");
     expect(html).toContain("No re-verification case exists");
     expect(html).toContain("does not offer a real, independent recipient-verification");
-    expect(html).toContain("cannot use the DENY-only case form");
+    expect(html).toContain("first use Decline without payout");
+    expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("fresh payment request");
     expect(html).toContain('href="/payments/'+ctx.requestId+'"');
     expect(html).not.toContain("Open this exact recorded trust case");
@@ -48,6 +49,8 @@ describe("vendor trust remediation walkthrough",()=>{
     expect(html).not.toContain("Open this exact recorded trust case");
     const escalated={...ctx,caseId:"22222222-2222-4222-8222-222222222222"};
     expect(render(escalated,ctx.requestId)).toContain("No eligible case action");
+    const declined={...escalated,requestStatus:"DECLINED"};
+    expect(render(declined,ctx.requestId)).toContain("Open this exact recorded trust case");
   });
   it("does not disclose any recipient for an unknown or unauthorized payment",()=>{
     const html=render(null,ctx.requestId);
