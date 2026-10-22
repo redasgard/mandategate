@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {useRouter} from "next/navigation";
 import {useState} from "react";
 
@@ -65,16 +66,30 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
   }
   return <section className="review-stage">
     <p className="eyebrow">Human escalation / exact request state</p>
-    <h2>Accept or decline the flagged payment</h2>
+    <h2>{trustedDestinationCurrent?"Review the flagged payment":"Acceptance blocked by vendor trust"}</h2>
     <p className="muted">
-      The reviewer may override a behavioral anomaly but can never override
-      a mismatched trusted destination. The original automated decision
-      remains in the activity trail. Accept defaults to immediate Sandbox
-      payout with a separate server-side authority recheck.
-      {payoutsDisabled ? " In this synthetic preview, accepting and paying are disabled; declining a request remains available." : ""}
+      A reviewer can accept an eligible behavioral anomaly but cannot override
+      the current trusted payment destination. Every human decision is recorded
+      without changing the original automated outcome.
     </p>
-    {!trustedDestinationCurrent?<p className="error">
-      Trusted destination changed. Resolve vendor trust before any approval.
+    {!trustedDestinationCurrent?<div className="mg-review-block" role="alert" id="review-accept-blocker">
+      <strong>Recipient no longer matches the trusted vendor destination.</strong>
+      <p>
+        This is a security block, not a missing form field. An explanation or
+        attachment cannot authorize a new recipient. You may decline this
+        payment without sending funds, or investigate the vendor record.
+      </p>
+      <Link href="/vendors#vendor-trust-investigations">
+        Investigate vendor trust <span aria-hidden="true">↗</span>
+      </Link>
+      <p className="mg-review-block-note">
+        If a recipient change is legitimate, independently verify it and
+        have the payment evaluated again. Vendor re-verification does not
+        retrospectively approve this request.
+      </p>
+    </div>:null}
+    {payoutsDisabled?<p className="mg-review-block-note" role="status">
+      Sandbox execution is disabled on this service. Declining remains available.
     </p>:null}
     <label>Required explanation (16–2000 characters)
       <textarea value={explanation} maxLength={2000} rows={4}
@@ -89,10 +104,12 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         onClick={()=>void handle("DECLINE")}>
         {busy?"Reviewing…":"Decline without payout"}
       </button>
-      <button type="button" disabled={busy||payoutsDisabled||!trustedDestinationCurrent||explanation.trim().length<16}
-        onClick={()=>void handle("ACCEPT")}>
-        {payoutsDisabled?"Accept unavailable in preview":busy?"Reviewing…":"Accept and execute PayPal Sandbox"}
-      </button>
+      {trustedDestinationCurrent&&!payoutsDisabled
+        ?<button type="button" disabled={busy||explanation.trim().length<16}
+          onClick={()=>void handle("ACCEPT")}>
+          {busy?"Reviewing…":"Accept and execute PayPal Sandbox"}
+        </button>
+        :null}
     </div>
     {notice?<p role="status" className="review-notice">{notice}</p>:null}
     {error?<p role="alert" className="error">{error}</p>:null}
