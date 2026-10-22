@@ -24,7 +24,7 @@ describe("vendor trust remediation walkthrough",()=>{
     expect(html).toContain("original-known@example.test");
     expect(html).toContain("No re-verification case exists");
     expect(html).toContain("To open an investigation");
-    expect(html).toContain("first use Decline without payout");
+    expect(html).toContain("first decline the blocked payment without payout");
     expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("fresh payment request");
     expect(html).toContain('href="/payments/'+ctx.requestId+'"');
@@ -37,7 +37,7 @@ describe("vendor trust remediation walkthrough",()=>{
     };
     const html=render(denied,ctx.requestId);
     expect(html).toContain('href="#vendor-case-22222222-2222-4222-8222-222222222222"');
-    expect(html).toContain("reject the attempted recipient");
+    expect(html).toContain("reject the change");
     expect(html).toContain("approve the independently verified recipient");
     expect(html).toContain("original denied or declined payment remains stopped");
   });
