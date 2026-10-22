@@ -5,12 +5,20 @@ import { pool } from "@/src/db/pool";
 import { OperationsHeader } from "@/app/components/operations-header";
 import { listVendorTrustCases } from "@/src/vendor-trust/reverification";
 import { VendorReverificationActions } from "./reverification-actions";
+import { VendorTrustResolutionGuide } from "./trust-resolution-guide";
+import { readVendorTrustRequestContext } from "@/src/vendor-trust/review-context";
 
-export default async function VendorsPage() {
+export default async function VendorsPage({searchParams}:{
+  searchParams?:Promise<{payment?:string|string[]}>;
+}={}) {
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
+  const requested=(await searchParams)?.payment;
+  const paymentId=typeof requested==="string"&&requested.length<=128?requested:undefined;
+  const context=paymentId&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(paymentId)
+    ?await readVendorTrustRequestContext(session.user.id,paymentId):null;
   const [cases,records]=await Promise.all([
-    listVendorTrustCases(session.user.id),
+    listVendorTrustCases(session.user.id,paymentId),
     pool.query([
       "select v.id,v.name,o.name as organization_name,",
       "vd.destination as trusted_destination,vd.destination_count",
@@ -44,6 +52,12 @@ export default async function VendorsPage() {
           <small>Recorded change investigations</small>
         </div>
       </section>
+      {paymentId
+        ?<VendorTrustResolutionGuide paymentId={paymentId} context={context}/>
+        :<details className="mg-trust-help">
+          <summary>How to resolve a changed vendor recipient</summary>
+          <VendorTrustResolutionGuide context={null}/>
+        </details>}
       <section className="mg-surface" aria-label="Trusted recipients">
         <div className="mg-table-head"><div><h2>Trusted recipients</h2>
           <p>Invoice instructions never overwrite these registered payment destinations.</p></div></div>
@@ -70,18 +84,23 @@ export default async function VendorsPage() {
           Vendor identity and issuer evidence still require independent validation.
         </p>
       </section>
-      <section className="mg-surface mg-investigation-surface" aria-label="Vendor trust investigations">
+      <section id="vendor-trust-investigations" className="mg-surface mg-investigation-surface" aria-label="Vendor trust investigations">
         <div className="mg-table-head"><div><h2>Destination change investigations</h2>
           <p>Changes are separate trust events. Ordinary payment approval cannot resolve a mismatch.</p></div>
           <span className="mg-mini-state">{cases.length} recorded</span></div>
         <div className="mg-case-content">
           {cases.length ? <div className="mg-trust-cases">
-            {cases.map(c=><VendorReverificationActions key={c.id} item={{
+            {[...cases].sort((a,b)=>Number(b.payment_request_id===paymentId)-Number(a.payment_request_id===paymentId)).map(c=><div key={c.id} id={"vendor-case-"+c.id}>
+              <VendorReverificationActions item={{
               id:c.id,vendorName:c.vendor_name,
               status:c.resolution??"REVERIFICATION_REQUIRED",
               requestedDestination:c.requested_destination,
               trustedDestination:c.current_trusted_destination??null,
-            }}/>)}
+              originalOutcome:c.original_outcome,
+              originalPaymentStatus:c.original_payment_status,
+            }} sandboxSimulationEnabled={
+              process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com"
+            }/></div>)}
           </div> : <p className="mg-compact-empty">No destination mismatch cases have been recorded.</p>}
         </div>
       </section>

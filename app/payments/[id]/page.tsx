@@ -4,6 +4,7 @@ import { auth } from "@/src/auth/auth";
 import { getDecisionDetail } from "@/src/db/views";
 import { ExecutePaymentButton } from "./execute-button";
 import { EscalationReview } from "./escalation-review";
+import { StartVendorTrustInvestigation } from "./vendor-trust-case-action";
 import { getEscalationSnapshot } from "@/src/history/escalation-review";
 import { DecisionEvidencePanel } from "./decision-evidence";
 import { pool } from "@/src/db/pool";
@@ -87,7 +88,7 @@ export default async function PaymentDetailPage({
           <div><dt>Request state</dt><dd>{row.status}</dd></div>
           <div><dt>Invoice / agent requested recipient</dt><dd className="mono">{row.requestedDestination}</dd></div>
           <div><dt>Current vendor trust record</dt><dd className="mono">{trustDisplay.destination}</dd></div>
-          <div><dt>Recipient comparison</dt><dd>{trustDisplay.label}{trustDisplay.isMismatch ? <> · <Link href="/vendors">Investigate vendor trust</Link></> : null}</dd></div>
+          <div><dt>Recipient comparison</dt><dd>{trustDisplay.label}{trustDisplay.isMismatch ? <> · <Link href={"/vendors?payment="+encodeURIComponent(row.requestId)+"#trust-review"}>Resolve vendor trust</Link></> : null}</dd></div>
           <div><dt>PayPal execution</dt><dd>{paymentExecutionLabel(row.executionStatus)}</dd></div>
         </dl>
         <p className="ops-context-note">An ALLOW decision does not mean payment was sent. The invoice and agent-provided recipient cannot update a vendor's trusted destination.</p>
@@ -109,13 +110,18 @@ export default async function PaymentDetailPage({
       ? <section className="panel detail" aria-label="Human escalation review">
           <EscalationReview requestId={row.requestId}
             snapshotSha256={snapshot.snapshotSha256}
-            trustedDestinationCurrent={snapshot.trustedDestinationCurrent}
+            trustedDestinationCurrent={snapshot.trustedDestinationCurrent && !trustDisplay.isMismatch}
+            requestedDestination={row.requestedDestination}
+            currentTrustedDestination={trustDisplay.destination}
             payoutsDisabled={payoutsDisabled}/>
         </section> : null}
     {recordedReview?.rows[0] ? <section className="panel detail" aria-label="Recorded human decision">
       <p className="eyebrow">Prior human decision</p>
       <p><strong>{recordedReview.rows[0].action}</strong> · {recordedReview.rows[0].explanation}</p>
     </section> : null}
+    {row.outcome==="ESCALATE" && row.status==="DECLINED" &&
+      recordedReview?.rows[0]?.action==="DECLINE" && trustDisplay.isMismatch
+      ? <StartVendorTrustInvestigation requestId={row.requestId}/> : null}
 
     <section className="panel ops-payment-detail" aria-label="PayPal provider outcome">
       <div className="panel-head"><div>

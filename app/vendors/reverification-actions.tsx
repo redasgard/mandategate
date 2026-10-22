@@ -6,8 +6,11 @@ import {useState} from "react";
 type Case={
   id:string;vendorName:string;status:string;
   requestedDestination:string;trustedDestination:string|null;
+  originalOutcome:string;originalPaymentStatus:string;
 };
-export function VendorReverificationActions({item}:{item:Case}){
+export function VendorReverificationActions({item,sandboxSimulationEnabled}:{
+  item:Case;sandboxSimulationEnabled:boolean;
+}){
   const router=useRouter();
   const [action,setAction]=useState<"REJECT"|"SIMULATE_VERIFY">("REJECT");
   const [reason,setReason]=useState("");
@@ -35,7 +38,8 @@ export function VendorReverificationActions({item}:{item:Case}){
       if(!response.ok)throw Error(payload.error??"VENDOR_REVERIFICATION_FAILED");
       setNotice(action==="REJECT"
         ?"Suspicious destination rejected. Vendor trust unchanged."
-        :"Simulated re-verification recorded. The original denied payment stays denied.");
+        :"Simulated re-verification recorded. This is not external vendor authentication. "+
+          "The original "+item.originalOutcome+" payment stays "+item.originalPaymentStatus+".");
       router.refresh();
     }catch(err){setError(err instanceof Error?err.message:"VENDOR_REVERIFICATION_FAILED");}
     finally{setBusy(false);}
@@ -48,33 +52,40 @@ export function VendorReverificationActions({item}:{item:Case}){
       <strong> {item.requestedDestination}</strong></p>
     <p>Current approved vendor destination: <strong>{item.trustedDestination??"None"}</strong></p>
     <p>Current case state: <strong>{item.status}</strong></p>
+    <p>Original payment: <strong>{item.originalOutcome} / {item.originalPaymentStatus}</strong>.
+      This trust case cannot reopen or execute that payment.</p>
     {item.status==="REVERIFICATION_REQUIRED"?<>
+      <p className="muted">Choose how to handle the attempted recipient. Reject leaves the trusted
+        destination unchanged. A simulated re-verification changes a Sandbox-only
+        trust record after explicit acknowledgment; it does not prove a real callback.
+        Any future payment requires a new agent request and policy evaluation.</p>
       <label>Disposition
         <select value={action} onChange={e=>{setAction(e.target.value as typeof action);setConfirmed(false);}}>
           <option value="REJECT">Reject attempted destination, keep known trusted address</option>
-          <option value="SIMULATE_VERIFY">Synthetic demo-only out-of-band verification</option>
+          {sandboxSimulationEnabled?<option value="SIMULATE_VERIFY">Simulate independently verified recipient (PayPal Sandbox only)</option>:null}
         </select>
       </label>
       <label>Required reason (at least 16 characters)
         <textarea rows={3} maxLength={2000} value={reason} onChange={e=>setReason(e.target.value)}/>
       </label>
-      <label>Evidence reference, clearly labeled synthetic
+      <label>Synthetic test evidence reference (must start with synthetic-demo:)
         <input value={reference} onChange={e=>setReference(e.target.value)}
           placeholder="synthetic-demo:reviewer-test-record-1234"/>
       </label>
-      {action==="SIMULATE_VERIFY"?<label className="review-checkbox">
+      {action==="SIMULATE_VERIFY" && sandboxSimulationEnabled?<label className="review-checkbox">
         <input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>
         I acknowledge this is a synthetic demonstration, not a real vendor confirmation.
         Only PayPal Sandbox trust records may be changed.
       </label>:null}
       <button disabled={busy||reason.trim().length<16||reference.length<28||
-        (action==="SIMULATE_VERIFY"&&!confirmed)} onClick={()=>void resolve()}>
+        (action==="SIMULATE_VERIFY"&&(!confirmed||!sandboxSimulationEnabled))} onClick={()=>void resolve()}>
         {busy?"Recording exact trust resolution…":
           action==="REJECT"?"Reject destination without payment":
           "Record simulated out-of-band re-verification"}
       </button>
       {notice?<p role="status" className="review-notice">{notice}</p>:null}
       {error?<p role="alert" className="error">{error}</p>:null}
-    </>:<p className="muted">Case is resolved. The original payment decision remains DENY.</p>}
+    </>:<p className="muted">Case is resolved. The original decision remains {item.originalOutcome};
+      the payment remains {item.originalPaymentStatus}. Neither is reversed by this case.</p>}
   </section>;
 }
