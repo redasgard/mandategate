@@ -471,3 +471,51 @@ body:has(.mg-login-page)::before{display:none;}
 @media(max-width:560px) {
   .mg-shell .mg-review-block {padding:15px;}
 }
+
+
+/* Recipient trust remediation must explain steps and expose exact evidence. */
+.mg-shell .mg-review-recipient-diff,.mg-shell .mg-trust-comparison{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;margin:14px 0;
+}
+.mg-shell .mg-review-recipient-diff>div,.mg-shell .mg-trust-comparison>div{
+  border:1px solid #675044;background:#211e1d;border-radius:6px;
+  padding:13px;overflow-wrap:anywhere;
+}
+.mg-shell .mg-review-recipient-diff span,.mg-shell .mg-trust-comparison span{
+  display:block;font-size:10px;letter-spacing:.04em;color:#c4a999;line-height:1.5;
+  margin-bottom:8px;
+}
+.mg-shell .mg-review-recipient-diff strong,.mg-shell .mg-trust-comparison strong{
+  display:block;font-size:13px;line-height:1.45;color:#f8e2cc;overflow-wrap:anywhere;
+}
+.mg-shell .mg-review-recovery{padding:0 0 0 20px;margin:15px 0;color:#ecd5c8;
+  font-size:12px;line-height:1.7;}
+.mg-shell .mg-review-recovery li{padding:2px 0 8px 3px;}
+.mg-shell .mg-trust-walkthrough{padding:23px;}
+.mg-shell .mg-trust-walkthrough h2{font-size:22px;letter-spacing:-.03em;margin:10px 0;}
+.mg-shell .mg-trust-walkthrough .mg-trust-intro{font-size:13px;line-height:1.65;color:#a7b4ae;
+  margin:0;max-width:760px;}
+.mg-shell .mg-trust-comparison{margin:22px 0 12px;}
+.mg-shell .mg-trust-comparison>div{background:#272525;border-color:#504644;}
+.mg-shell .mg-trust-comparison>p{grid-column:1/-1;margin:0;font-size:11px;color:#bdc6be;}
+.mg-shell .mg-trust-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  list-style:decimal;gap:12px;counter-reset:none;margin:20px 0 0;padding:0 0 0 23px;}
+.mg-shell .mg-trust-steps li{padding:12px 15px 13px 6px;color:#cfb88e;}
+.mg-shell .mg-trust-steps li::marker{font-size:14px;font-weight:800;}
+.mg-shell .mg-trust-steps strong{display:block;color:#e8e9df;font-size:14px;line-height:1.45;}
+.mg-shell .mg-trust-steps p{font-size:12px;color:#a3b2aa;line-height:1.65;margin:8px 0;}
+.mg-shell .mg-trust-steps a,.mg-shell .mg-trust-walkthrough>a{font-size:12px;font-weight:800;color:#f1c58c;}
+.mg-shell .mg-trust-steps small{display:block;color:#8f9c97;font-size:10px;line-height:1.6;margin-top:8px;}
+.mg-shell .mg-trust-steps .mg-trust-limit{border-left:3px solid #db9c7d;
+  background:#312820;padding:10px 12px;color:#dfc5b5;border-radius:0 5px 5px 0;}
+.mg-shell #vendor-trust-investigations,.mg-shell #trust-review,.mg-shell [id^="vendor-case-"]{
+  scroll-margin-top:26px;
+}
+@media(max-width:760px){
+  .mg-shell .mg-trust-steps{grid-template-columns:1fr;gap:2px;}
+}
+@media(max-width:560px){
+  .mg-shell .mg-review-recipient-diff,.mg-shell .mg-trust-comparison{grid-template-columns:1fr;}
+  .mg-shell .mg-trust-walkthrough{padding:17px;}
+}
