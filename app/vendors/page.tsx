@@ -18,7 +18,7 @@ export default async function VendorsPage({searchParams}:{
   const context=paymentId&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(paymentId)
     ?await readVendorTrustRequestContext(session.user.id,paymentId):null;
   const [cases,records]=await Promise.all([
-    listVendorTrustCases(session.user.id),
+    listVendorTrustCases(session.user.id,paymentId),
     pool.query([
       "select v.id,v.name,o.name as organization_name,",
       "vd.destination as trusted_destination,vd.destination_count",
