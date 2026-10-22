@@ -55,10 +55,21 @@ export async function resolveVendorReverificationCase(input:{
       [input.caseId],
     );
     if(previous.rows[0])reject("VENDOR_REVERIFICATION_ALREADY_RESOLVED");
-    if(row.status!=="DENIED"||row.outcome!=="DENY"||
-       !Array.isArray(row.reason_codes) ||
-       !row.reason_codes.includes("DESTINATION_MISMATCH"))
-      reject("VENDOR_REVERIFICATION_NOT_A_DENIED_MISMATCH");
+    const originalDeniedMismatch=row.status==="DENIED" && row.outcome==="DENY" &&
+      Array.isArray(row.reason_codes) && row.reason_codes.includes("DESTINATION_MISMATCH");
+    // A separate, authenticated, already-declined ESCALATE may also have a
+    // case when trust changed AFTER its original behavioral evaluation.
+    // The old request stays terminal and cannot be revived by changing trust.
+    let declinedEscalation=false;
+    if(row.status==="DECLINED" && row.outcome==="ESCALATE"){
+      const reviewed=await client.query(
+        "select 1 from payment_escalation_reviews where payment_request_id=$1 and action='DECLINE' limit 1",
+        [row.payment_request_id],
+      );
+      declinedEscalation=reviewed.rows.length===1;
+    }
+    if(!originalDeniedMismatch && !declinedEscalation)
+      reject("VENDOR_REVERIFICATION_INELIGIBLE_CASE");
     if(digest(row.requested_destination)!==row.observed_destination_sha256)
       reject("VENDOR_DESTINATION_SOURCE_TAMPERED");
     let newDestinationId:string|null=null;
@@ -102,7 +113,7 @@ export async function resolveVendorReverificationCase(input:{
       vendorId:row.vendor_id,requestId:row.payment_request_id,
       status:input.action==="SIMULATE_VERIFY"?"SIMULATED_REVERIFIED":"REJECTED",
       newDestinationId,
-      originalPaymentDecision:"DENY" as const,
+      originalPaymentDecision:row.outcome as "DENY"|"ESCALATE",
       originalPaymentExecuted:false as const,
       externallyVerified:false as const,
       syntheticEvidenceOnly:true as const,
@@ -134,4 +145,87 @@ export async function listVendorTrustCases(adminUserId:string,focusPaymentId?:st
     "c.created_at desc limit 100",
   ].join(" "),[adminUserId,focusPaymentId??null]);
   return result.rows;
+}
+
+
+/**
+ * Start an independently logged recipient investigation ONLY AFTER an
+ * ESCALATE was explicitly DECLINED by an active organization administrator.
+ * Opening a case never changes trust, resurrects a request or sends funds.
+ */
+export async function openTrustCaseForDeclinedEscalation(input:{
+  actorUserId:string;requestId:string;
+}){
+  if(!input.actorUserId || !input.requestId)
+    reject("VENDOR_CASE_INPUT_INVALID",422);
+  const client=await pool.connect();
+  try{
+    await client.query("begin");
+    const payment=await client.query([
+      "select pr.id,pr.organization_id,pr.vendor_id,",
+      "pr.requested_destination,pr.status,pd.outcome",
+      "from payment_requests pr",
+      "join payment_decisions pd on pd.payment_request_id=pr.id",
+      "where pr.id=$1 for update of pr",
+    ].join(" "),[input.requestId]);
+    const row=payment.rows[0];
+    if(!row)reject("VENDOR_CASE_PAYMENT_NOT_FOUND",404);
+    const membership=await client.query([
+      "select 1 from organization_admin_memberships",
+      "where user_id=$1 and organization_id=$2",
+      "and role='ADMIN' and active=true for share",
+    ].join(" "),[input.actorUserId,row.organization_id]);
+    if(membership.rows.length!==1)reject("VENDOR_CASE_PAYMENT_NOT_FOUND",404);
+    if(row.status!=="DECLINED"||row.outcome!=="ESCALATE")
+      reject("VENDOR_CASE_REQUIRES_DECLINED_ESCALATION");
+    const review=await client.query(
+      "select 1 from payment_escalation_reviews where payment_request_id=$1 and action='DECLINE' limit 1",
+      [input.requestId],
+    );
+    if(review.rows.length!==1)reject("VENDOR_CASE_REQUIRES_RECORDED_DECLINE");
+    const executed=await client.query(
+      "select 1 from payment_executions where payment_request_id=$1 limit 1",
+      [input.requestId],
+    );
+    if(executed.rows.length)reject("VENDOR_CASE_EXECUTION_EXISTS");
+    const vendor=await client.query([
+      "select id from vendors",
+      "where id=$1 and organization_id=$2 for share",
+    ].join(" "),[row.vendor_id,row.organization_id]);
+    if(vendor.rows.length!==1)reject("VENDOR_CASE_VENDOR_NOT_FOUND");
+    const trusted=await client.query(
+      "select destination from vendor_destinations where vendor_id=$1 and trusted=true for share",
+      [row.vendor_id],
+    );
+    if(trusted.rows.length===1 && trusted.rows[0].destination===row.requested_destination)
+      reject("VENDOR_CASE_RECIPIENT_ALREADY_TRUSTED");
+    const existing=await client.query(
+      "select id from vendor_reverification_cases where payment_request_id=$1",
+      [input.requestId],
+    );
+    if(existing.rows[0]){
+      await client.query("commit");
+      return {caseId:String(existing.rows[0].id),paymentRequestId:input.requestId,
+        replayed:true,originalPaymentStatus:"DECLINED" as const,
+        paymentAuthorized:false as const,paymentExecuted:false as const};
+    }
+    const created=await client.query([
+      "insert into vendor_reverification_cases",
+      "(organization_id,vendor_id,payment_request_id,observed_destination_sha256)",
+      "values($1,$2,$3,$4) returning id",
+    ].join(" "),[
+      row.organization_id,row.vendor_id,input.requestId,
+      digest(String(row.requested_destination)),
+    ]);
+    await client.query("commit");
+    return {caseId:String(created.rows[0].id),paymentRequestId:input.requestId,
+      replayed:false,originalPaymentStatus:"DECLINED" as const,
+      paymentAuthorized:false as const,paymentExecuted:false as const};
+  }catch(error){
+    await client.query("rollback").catch(()=>undefined);
+    const pg=error as {code?:string;cause?:{code?:string}};
+    if((pg.cause?.code??pg.code)==="23505")
+      reject("VENDOR_CASE_CONCURRENT_RESOLUTION");
+    throw error;
+  }finally{client.release();}
 }
