@@ -23,7 +23,8 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
     expect(html).toContain("untrusted@example.test");
     expect(html).toContain("known@example.test");
     expect(html).toContain("Contact the vendor through an independently known callback");
-    expect(html).toContain("This application does not yet verify real changed recipients");
+    expect(html).toContain("Real changed recipients still require independent");
+    expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("This is a security block, not a missing form field");
     expect(html).toContain("original");
     expect(html).toContain("Decline without payout");
