@@ -4,8 +4,10 @@ import {useRouter} from "next/navigation";
 import {useState} from "react";
 
 const allowed=new Set(["application/pdf","image/png","image/jpeg"]);
-export function EscalationReview({requestId,snapshotSha256,trustedDestinationCurrent,payoutsDisabled=false}:{
+export function EscalationReview({requestId,snapshotSha256,trustedDestinationCurrent,payoutsDisabled=false,
+  requestedDestination,currentTrustedDestination}:{
   requestId:string;snapshotSha256:string;trustedDestinationCurrent:boolean;payoutsDisabled?:boolean;
+  requestedDestination?:string;currentTrustedDestination?:string;
 }){
   const router=useRouter();
   const [explanation,setExplanation]=useState("");
@@ -79,19 +81,34 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         attachment cannot authorize a new recipient. You may decline this
         payment without sending funds, or investigate the vendor record.
       </p>
-      <Link href="/vendors#vendor-trust-investigations">
-        Investigate vendor trust <span aria-hidden="true">↗</span>
+      {requestedDestination?<div className="mg-review-recipient-diff">
+        <div><span>Requested recipient · not trusted for this payment</span>
+          <strong>{requestedDestination}</strong></div>
+        <div><span>Current trusted record</span>
+          <strong>{currentTrustedDestination??"Unavailable"}</strong></div>
+      </div>:null}
+      <ol className="mg-review-recovery">
+        <li>Check the recipient against your vendor registry, not the invoice.</li>
+        <li>Contact the vendor through an independently known callback, portal, or ERP channel.
+          Preserve the confirmation evidence.</li>
+        <li>If the change is unverified, decline this request. If it is genuine,
+          the verified recipient must be registered through a separate authorized
+          trust process, then the operations agent submits a new request.</li>
+      </ol>
+      <Link href={"/vendors?payment="+encodeURIComponent(requestId)+"#trust-review"}>
+        Open exact trust-resolution steps and case status <span aria-hidden="true">↗</span>
       </Link>
       <p className="mg-review-block-note">
-        If a recipient change is legitimate, independently verify it and
-        have the payment evaluated again. Vendor re-verification does not
-        retrospectively approve this request.
+        This application does not yet verify real changed recipients. Its
+        existing re-verification form only handles originally denied mismatches
+        and offers a clearly labeled Sandbox simulation. This escalated payment
+        cannot be repaired through ordinary approval.
       </p>
     </div>:null}
     {payoutsDisabled?<p className="mg-review-block-note" role="status">
       Sandbox execution is disabled on this service. Declining remains available.
     </p>:null}
-    <label>Required explanation (16–2000 characters)
+    <label>{trustedDestinationCurrent?"Required explanation (16–2000 characters)":"Reason for declining (16–2000 characters)"}
       <textarea value={explanation} maxLength={2000} rows={4}
         onChange={e=>setExplanation(e.target.value)}/>
     </label>
