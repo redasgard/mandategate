@@ -99,10 +99,12 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         Open exact trust-resolution steps and case status <span aria-hidden="true">↗</span>
       </Link>
       <p className="mg-review-block-note">
-        This application does not yet verify real changed recipients. Its
-        existing re-verification form only handles originally denied mismatches
-        and offers a clearly labeled Sandbox simulation. This escalated payment
-        cannot be repaired through ordinary approval.
+        To investigate this escalation in MandateGate: enter a reason below and
+        choose Decline without payout. On the refreshed payment detail, select
+        Open vendor trust investigation. The resulting case supports rejection
+        or a clearly labeled PayPal Sandbox trust simulation, never a payout on
+        this declined request. Real changed recipients still require independent
+        verification outside this application.
       </p>
     </div>:null}
     {payoutsDisabled?<p className="mg-review-block-note" role="status">
