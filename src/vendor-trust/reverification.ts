@@ -61,10 +61,14 @@ export async function resolveVendorReverificationCase(input:{
       "for share",
     ].join(" "),[input.actorUserId,row.organization_id]);
     if(membership.rows.length!==1)reject("VENDOR_REVERIFICATION_NOT_AUTHORIZED",404);
-    const previous=await client.query(
+    // The two immutable resolution ledgers are mutually exclusive for one case.
+    // The case row is FOR UPDATE, serializing concurrent administrative reviews.
+    const previous=await client.query([
       "select id from vendor_reverification_resolutions where case_id=$1",
-      [input.caseId],
-    );
+      "union all",
+      "select id from vendor_recipient_verifications where case_id=$1",
+      "limit 1",
+    ].join(" "),[input.caseId]);
     if(previous.rows[0])reject("VENDOR_REVERIFICATION_ALREADY_RESOLVED");
     const originalDeniedMismatch=row.status==="DENIED" && row.outcome==="DENY" &&
       Array.isArray(row.reason_codes) && row.reason_codes.includes("DESTINATION_MISMATCH");
@@ -110,17 +114,29 @@ export async function resolveVendorReverificationCase(input:{
         [newDestinationId,row.vendor_id,row.requested_destination],
       );
     }
-    await client.query([
-      "insert into vendor_reverification_resolutions",
-      "(organization_id,case_id,actor_user_id,resolution,reason,",
-      "evidence_reference_sha256,new_destination_id,verification_method)",
-      "values($1,$2,$3,$4,$5,$6,$7,$8)",
-    ].join(" "),[
-      row.organization_id,input.caseId,input.actorUserId,
-      input.action==="VERIFY"?"VERIFIED":"REJECTED",
-      input.reason.trim(),digest(input.evidenceReference),newDestinationId,
-      input.action==="VERIFY"?input.verificationMethod:null,
-    ]);
+    if(input.action==="VERIFY"){
+      // New approvals live in a separate append-only ledger. Do not weaken
+      // legacy CHECK constraints or misclassify historical test decisions.
+      await client.query([
+        "insert into vendor_recipient_verifications",
+        "(organization_id,case_id,actor_user_id,verification_method,reason,",
+        "evidence_reference_sha256,new_destination_id)",
+        "values($1,$2,$3,$4,$5,$6,$7)",
+      ].join(" "),[
+        row.organization_id,input.caseId,input.actorUserId,input.verificationMethod,
+        input.reason.trim(),digest(input.evidenceReference),newDestinationId,
+      ]);
+    }else{
+      await client.query([
+        "insert into vendor_reverification_resolutions",
+        "(organization_id,case_id,actor_user_id,resolution,reason,",
+        "evidence_reference_sha256,new_destination_id)",
+        "values($1,$2,$3,$4,$5,$6,$7)",
+      ].join(" "),[
+        row.organization_id,input.caseId,input.actorUserId,"REJECTED",
+        input.reason.trim(),digest(input.evidenceReference),null,
+      ]);
+    }
     await client.query("commit");
     return{
       caseId:input.caseId,organizationId:row.organization_id,
@@ -148,10 +164,15 @@ export async function listVendorTrustCases(adminUserId:string,focusPaymentId?:st
     "c.payment_request_id,c.observed_destination_sha256,c.created_at,",
     "pr.requested_destination,pr.status as original_payment_status,",
     "pd.outcome as original_outcome,",
-    "r.resolution,r.created_at as resolution_time,",
-    "r.actor_user_id as resolution_actor_id,",
-    "r.verification_method,r.evidence_reference_sha256,",
-    "r.new_destination_id,trust.destination as current_trusted_destination",
+    "coalesce(case when vr.case_id is not null then 'VERIFIED' end,",
+    "r.resolution) as resolution,",
+    "coalesce(vr.created_at,r.created_at) as resolution_time,",
+    "coalesce(vr.actor_user_id,r.actor_user_id) as resolution_actor_id,",
+    "vr.verification_method,",
+    "coalesce(vr.evidence_reference_sha256,r.evidence_reference_sha256)",
+    "as evidence_reference_sha256,",
+    "coalesce(vr.new_destination_id,r.new_destination_id) as new_destination_id,",
+    "trust.destination as current_trusted_destination",
     "from vendor_reverification_cases c",
     "join vendors v on v.id=c.vendor_id and v.organization_id=c.organization_id",
     "join payment_requests pr on pr.id=c.payment_request_id",
@@ -160,6 +181,7 @@ export async function listVendorTrustCases(adminUserId:string,focusPaymentId?:st
     "where vendor_id=c.vendor_id and trusted=true",
     "order by created_at desc,id desc limit 1) trust on true",
     "left join vendor_reverification_resolutions r on r.case_id=c.id",
+    "left join vendor_recipient_verifications vr on vr.case_id=c.id",
     "join organization_admin_memberships m on m.organization_id=c.organization_id",
     "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
     "order by case when c.payment_request_id=$2 then 0 else 1 end,",
