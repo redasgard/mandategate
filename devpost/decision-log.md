@@ -1,6 +1,13 @@
 # MandateGate decision log
 
 
+## 2026-10-21 PT — Emergency additive-only vendor approval schema fix
+
+- **Observed:** The original Render service deployed the redesigned recipient approval UI, but its `neon-sandbox` runtime intentionally skipped startup migrations. The live Neon project `mandategate-hackathon` still has the legacy immutable `vendor_reverification_resolutions` table and its `REJECTED | SIMULATED_REVERIFIED` constraint. It lacks the `verification_method` column and cannot store a new `VERIFIED` decision. Thus a real administrator VERIFY attempt would fail until schema and code are reconciled.
+- **Decision:** Do not loosen, drop or rewrite the legacy table constraints or its historical records. Introduce a **separate immutable** `vendor_recipient_verifications` table with organization/case/actor, method, reason, evidence digest and newly approved destination. Route new VERIFY to the separate ledger; keep REJECT in the existing legacy ledger. Check both ledgers for duplicate decisions and join both for read-side case status.
+- **Scope:** Additive migration `drizzle/0026_verified_vendor_recipient.sql` and narrow queries/services, plus regression tests. No payment executor, PayPal credentials, authentication or preexisting financial checks changed. A blocked payment remains terminal. Deploy to existing Render only after the additive table has been explicitly verified on the named Neon project. The production service does not auto-apply migrations; its runtime retains that intentional boundary.
+- **Validation requirement:** Exact final SHA tested against twice-migrated isolated PostgreSQL18, browser, role isolation and zero payout POSTs; live Neon schema introspected before and after additive migration. All legacy constraints unchanged, old receipt provenance preserved.
+
 ## 2026-10-21 PT — Production-style recipient approval with PayPal Sandbox payments
 
 - **User decision:** MandateGate is a financial operations product demonstrated against a real PayPal Sandbox account. Operational UI must not offer fictitious vendor verification, use simulation-oriented controls, or require an administrator to pretend a verification happened.
