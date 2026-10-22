@@ -14,13 +14,18 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
   it("shows a security blocker and a real vendor investigation link without offering acceptance",()=>{
     const html=renderToStaticMarkup(createElement(EscalationReview,{
       ...props,trustedDestinationCurrent:false,payoutsDisabled:false,
+      requestedDestination:"untrusted@example.test",currentTrustedDestination:"known@example.test",
     }));
     expect(html).toContain("Acceptance blocked by vendor trust");
     expect(html).toContain("Recipient no longer matches the trusted vendor destination");
     expect(html).toContain('role="alert"');
-    expect(html).toContain('href="/vendors#vendor-trust-investigations"');
+    expect(html).toContain('href="/vendors?payment=11111111-1111-4111-8111-111111111111#trust-review"');
+    expect(html).toContain("untrusted@example.test");
+    expect(html).toContain("known@example.test");
+    expect(html).toContain("Contact the vendor through an independently known callback");
+    expect(html).toContain("This application does not yet verify real changed recipients");
     expect(html).toContain("This is a security block, not a missing form field");
-    expect(html).toContain("Vendor re-verification does not");
+    expect(html).toContain("original");
     expect(html).toContain("Decline without payout");
     expect(html).not.toContain("Accept and execute PayPal Sandbox");
     expect(html).not.toContain('onClick="');
@@ -32,7 +37,7 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
     expect(html).toContain("Review the flagged payment");
     expect(html).toContain("Accept and execute PayPal Sandbox");
     expect(html).not.toContain("Acceptance blocked by vendor trust");
-    expect(html).not.toContain('href="/vendors#vendor-trust-investigations"');
+    expect(html).not.toContain('href="/vendors?payment=11111111-1111-4111-8111-111111111111#trust-review"');
   });
   it("never presents an executable accept button on payment-disabled services",()=>{
     const html=renderToStaticMarkup(createElement(EscalationReview,{
