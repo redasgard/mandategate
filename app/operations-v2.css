@@ -519,3 +519,17 @@ body:has(.mg-login-page)::before{display:none;}
   .mg-shell .mg-review-recipient-diff,.mg-shell .mg-trust-comparison{grid-template-columns:1fr;}
   .mg-shell .mg-trust-walkthrough{padding:17px;}
 }
+
+
+/* Compact help on ordinary vendor directory; full flow on deep-linked case. */
+.mg-shell .mg-trust-help{
+  background:var(--mg-surface);border:1px solid var(--mg-stroke);
+  border-radius:9px;padding:15px 21px;
+}
+.mg-shell .mg-trust-help>summary{cursor:pointer;font-size:12px;
+  font-weight:760;color:#eac392;line-height:1.6;}
+.mg-shell .mg-trust-help>summary:focus-visible{outline:2px solid #eac392;outline-offset:3px;}
+.mg-shell .mg-trust-help .mg-trust-walkthrough{
+  margin-top:16px;border:0;border-top:1px solid var(--mg-stroke);
+  border-radius:0;padding:21px 0 0;
+}
