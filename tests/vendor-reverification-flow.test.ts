@@ -108,6 +108,9 @@ describe("separate verified vendor destination workflow",()=>{
     await expect(resolveVendorReverificationCase({
       ...arg,confirmedIndependentVerification:false,
     })).rejects.toMatchObject({code:"VENDOR_VERIFICATION_ATTESTATION_REQUIRED"});
+    await expect(resolveVendorReverificationCase({
+      ...arg,verificationMethod:null,
+    })).rejects.toMatchObject({code:"VENDOR_VERIFICATION_METHOD_REQUIRED"});
     process.env.PAYPAL_BASE_URL="https://api-m.paypal.com";
     await expect(resolveVendorReverificationCase(arg))
       .rejects.toMatchObject({code:"VENDOR_VERIFICATION_PAYMENT_ENV_UNSUPPORTED"});
