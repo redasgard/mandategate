@@ -20,7 +20,9 @@ export async function readVendorTrustRequestContext(
     "pr.vendor_id,v.name as vendor_name,pr.invoice_number,",
     "pr.status as request_status,pd.outcome,pr.requested_destination,",
     "t.trusted_count,t.trusted_destination,",
-    "c.id as case_id,r.resolution as case_resolution",
+    "c.id as case_id,",
+    "coalesce(case when vr.case_id is not null then 'VERIFIED' end,",
+    "r.resolution) as case_resolution",
     "from payment_requests pr",
     "join organizations o on o.id=pr.organization_id",
     "join vendors v on v.id=pr.vendor_id and v.organization_id=pr.organization_id",
@@ -31,6 +33,7 @@ export async function readVendorTrustRequestContext(
     "  where vendor_id=pr.vendor_id and trusted=true) t on true",
     "left join vendor_reverification_cases c on c.payment_request_id=pr.id",
     "left join vendor_reverification_resolutions r on r.case_id=c.id",
+    "left join vendor_recipient_verifications vr on vr.case_id=c.id",
     "where pr.id=$1 and m.user_id=$2 and m.role='ADMIN' and m.active=true",
     "limit 1",
   ].join(" "),[requestId,adminUserId]);
