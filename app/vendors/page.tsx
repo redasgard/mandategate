@@ -52,7 +52,12 @@ export default async function VendorsPage({searchParams}:{
           <small>Recorded change investigations</small>
         </div>
       </section>
-      <VendorTrustResolutionGuide paymentId={paymentId} context={context}/>
+      {paymentId
+        ?<VendorTrustResolutionGuide paymentId={paymentId} context={context}/>
+        :<details className="mg-trust-help">
+          <summary>How to resolve a changed vendor recipient</summary>
+          <VendorTrustResolutionGuide context={null}/>
+        </details>}
       <section className="mg-surface" aria-label="Trusted recipients">
         <div className="mg-table-head"><div><h2>Trusted recipients</h2>
           <p>Invoice instructions never overwrite these registered payment destinations.</p></div></div>
