@@ -11,7 +11,7 @@ describe("terminal trust case invitation",()=>{
       requestId:"11111111-1111-4111-8111-111111111111",
     }));
     expect(html).toContain("Open a separate vendor trust case");
-    expect(html).toContain("The original payment stays");
+    expect(html).toContain("This escalated request has been declined");
     expect(html).toContain("declined");
     expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("not a payment approval");
