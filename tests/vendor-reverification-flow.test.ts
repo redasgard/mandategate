@@ -127,7 +127,7 @@ describe("separate verified vendor destination workflow",()=>{
       verificationMethod:"KNOWN_CONTACT_CALLBACK",verificationBasis:"ADMIN_ATTESTATION",
     });
     const approved=await pool.query(
-      "select verification_method,new_destination_id,evidence_reference_sha256",
+      "select verification_method,new_destination_id,evidence_reference_sha256"
       +" from vendor_recipient_verifications where case_id=$1",
       [caseB],
     );
