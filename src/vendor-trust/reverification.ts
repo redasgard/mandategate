@@ -115,7 +115,7 @@ export async function resolveVendorReverificationCase(input:{
   }finally{client.release();}
 }
 
-export async function listVendorTrustCases(adminUserId:string){
+export async function listVendorTrustCases(adminUserId:string,focusPaymentId?:string){
   const result=await pool.query([
     "select c.id,c.organization_id,c.vendor_id,v.name as vendor_name,",
     "c.payment_request_id,c.observed_destination_sha256,c.created_at,",
@@ -130,7 +130,8 @@ export async function listVendorTrustCases(adminUserId:string){
     "left join vendor_reverification_resolutions r on r.case_id=c.id",
     "join organization_admin_memberships m on m.organization_id=c.organization_id",
     "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
-    "order by c.created_at desc limit 100",
-  ].join(" "),[adminUserId]);
+    "order by case when c.payment_request_id=$2 then 0 else 1 end,",
+    "c.created_at desc limit 100",
+  ].join(" "),[adminUserId,focusPaymentId??null]);
   return result.rows;
 }
