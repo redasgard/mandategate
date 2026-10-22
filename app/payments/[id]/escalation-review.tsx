@@ -20,7 +20,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
     if((action==="ACCEPT" && payoutsDisabled) || busy || explanation.trim().length<16 ||
        (action==="ACCEPT" && !trustedDestinationCurrent))return;
     const question=action==="ACCEPT"
-      ?"Accept this exact payment request and immediately attempt the PayPal Sandbox payout?"
+      ?"Approve this exact payment request and submit the payment now?"
       :"Decline this payment request permanently without issuing a payout?";
     if(!window.confirm(question))return;
     setBusy(true);setError(null);setNotice(null);
@@ -55,7 +55,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         if(!payout.ok)
           throw new Error("APPROVAL_RECORDED_BUT_PAYOUT_NOT_SUBMITTED: "+
             String(executed.error??payout.status));
-        setNotice("Review approved; Sandbox execution state: "+
+        setNotice("Review approved; payment execution status: "+
           String(executed.execution?.status??"UNKNOWN"));
       }else{
         setNotice("Payment declined. No payout was submitted.");
@@ -99,16 +99,15 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
         Open exact trust-resolution steps and case status <span aria-hidden="true">↗</span>
       </Link>
       <p className="mg-review-block-note">
-        To investigate this escalation in MandateGate: enter a reason below and
-        choose Decline without payout. On the refreshed payment detail, select
-        Open vendor trust investigation. The resulting case supports rejection
-        or a clearly labeled PayPal Sandbox trust simulation, never a payout on
-        this declined request. Real changed recipients still require independent
-        verification outside this application.
+        To resolve this recipient mismatch, enter a reason and decline the
+        payment without payout. On the payment detail, open a vendor trust
+        investigation. An authorized reviewer can then record independently
+        obtained evidence and approve or reject the new recipient. This
+        payment stays declined; a fresh request requires a new policy decision.
       </p>
     </div>:null}
     {payoutsDisabled?<p className="mg-review-block-note" role="status">
-      Sandbox execution is disabled on this service. Declining remains available.
+      Payment execution is unavailable on this service. Declining remains available.
     </p>:null}
     <label>{trustedDestinationCurrent?"Required explanation (16–2000 characters)":"Reason for declining (16–2000 characters)"}
       <textarea value={explanation} maxLength={2000} rows={4}
@@ -126,7 +125,7 @@ export function EscalationReview({requestId,snapshotSha256,trustedDestinationCur
       {trustedDestinationCurrent&&!payoutsDisabled
         ?<button type="button" disabled={busy||explanation.trim().length<16}
           onClick={()=>void handle("ACCEPT")}>
-          {busy?"Reviewing…":"Accept and execute PayPal Sandbox"}
+          {busy?"Reviewing…":"Approve and execute payment"}
         </button>
         :null}
     </div>
