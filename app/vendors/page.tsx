@@ -70,7 +70,7 @@ export default async function VendorsPage() {
           Vendor identity and issuer evidence still require independent validation.
         </p>
       </section>
-      <section className="mg-surface mg-investigation-surface" aria-label="Vendor trust investigations">
+      <section id="vendor-trust-investigations" className="mg-surface mg-investigation-surface" aria-label="Vendor trust investigations">
         <div className="mg-table-head"><div><h2>Destination change investigations</h2>
           <p>Changes are separate trust events. Ordinary payment approval cannot resolve a mismatch.</p></div>
           <span className="mg-mini-state">{cases.length} recorded</span></div>
