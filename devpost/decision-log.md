@@ -1,5 +1,14 @@
 # MandateGate decision log
 
+## 2026-10-21 PT — Escalation acceptance blocked by changed vendor recipient
+
+- **Observed:** The payment review showed an unavailable Accept & Execute action and the warning `Trusted destination changed`, with no direct navigation or actionable explanation. The free-text reason was long enough; typing a reason cannot restore recipient trust.
+- **Decision:** Preserve the server-side hard block for destination mismatches. When trust has changed, replace the unusable Accept button with an explicit recipient-trust warning, link to the vendor investigations, and keep the separately confirmed Decline option. When trust matches, retain the existing guarded Sandbox acceptance flow. Payment-disabled services still hide the execution action.
+- **Rationale:** A human anomaly override is not authorization to change vendor identity/payment destination. Re-verification is separate and must not retroactively approve the flagged request.
+- **Scope:** UI and navigation anchor only; no payout or mutation endpoint, state machine, policy, authentication, or trusted recipient write changed. Focused static-render tests added, release verification remains pending.
+- **Rejected alternative:** Enable Accept by ignoring `trustedDestinationCurrent` or by treating the explanation as vendor verification.
+
+
 ## 2026-10-20 PT — UI/UX restart around the original PRD (PR #60)
 
 **Decision:** Discard the first upload-centric primary UX. Rebuild Dashboard, Payments, Vendors, Policies, Activity, sign-in and standing-mandate screens as one financial-operations product. Use a charcoal/copper shared design system, a consistent primary sidebar and incident-first dashboard, not cosmetic additions to old panels.
