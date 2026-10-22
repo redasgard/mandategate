@@ -84,6 +84,12 @@ describe("separate verified vendor destination workflow",()=>{
       confirmedIndependentVerification:false,
     });
     expect(resolved).toMatchObject({status:"REJECTED",originalPaymentDecision:"DENY",originalPaymentExecuted:false});
+    expect((await pool.query(
+      "select resolution from vendor_reverification_resolutions where case_id=$1",[caseA],
+    )).rows).toMatchObject([{resolution:"REJECTED"}]);
+    expect((await pool.query(
+      "select count(*)::int as n from vendor_recipient_verifications where case_id=$1",[caseA],
+    )).rows[0].n).toBe(0);
     expect((await current()).rows.find(x=>x.trusted)?.destination).toBe(trusted);
     await expect(resolveVendorReverificationCase({
       actorUserId:actor,caseId:caseA,action:"REJECT",
@@ -120,6 +126,20 @@ describe("separate verified vendor destination workflow",()=>{
       status:"VERIFIED",originalPaymentDecision:"DENY",
       verificationMethod:"KNOWN_CONTACT_CALLBACK",verificationBasis:"ADMIN_ATTESTATION",
     });
+    const approved=await pool.query(
+      "select verification_method,new_destination_id,evidence_reference_sha256",
+      +" from vendor_recipient_verifications where case_id=$1",
+      [caseB],
+    );
+    expect(approved.rows).toHaveLength(1);
+    expect(approved.rows[0].verification_method).toBe("KNOWN_CONTACT_CALLBACK");
+    expect(approved.rows[0].new_destination_id).toBe(resolved.newDestinationId);
+    expect(approved.rows[0].evidence_reference_sha256).toBe(
+      createHash("sha256").update(arg.evidenceReference).digest("hex"),
+    );
+    expect((await pool.query(
+      "select count(*)::int as n from vendor_reverification_resolutions where case_id=$1",[caseB],
+    )).rows[0].n).toBe(0);
     const versions=await current();
     expect(versions.rows.filter(x=>x.trusted).map(x=>x.destination)).toEqual([receiverB]);
     const cases=await listVendorTrustCases(actor);
