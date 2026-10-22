@@ -91,7 +91,11 @@ export default async function VendorsPage({searchParams}:{
               status:c.resolution??"REVERIFICATION_REQUIRED",
               requestedDestination:c.requested_destination,
               trustedDestination:c.current_trusted_destination??null,
-            }}/></div>)}
+              originalOutcome:c.original_outcome,
+              originalPaymentStatus:c.original_payment_status,
+            }} sandboxSimulationEnabled={
+              process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com"
+            }/></div>)}
           </div> : <p className="mg-compact-empty">No destination mismatch cases have been recorded.</p>}
         </div>
       </section>
