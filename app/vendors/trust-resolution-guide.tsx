@@ -87,7 +87,9 @@ export function VendorTrustResolutionGuide({paymentId,context}:{
           agent submit a fresh payment request for independent policy evaluation.
           Do not execute the old request merely because a destination changed.</p>
         {context?<Link href={"/payments/"+encodeURIComponent(context.requestId)}>
-          Return to this payment · Decline without payout ↗
+          {context.requestStatus==="DECLINED"||context.requestStatus==="DENIED"
+            ?"Inspect the stopped payment ↗"
+            :"Return to this payment · Decline without payout ↗"}
         </Link>:<Link href="/payments">Return to Payments ↗</Link>}
       </li>
     </ol>
