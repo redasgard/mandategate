@@ -48,8 +48,8 @@ describe("PRD payment operations filters", () => {
   it("distinguishes agent requests, reviewed invoices and test fixtures", () => {
     expect(paymentSourceLabel("agent_api")).toBe("Agent API");
     expect(paymentSourceLabel("verified_invoice")).toBe("Reviewed invoice");
-    expect(paymentSourceLabel("sandbox_fixture")).toBe("Sandbox fixture");
-    expect(paymentSourceLabel("demo_fixture")).toBe("Synthetic fixture");
+    expect(paymentSourceLabel("sandbox_fixture")).toBe("PayPal test request");
+    expect(paymentSourceLabel("demo_fixture")).toBe("Sample request");
     expect(paymentSourceLabel("future_source")).toBe("Other source");
   });
 
