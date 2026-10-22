@@ -32,8 +32,8 @@ export function StartVendorTrustInvestigation({requestId}:{requestId:string}){
     <p>
       This escalated request has been declined, so it cannot be paid.
       A new trust case can record the disputed destination and route it
-      to the Sandbox-only verification demonstration. The case is not
-      a payment approval or evidence that the vendor was contacted.
+      to an authorized recipient review. The case cannot approve this payment;
+      the reviewer must establish the vendor's instructions independently.
     </p>
     <button type="button" disabled={busy} onClick={()=>void start()}>
       {busy?"Opening investigation…":"Open vendor trust investigation"}

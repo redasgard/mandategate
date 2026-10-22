@@ -98,7 +98,10 @@ export default async function VendorsPage({searchParams}:{
               trustedDestination:c.current_trusted_destination??null,
               originalOutcome:c.original_outcome,
               originalPaymentStatus:c.original_payment_status,
-            }} sandboxSimulationEnabled={
+              verificationMethod:c.verification_method,
+              resolutionActorId:c.resolution_actor_id,
+              evidenceDigest:c.evidence_reference_sha256,
+            }} recipientApprovalAvailable={
               process.env.PAYPAL_BASE_URL==="https://api-m.sandbox.paypal.com"
             }/></div>)}
           </div> : <p className="mg-compact-empty">No destination mismatch cases have been recorded.</p>}

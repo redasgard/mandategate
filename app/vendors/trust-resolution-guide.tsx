@@ -65,26 +65,25 @@ export function VendorTrustResolutionGuide({paymentId,context}:{
             {" "}{context.caseResolution
               ?"Resolution already recorded: "+context.caseResolution+"."
               :caseIsActionable
-                ?"The case below can reject the attempted recipient or simulate out-of-band verification in PayPal Sandbox only."
+                ?"Review the recorded evidence, then reject the change or approve the independently verified recipient."
                 :"No eligible case action is available for this request."}</p>
           {caseIsActionable && caseHref
             ?<a href={caseHref}>Open this exact recorded trust case ↓</a>:null}
-          <small>Sandbox simulation does not authenticate a real vendor and never
-            authorizes the original denied or declined payment.</small>
+          <small>Only an authorized administrator may approve a verified recipient.
+            The original denied or declined payment remains stopped.</small>
         </>:<p className="mg-trust-limit">
           {context?"No re-verification case exists for this payment. ":""}
-          The application still does not implement independent real-world
-          recipient verification. {context?.outcome==="ESCALATE" && context.requestStatus==="ESCALATED"
-            ?" To open a Sandbox-only investigation for this escalation, first use Decline without payout on its payment page. After declining, choose Open vendor trust investigation to create an exact case here."
-            :" An eligible originally denied or explicitly declined escalation can open a Sandbox-only case. Real destination changes require an independently approved external trust process."}
-          Do not treat a new channel enrollment as permission to pay.
+          {context?.outcome==="ESCALATE" && context.requestStatus==="ESCALATED"
+            ?" To open an investigation, first decline the blocked payment without payout. Then use Open vendor trust investigation on the payment detail."
+            :" For an eligible stopped payment, open the associated vendor trust case and review the recipient using your organization's independently established contact channels."}
+          A source document or channel enrollment alone never authorizes a recipient change.
         </p>}
       </li>
       <li>
         <strong>Re-evaluate, never revive a mismatched payment</strong>
         <p>After a legitimate recipient is independently verified and the vendor
-          registry has been updated by an authorized process, have the operations
-          agent submit a fresh payment request for independent policy evaluation.
+          registry has been approved by an authorized reviewer, have the operations
+          agent submit a fresh payment request for policy evaluation.
           Do not execute the old request merely because a destination changed.</p>
         {context?<Link href={"/payments/"+encodeURIComponent(context.requestId)}>
           {context.requestStatus==="DECLINED"||context.requestStatus==="DENIED"

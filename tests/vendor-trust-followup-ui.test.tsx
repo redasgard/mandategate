@@ -14,7 +14,7 @@ describe("terminal trust case invitation",()=>{
     expect(html).toContain("This escalated request has been declined");
     expect(html).toContain("declined");
     expect(html).toContain("Open vendor trust investigation");
-    expect(html).toContain("not a payment approval");
+    expect(html).toContain("case cannot approve this payment");
     expect(html).not.toContain("Accept and execute");
     expect(html).not.toContain("Pay now");
   });

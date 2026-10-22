@@ -23,12 +23,12 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
     expect(html).toContain("untrusted@example.test");
     expect(html).toContain("known@example.test");
     expect(html).toContain("Contact the vendor through an independently known callback");
-    expect(html).toContain("Real changed recipients still require independent");
-    expect(html).toContain("Open vendor trust investigation");
+    expect(html).toContain("An authorized reviewer can then record independently");
+    expect(html).toContain("open a vendor trust investigation");
     expect(html).toContain("This is a security block, not a missing form field");
     expect(html).toContain("original");
     expect(html).toContain("Decline without payout");
-    expect(html).not.toContain("Accept and execute PayPal Sandbox");
+    expect(html).not.toContain("Approve and execute payment");
     expect(html).not.toContain('onClick="');
   });
   it("offers the existing confirmation-gated Sandbox action when trust is current",()=>{
@@ -36,7 +36,7 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
       ...props,trustedDestinationCurrent:true,payoutsDisabled:false,
     }));
     expect(html).toContain("Review the flagged payment");
-    expect(html).toContain("Accept and execute PayPal Sandbox");
+    expect(html).toContain("Approve and execute payment");
     expect(html).not.toContain("Acceptance blocked by vendor trust");
     expect(html).not.toContain('href="/vendors?payment=11111111-1111-4111-8111-111111111111#trust-review"');
   });
@@ -44,8 +44,8 @@ describe("trust-bound escalation review explains unavailable acceptance",()=>{
     const html=renderToStaticMarkup(createElement(EscalationReview,{
       ...props,trustedDestinationCurrent:true,payoutsDisabled:true,
     }));
-    expect(html).toContain("Sandbox execution is disabled");
+    expect(html).toContain("Payment execution is unavailable");
     expect(html).toContain("Decline without payout");
-    expect(html).not.toContain("Accept and execute PayPal Sandbox");
+    expect(html).not.toContain("Approve and execute payment");
   });
 });

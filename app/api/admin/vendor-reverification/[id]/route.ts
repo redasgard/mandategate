@@ -8,10 +8,15 @@ import {
 export const runtime="nodejs";
 const caseId=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const schema=z.object({
-  action:z.enum(["REJECT","SIMULATE_VERIFY"]),
+  action:z.enum(["REJECT","VERIFY"]),
   reason:z.string().min(16).max(2000),
-  evidenceReference:z.string().min(28).max(128),
-  confirmedSyntheticSimulation:z.boolean(),
+  evidenceReference:z.string().min(8).max(128)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{7,127}$/),
+  verificationMethod:z.enum([
+    "KNOWN_CONTACT_CALLBACK","TRUSTED_VENDOR_PORTAL",
+    "SIGNED_VENDOR_INSTRUCTION",
+  ]).nullable(),
+  confirmedIndependentVerification:z.boolean(),
 }).strict();
 
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){

@@ -1,5 +1,14 @@
 # MandateGate decision log
 
+
+## 2026-10-21 PT — Production-style recipient approval with PayPal Sandbox payments
+
+- **User decision:** MandateGate is a financial operations product demonstrated against a real PayPal Sandbox account. Operational UI must not offer fictitious vendor verification, use simulation-oriented controls, or require an administrator to pretend a verification happened.
+- **Implementation:** Replace the old `SIMULATE_VERIFY` mutation with a `VERIFY` decision that requires an active organization administrator to select a pre-existing independent confirmation method, record a concrete ticket/contract/reference, provide a written rationale, and attest that the external verification was actually performed. Store immutable actor/time, evidence digest and method in the trust case; use `VERIFIED` for new approvals. No PDF, AI suggestion, or inbound invoice contact information is treated as vendor identity proof.
+- **Payment authority:** The prior `DENIED` or `DECLINED` payment cannot be approved or executed retroactively; the vendor's updated recipient is eligible only for a new, independently assessed payment request. Authorization and payout routes remain unchanged. The existing PayPal Sandbox environment fence remains server-side; the product UI is not a synthetic verification harness.
+- **Evidence honesty:** The app records *administrator attestation*, not automated third-party proof of supplier identity. The reference is stored as a digest, not a retrievable document. Legacy `SIMULATED_REVERIFIED` database rows remain unmodified and visibly distinguishable as prior recipient updates, not new verified approvals. The separate restricted scenario lab retains accurate sample-data provenance.
+- **Affected artifacts:** `drizzle/0026_verified_vendor_recipient.sql`, vendor trust resolution service/API, operational forms and guide, payment source labels, and regression tests. Exact SHA CI, browser and critical review must pass before the original app is updated.
+
 ## 2026-10-21 PT — Escalation acceptance blocked by changed vendor recipient
 
 - **Observed:** The payment review showed an unavailable Accept & Execute action and the warning `Trusted destination changed`, with no direct navigation or actionable explanation. The free-text reason was long enough; typing a reason cannot restore recipient trust.

@@ -127,7 +127,7 @@ export default async function DashboardPage({searchParams}:{
       <section aria-label="Activity and intake">
         <div className="mg-section-title"><div>
           <p className="mg-section-kicker">03 / OPERATIONS FEED</p>
-          <h2>Everything worth checking</h2>
+          <h2>Recent operational activity</h2>
         </div><Link href="/activity">Full activity trail ↗</Link></div>
         <div className="mg-main-row">
           <div className="mg-main-column">
