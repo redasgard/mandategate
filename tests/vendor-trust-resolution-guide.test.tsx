@@ -23,7 +23,7 @@ describe("vendor trust remediation walkthrough",()=>{
     expect(html).toContain("invoice-requested@example.invalid");
     expect(html).toContain("original-known@example.test");
     expect(html).toContain("No re-verification case exists");
-    expect(html).toContain("does not offer a real, independent recipient-verification");
+    expect(html).toContain("does not implement independent real-world");
     expect(html).toContain("first use Decline without payout");
     expect(html).toContain("Open vendor trust investigation");
     expect(html).toContain("fresh payment request");
