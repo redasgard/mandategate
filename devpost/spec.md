@@ -7,6 +7,14 @@ status: approved
 
 > Baseline dependency/version check: 2026-10-07. Re-check current official versions and platform support immediately before installing or upgrading any external dependency.
 
+## 2026-10-25 beta architecture amendment: bounded AI operations
+
+This amendment supersedes any conversational Assistant, free-form question, persistent chat history, or custom-prompt requirement elsewhere in this document. The user interface exposes only predefined operations with typed input, e.g. Explain Decision by authorized decision ID and Investigate Risk using authorized records. No free-form chat or arbitrary model questions.
+
+The server authenticates and authorizes each operation and its resource/tenant, selects a fixed read-only evidence scope, limits tool calls and model budget, validates structured outputs and citations, and treats all retrieved evidence as untrusted instructions. An AI operation may explain, flag, or recommend but may not execute, approve, unblock, change vendor destination, or weaken deterministic payment policy. Any consequential proposal requires independent deterministic validation and explicit confirmation.
+
+Beta prioritizes existing deterministic rules, behavioral features, and GLM only where useful. Jev, Laya, Qwen and trained fraud models are deferred unless validated improvement justifies integration cost. Provider privacy/retention requirements remain mandatory and fail closed. This is an approved architecture change, not evidence of completed implementation.
+
 ## How This Works, In Plain Language
 
 MandateGate is a TypeScript/Next.js application deployed primarily on Render.
