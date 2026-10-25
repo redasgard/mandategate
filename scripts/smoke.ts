@@ -23,6 +23,32 @@ if (!signIn.ok) throw new Error(`admin sign-in failed: ${signIn.status} ${await 
 if (!signIn.headers.get("set-cookie")) throw new Error("admin sign-in returned no session cookie");
 
 const adminCookie=signIn.headers.get("set-cookie")!.split(";")[0];
+
+const readinessPath=baseUrl+"/api/admin/gate-h/readiness?organizationId=org_demo";
+const anonymousReadiness=await fetch(readinessPath);
+if(anonymousReadiness.status!==401)
+  throw Error("READINESS_ANONYMOUS_ACCESS_NOT_BLOCKED");
+const otherOrgReadiness=await fetch(
+ baseUrl+"/api/admin/gate-h/readiness?organizationId=org_other",
+ {headers:{cookie:adminCookie}},
+);
+if(otherOrgReadiness.status!==404)
+  throw Error("READINESS_CROSS_TENANT_ACCESS_NOT_BLOCKED");
+const adminReadiness=await fetch(readinessPath,{headers:{cookie:adminCookie}});
+if(adminReadiness.status!==200 ||
+   adminReadiness.headers.get("cache-control")!=="private, no-store")
+  throw Error("READINESS_AUTHORIZED_READ_FAILED");
+const {readiness}=await adminReadiness.json() as {
+ readiness:{contract:string;status:string;payoutAuthorized:boolean;
+ modelOrPaymentRequestsMade:boolean;organizationId:string};
+};
+if(readiness.contract!=="mandategate/gate-h-readonly-inventory/v1" ||
+   readiness.organizationId!=="org_demo" ||readiness.status!=="BLOCKED" ||
+   readiness.payoutAuthorized!==false ||
+   readiness.modelOrPaymentRequestsMade!==false)
+  throw Error("READINESS_INVENTORY_MISREPRESENTED_AUTHORITY");
+console.log("read-only Gate H readiness smoke passed: admin-scoped, no payments");
+
 // Route-level HTTP checks: an anonymous/invalid session must be redirected,
 // while a valid admin session sees the real server-rendered dashboard.
 for (const options of [
