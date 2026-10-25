@@ -28,6 +28,17 @@ describe("vendor verification is an operational approval, not a demonstration",(
     expect(html).not.toMatch(/\bsimulat(?:e|ion|ed|ing)\b/i);
     expect(html).not.toMatch(/\bsynthetic\b/i);
   });
+  it("explains evidence requirements and exposes accessible validation hints",()=>{
+    const html=renderToStaticMarkup(createElement(VendorReverificationActions,{
+      item,recipientApprovalAvailable:true,
+    }));
+    expect(html).toContain("Add a decision rationale of at least 16 characters.");
+    expect(html).toContain("8 to 128 characters");
+    expect(html).toContain("aria-describedby=");
+    expect(html).toContain("aria-invalid=");
+    expect(html).toContain('role="status"');
+    expect(html).toContain('disabled=""');
+  });
   it("does not offer approval when the service cannot enforce its payment environment",()=>{
     const html=renderToStaticMarkup(createElement(VendorReverificationActions,{
       item,recipientApprovalAvailable:false,
