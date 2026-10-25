@@ -7,6 +7,17 @@ status: approved
 
 Build mode: fast
 
+## Current priority: bounded AI operations migration (2026-10-25)
+
+- [x] Disable free-form Assistant API for authenticated users and remove chat UI on implementation branch. PR #65, pending review and CI.
+- [x] Record the architecture change in PRD, spec and durable handoff.
+- [ ] Diagnose GitHub CI verify failure. GitHub Actions run 40169596684 failed; job details/logs unavailable through connector, cause unknown.
+- [ ] Add regression tests proving unauthenticated 401, authenticated 410, no arbitrary question path, and no model invocation on legacy route.
+- [ ] Implement Explain Decision as an authorized typed read-only function, with scoped evidence, strict schema, privacy gate, citations and adversarial tests.
+- [ ] Implement Investigate Risk only after first operation passes tests.
+- [ ] Validate PayPal Sandbox three-outcome demo and provider privacy/provenance gate.
+- [ ] Complete critical review, merge and deploy only after passing checks.
+
 ## Slices
 
 - [x] **1. A seeded invoice request reaches the MandateGate decision kernel**
