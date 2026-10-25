@@ -54,6 +54,7 @@ export function OperationsHeader({
 
       <p className="mg-nav-heading mg-nav-heading-later">CONTROL & EVIDENCE</p>
       <nav aria-label="Control and evidence navigation" className="mg-nav">
+        <Link className="mg-nav-item" href="/assistant"><NavIcon name="documents"/><span>Assistant</span></Link>
         <Link className="mg-nav-item" href="/autopay"><NavIcon name="mandates"/><span>Standing mandates</span></Link>
         <Link className="mg-nav-item" href="/obligations"><NavIcon name="history"/><span>AP horizon</span></Link>
         <Link className="mg-nav-item" href="/invoice-artifacts"><NavIcon name="documents"/><span>Source documents</span></Link>
