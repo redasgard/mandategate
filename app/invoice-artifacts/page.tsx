@@ -7,6 +7,7 @@ import { InvoiceArtifactUpload } from "./upload-form";
 import { InvoiceJourney } from "@/app/components/invoice-journey";
 import {ConfigureSandboxRecipient} from "./configure-sandbox-recipient";
 import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
+import {InvoiceProofReadiness} from "./proof-readiness";
 
 export default async function InvoiceArtifactListPage(){
   const session=await auth.api.getSession({headers:await headers()});
@@ -44,6 +45,9 @@ export default async function InvoiceArtifactListPage(){
     "where m.user_id=$1 and m.role='ADMIN' and m.active=true",
     "order by o.name,o.id",
   ].join(" "),[session.user.id]);
+  const authorizedOrganizations=organizations.rows.map(row=>({
+    id:row.id as string,name:row.name as string,
+  }));
   const sandboxFixtureAvailable=
     sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar") &&
     organizations.rows.some(row=>row.id==="org_demo");
@@ -69,6 +73,7 @@ export default async function InvoiceArtifactListPage(){
           invoices. Existing verified sources remain selectable during review.</p>
         <Link href="/vendor-origin-channels">Manage supplier sources →</Link>
       </details>
+      <InvoiceProofReadiness organizations={authorizedOrganizations}/>
       {sandboxFixtureAvailable ? <section className="invoice-task-card">
         <h2>Start with the Northstar test invoice</h2>
         <p>Start with a USD 1.01 Northstar test invoice, register its test
@@ -79,9 +84,7 @@ export default async function InvoiceArtifactListPage(){
         <p className="muted">PayPal execution happens separately after authorization.
           A submitted payout must be confirmed by batch, item and webhook evidence.</p>
       </section> : null}
-      <InvoiceArtifactUpload organizations={organizations.rows.map(row=>({
-        id:row.id as string,name:row.name as string,
-      }))}/>
+      <InvoiceArtifactUpload organizations={authorizedOrganizations}/>
       {result.rows.length===0?<p className="muted">No invoices yet. Upload the first one above.</p>:
         <div className="table-wrap"><table className="dashboard-table invoice-list-table">
           <thead><tr><th>Document</th><th>Saved AI suggestions (unverified)</th><th>Review status</th><th>Created</th></tr></thead>
