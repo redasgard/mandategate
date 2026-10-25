@@ -41,8 +41,9 @@ export function VendorReverificationActions({item,recipientApprovalAvailable}:{
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
   const [notice,setNotice]=useState<string|null>(null);
-  const canSubmit=!busy && reason.trim().length>=16 &&
-    evidencePattern.test(reference.trim()) &&
+  const reasonReady=reason.trim().length>=16;
+  const referenceReady=evidencePattern.test(reference.trim());
+  const canSubmit=!busy && reasonReady && referenceReady &&
     (action==="REJECT" || (recipientApprovalAvailable && confirmed));
   async function resolve(){
     if(!canSubmit)return;
@@ -93,7 +94,7 @@ export function VendorReverificationActions({item,recipientApprovalAvailable}:{
         vendor contact or trusted channel. Never verify using contact details supplied
         in the disputed invoice. Record your findings before approving the recipient.</p>
       <label>Decision
-        <select value={action}
+        <select value={action} disabled={busy}
           onChange={e=>{setAction(e.target.value as Action);setConfirmed(false);}}>
           <option value="REJECT">Reject recipient change</option>
           {recipientApprovalAvailable
@@ -101,30 +102,48 @@ export function VendorReverificationActions({item,recipientApprovalAvailable}:{
         </select>
       </label>
       {action==="VERIFY"?<label>Independent verification method
-        <select value={method}
+        <select value={method} disabled={busy}
           onChange={e=>{setMethod(e.target.value as VerificationMethod);setConfirmed(false);}}>
           {methods.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </label>:null}
       <label>Decision rationale (minimum 16 characters)
-        <textarea rows={3} maxLength={2000} value={reason}
+        <textarea rows={3} maxLength={2000} value={reason} disabled={busy}
+          aria-describedby={"vendor-reason-help-"+item.id}
           placeholder="Describe the verification or why the recipient change was rejected."
           onChange={e=>setReason(e.target.value)}/>
       </label>
+      <p id={"vendor-reason-help-"+item.id} className="mg-policy-meta">
+        {reasonReady?"Rationale length accepted.":
+          "At least 16 characters are required after trimming leading and trailing spaces."}
+      </p>
       <label>Evidence reference (ticket, contract, or verification record)
-        <input value={reference} maxLength={128}
+        <input value={reference} maxLength={128} minLength={8} disabled={busy}
+          aria-invalid={reference.length>0&&!referenceReady}
+          aria-describedby={"vendor-evidence-help-"+item.id}
           onChange={e=>setReference(e.target.value)}
           placeholder="vendor-review/CASE-2841"/>
       </label>
-      <p className="mg-source-note">Use an existing internal record ID. The system stores
-        its digest with the reviewer identity and decision timestamp.</p>
+      <p id={"vendor-evidence-help-"+item.id} className="mg-source-note">
+        Use an existing internal record ID: 8 to 128 characters, starting with a
+        letter or number; only letters, numbers, dots, underscores, colons,
+        slashes and hyphens are accepted. The system stores its SHA-256 digest.
+        {reference.length>0&&!referenceReady?<strong> Check the reference format.</strong>:null}
+      </p>
       {action==="VERIFY"?<label className="review-checkbox">
-        <input type="checkbox" checked={confirmed}
+        <input type="checkbox" checked={confirmed} disabled={busy}
           onChange={e=>setConfirmed(e.target.checked)}/>
         I independently verified the requested recipient using the selected method,
         reviewed the supporting evidence, and authorize updating this vendor's
         registered payment destination.
       </label>:null}
+      <p className={"mg-form-readiness"+(canSubmit?" is-ready":"")} role="status">
+        {busy?"Recording the decision securely…":
+          !reasonReady?"Add a decision rationale of at least 16 characters.":
+          !referenceReady?"Add a valid evidence reference before continuing.":
+          action==="VERIFY"&&!confirmed?"Confirm independent verification before approving.":
+          "Ready to record. The original payment will remain stopped."}
+      </p>
       <button type="button" disabled={!canSubmit} onClick={()=>void resolve()}>
         {busy?"Recording decision…":
           action==="REJECT"?"Reject recipient change":"Approve new recipient"}
