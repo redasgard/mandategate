@@ -50,3 +50,9 @@ Read this file, devpost/prd.md, devpost/spec.md, devpost/checklist.md, PR #65 an
 - Checklist priorities and verification gates committed 7589c6c8e6ecffc2ba6dbb4ebc44a513698d1495.
 - GitHub Actions CI run 40169596684 (verify job 121097566542) failed; connector returned empty job steps. Root cause still UNKNOWN. Do not claim validated.
 - Next: tests for legacy route, implement typed Explain Decision, investigate CI and PayPal Sandbox demo.
+
+## Render validation decision (2026-10-25)
+- GitHub Actions CI failed on the deployed commit and connector lacks detailed job logs; use the existing isolated Render CI harness as the immediate alternative source of execution evidence, without treating an old green result as current verification.
+- Existing Render CI static site `mg-vendor-additive-ci-20261021` (service `srv-dbcpiofb9u1s73cfln4g`) runs `scripts/ci-render-pure.sh`, requires `CI_EXPECTED_SHA`, exact Node v24.21.0, `MANDATEGATE_DISABLE_PAYMENTS=1`, no PayPal or Experiential keys, and disposable PostgreSQL 18. Historical PASS at `e535d7d...` is not proof for current beta `2da2393...`.
+- Existing site is pinned to older branch `fix/additive-vendor-approval-schema-20261021`; manually triggering it will not validate the current beta. Retargeting/reprovisioning requires explicit branch and SHA binding, keeping payment isolation, and costs/side effects checked first.
+- Current deployed app remains `mandategate-web`, branch `build/slice-3-invoice-intake`, live commit `2da2393b970e16c5fb6e1f370c5641af9c58eede` as previously verified. Do not deploy PR #65 or treat build-only PASS as PayPal Sandbox integration proof.
