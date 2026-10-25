@@ -43,3 +43,10 @@ CI for PR head 690d711...: run 40169494851, verify job 121097271930, conclusion 
 
 ## Resume command for future agent
 Read this file, devpost/prd.md, devpost/spec.md, devpost/checklist.md, PR #65 and latest CI. Continue from verified state, prioritize a functional beta and security acceptance tests, keep work on a reviewable branch, and record material decisions here and in project docs. Never replace existing facts with assumptions.
+
+## Continuation update (2026-10-25, after initial handoff)
+- PRD architecture amendment committed 759ffa14c494c7a81dcf8b5b16cde479d65e3f65.
+- Spec architecture amendment committed 0284a01d33386743db18e0dea189746fdad32f65.
+- Checklist priorities and verification gates committed 7589c6c8e6ecffc2ba6dbb4ebc44a513698d1495.
+- GitHub Actions CI run 40169596684 (verify job 121097566542) failed; connector returned empty job steps. Root cause still UNKNOWN. Do not claim validated.
+- Next: tests for legacy route, implement typed Explain Decision, investigate CI and PayPal Sandbox demo.
