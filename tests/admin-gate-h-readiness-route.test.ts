@@ -64,7 +64,8 @@ describe("GET /api/admin/gate-h/readiness (read-only unit boundary)",()=>{
   const response=await GET(request());
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("private, no-store");
-  expect(mocks.inventory).toHaveBeenCalledExactlyOnceWith("org_demo");
+  expect(mocks.inventory).toHaveBeenCalledTimes(1);
+  expect(mocks.inventory).toHaveBeenCalledWith("org_demo");
   const body=await response.json();
   expect(body.readiness).toMatchObject({
    organizationId:"org_demo",status:"BLOCKED",payoutAuthorized:false,
