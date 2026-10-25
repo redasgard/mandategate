@@ -7,29 +7,6 @@ for key in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET DEMO_PAYPAL_RECEIVER_EMAIL EXPL
   if [[ -n "${!key:-}" ]]; then echo "CI_FORBIDDEN_CREDENTIAL_PRESENT=$key" >&2; exit 22; fi
 done
 if [[ -e .env || -e .env.local ]]; then echo CI_REPOSITORY_ENV_FILE_PRESENT >&2; exit 22; fi
-# A separate, payment-disabled Render service may validate a specific PR SHA.
-# Fetch only from this repository's authenticated origin, never from a caller URL.
-# The expected SHA is independently pinned in the Render service environment.
-if [[ -n "${CI_VALIDATE_SHA:-}" ]]; then
-  if [[ ! "$CI_VALIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] ||
-     [[ "$CI_VALIDATE_SHA" != "${CI_EXPECTED_SHA:-}" ]]; then
-    echo CI_TARGET_SHA_INVALID >&2
-    exit 23
-  fi
-  echo "CI_TARGET_REQUESTED_SHA=$CI_VALIDATE_SHA"
-  git fetch --no-tags --depth=1 origin "$CI_VALIDATE_SHA" || {
-    echo CI_TARGET_FETCH_FAILED >&2
-    exit 23
-  }
-  git -c advice.detachedHead=false checkout --detach "$CI_VALIDATE_SHA" || {
-    echo CI_TARGET_CHECKOUT_FAILED >&2
-    exit 23
-  }
-  if [[ -e .env || -e .env.local ]]; then
-    echo CI_TARGET_ENV_FILE_PRESENT >&2
-    exit 22
-  fi
-fi
 sha="$(git rev-parse HEAD)"
 if [[ -z "${CI_EXPECTED_SHA:-}" || "$sha" != "$CI_EXPECTED_SHA" ]]; then echo CI_SHA_MISMATCH >&2; exit 23; fi
 if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi
