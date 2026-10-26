@@ -12,7 +12,7 @@ describe("Invoice proof readiness is informational",()=>{
   ]}/>);
   expect(markup).toContain("Verification readiness");
   expect(markup).toContain("No payment authorization");
-  expect(markup).toContain("Live evidence inventory only");
+  expect(markup).toContain("Organization-wide evidence counts only");
   expect(markup).toContain("Checking recorded evidence");
   expect(markup).toContain("Refresh evidence");
   expect(markup).toContain("Known supplier sources".toLowerCase().split(" ")[0]);
