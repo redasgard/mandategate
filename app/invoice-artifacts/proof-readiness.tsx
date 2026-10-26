@@ -73,7 +73,7 @@ export function InvoiceProofReadiness({organizations}:{organizations:Organizatio
    detail:"Recorded frozen binding; requires independent authorization review"},
  ];
  return <section className="invoice-task-card" aria-label="Invoice verification readiness">
-  <div className="invoice-overview">
+  <div className="invoice-proof-head">
    <div>
     <p className="eyebrow">Payment authority</p>
     <h2>Verification readiness</h2>
@@ -101,7 +101,7 @@ export function InvoiceProofReadiness({organizations}:{organizations:Organizatio
   {error?<p role="alert">{error}</p>:null}
   {c ? <>
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,220px),1fr))",gap:12}}>
-    {stages.map(stage=><div className="mg-policy-card" key={stage.name}>
+    {stages.map(stage=><div className="invoice-proof-stage" key={stage.name}>
      <strong>{stage.name}</strong>
      <p>{stage.count===0?"Missing":stage.count+" recorded"}</p>
      <p className="muted">{stage.detail}</p>
