@@ -25,8 +25,10 @@ type Readiness={
  blockers:string[];
 };
 
-export function InvoiceProofReadiness({organizations}:{organizations:Organization[]}){
- const [organizationId,setOrganizationId]=useState(organizations[0]?.id??"");
+export function InvoiceProofReadiness({organizations,preferredOrganizationId}:{organizations:Organization[];preferredOrganizationId?:string}){
+ const initialOrganizationId=preferredOrganizationId && organizations.some(org=>org.id===preferredOrganizationId)
+  ? preferredOrganizationId : organizations[0]?.id??"";
+ const [organizationId,setOrganizationId]=useState(initialOrganizationId);
  const [refresh,setRefresh]=useState(0);
  const [readiness,setReadiness]=useState<Readiness|null>(null);
  const [error,setError]=useState("");
@@ -77,7 +79,7 @@ export function InvoiceProofReadiness({organizations}:{organizations:Organizatio
    <div>
     <p className="eyebrow">Payment authority</p>
     <h2>Verification readiness</h2>
-    <p className="muted">Live evidence inventory only. A recorded item is not proof of a genuine supplier, compliant AI processing, or permission to pay.</p>
+    <p className="muted">Organization-wide evidence counts only. They do not form a verified chain for any specific invoice, establish a genuine supplier, prove compliant AI processing, or authorize payment.</p>
    </div>
    <div className="invoice-overview-aside">
     <span>Invoice-to-payment gate</span>
