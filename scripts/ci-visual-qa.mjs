@@ -27,6 +27,7 @@ const cases=[
   {route:"/policies",id:"policies",heading:"Policies & mandates"},
   {route:"/activity",id:"activity",heading:"Activity"},
   {route:"/autopay",id:"mandates",heading:"Standing mandates"},
+  {route:"/invoice-artifacts",id:"invoice",heading:"Process an invoice"},
 ];
 const viewports=[
   {name:"desktop",width:1440,height:900,scale:1},
@@ -98,13 +99,18 @@ try {
       const u=new URL(route.request().url());
       return u.origin===origin?route.continue():route.abort("blockedbyclient");
     });
-    const passes=vp.name==="desktop"?cases:cases.filter(x=>["dashboard","payments","vendors","policies"].includes(x.id));
+    const passes=vp.name==="desktop"?cases:cases.filter(x=>["dashboard","payments","vendors","policies","invoice"].includes(x.id));
     for (const item of passes) {
       const res=await page.goto(origin+item.route,{waitUntil:"domcontentloaded",timeout:45000});
       if(res?.status()!==200)throw Error("VISUAL_PAGE_HTTP_"+item.id+"_"+res?.status());
       await page.getByRole("heading",{name:item.heading,exact:true,level:1}).waitFor({timeout:30000});
-      await page.locator('nav[aria-label="Primary navigation"]').waitFor({timeout:8000});
+      if(item.id!=="invoice")
+        await page.locator('nav[aria-label="Primary navigation"]').waitFor({timeout:8000});
       await page.evaluate(()=>document.fonts.ready);
+      if(item.id==="invoice"){
+        await page.locator('section[aria-label="Invoice verification readiness"]')
+          .getByText("Original invoice").waitFor({timeout:30000});
+      }
       const layout=await page.evaluate(()=>{
         const root=document.documentElement;
         const nav=document.querySelector('nav[aria-label="Primary navigation"]');
@@ -126,7 +132,11 @@ try {
         };
       });
       if(layout.globalOverflowPx>2)throw Error("VISUAL_GLOBAL_OVERFLOW_"+vp.name+"_"+item.id+"_"+layout.globalOverflowPx);
-      if(layout.currentNavCount!==1 || layout.primaryNavCount<5 || !layout.skipLink)
+      if(item.id==="invoice"){
+        // This older signed-in intake page uses a back link, not the new
+        // OperationsHeader primary nav. Check its real navigation separately.
+        if(layout.internalLinks<2)throw Error("VISUAL_INVOICE_NAVIGATION_MISSING_"+vp.name);
+      } else if(layout.currentNavCount!==1 || layout.primaryNavCount<5 || !layout.skipLink)
         throw Error("VISUAL_NAVIGATION_A11Y_"+vp.name+"_"+item.id);
       if((layout.headingBounds?.right??0)>layout.viewportWidth+2)
         throw Error("VISUAL_HEADING_CLIPPED_"+vp.name+"_"+item.id);
@@ -142,7 +152,7 @@ try {
       // Only these read-only synthetic thumbnails are duplicated into CI logs
       // for remote visual self-review when the static site cannot be fetched
       // into the reviewer's isolated workspace. Never enable on live data.
-      if(item.id==="dashboard" || (vp.name==="desktop" && (item.id==="payments" || item.id==="vendors"))) {
+      if(item.id==="dashboard" || item.id==="invoice" || (vp.name==="desktop" && (item.id==="payments" || item.id==="vendors"))) {
         const thumbnail=await page.screenshot({type:"jpeg",quality:23,
           fullPage:false,animations:"disabled"});
         const encoded=thumbnail.toString("base64");

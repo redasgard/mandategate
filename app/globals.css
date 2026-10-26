@@ -281,6 +281,16 @@ button.policy-outline {background:transparent;color:var(--amber);border:1px soli
   border-radius:50%;border:1px solid currentColor;}
 .invoice-task-card{display:grid;gap:17px;padding:25px;border:1px solid #445873;
   background:#202b3a;border-radius:14px;min-width:0;}
+
+.invoice-proof-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:18px;}
+.invoice-proof-head>div:first-child{min-width:0;flex:1 1 300px;}
+.invoice-proof-head h2{margin:4px 0 8px;font-size:clamp(20px,2.5vw,27px);letter-spacing:-.02em;}
+.invoice-proof-head .invoice-overview-aside{flex:0 1 240px;padding:16px;min-width:0;}
+.invoice-proof-head .invoice-overview-aside>strong{font-size:22px;}
+.invoice-proof-stage{border:1px solid #52657e;border-radius:11px;background:#182332;padding:15px;min-width:0;}
+.invoice-proof-stage>p{margin:8px 0 0;line-height:1.5;}
+.invoice-proof-stage>p:first-of-type{font-size:17px;font-weight:750;}
+
 .invoice-task-card-head{display:flex;align-items:flex-start;gap:15px;}
 .invoice-task-card-head h3{margin:0 0 8px;font-size:20px;letter-spacing:-.02em;}
 .invoice-task-card-head p{margin:0;font-size:13px;}
