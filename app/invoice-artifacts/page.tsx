@@ -73,7 +73,8 @@ export default async function InvoiceArtifactListPage(){
           invoices. Existing verified sources remain selectable during review.</p>
         <Link href="/vendor-origin-channels">Manage supplier sources →</Link>
       </details>
-      <InvoiceProofReadiness organizations={authorizedOrganizations}/>
+      <InvoiceProofReadiness organizations={authorizedOrganizations}
+        preferredOrganizationId={sandboxFixtureAvailable?"org_demo":undefined}/>
       {sandboxFixtureAvailable ? <section className="invoice-task-card">
         <h2>Start with the Northstar test invoice</h2>
         <p>Start with a USD 1.01 Northstar test invoice, register its test
