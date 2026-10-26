@@ -152,7 +152,7 @@ try {
       // Only these read-only synthetic thumbnails are duplicated into CI logs
       // for remote visual self-review when the static site cannot be fetched
       // into the reviewer's isolated workspace. Never enable on live data.
-      if(item.id==="dashboard" || (vp.name==="desktop" && (item.id==="payments" || item.id==="vendors" || item.id==="invoice"))) {
+      if(item.id==="dashboard" || item.id==="invoice" || (vp.name==="desktop" && (item.id==="payments" || item.id==="vendors"))) {
         const thumbnail=await page.screenshot({type:"jpeg",quality:23,
           fullPage:false,animations:"disabled"});
         const encoded=thumbnail.toString("base64");
