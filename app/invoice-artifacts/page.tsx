@@ -73,8 +73,6 @@ export default async function InvoiceArtifactListPage(){
           invoices. Existing verified sources remain selectable during review.</p>
         <Link href="/vendor-origin-channels">Manage supplier sources →</Link>
       </details>
-      <InvoiceProofReadiness organizations={authorizedOrganizations}
-        preferredOrganizationId={sandboxFixtureAvailable?"org_demo":undefined}/>
       {sandboxFixtureAvailable ? <section className="invoice-task-card">
         <h2>Start with the Northstar test invoice</h2>
         <p>Start with a USD 1.01 Northstar test invoice, register its test
@@ -86,6 +84,8 @@ export default async function InvoiceArtifactListPage(){
           A submitted payout must be confirmed by batch, item and webhook evidence.</p>
       </section> : null}
       <InvoiceArtifactUpload organizations={authorizedOrganizations}/>
+      <InvoiceProofReadiness organizations={authorizedOrganizations}
+        preferredOrganizationId={sandboxFixtureAvailable?"org_demo":undefined}/>
       {result.rows.length===0?<p className="muted">No invoices yet. Upload the first one above.</p>:
         <div className="table-wrap"><table className="dashboard-table invoice-list-table">
           <thead><tr><th>Document</th><th>Saved AI suggestions (unverified)</th><th>Review status</th><th>Created</th></tr></thead>
