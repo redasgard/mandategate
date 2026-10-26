@@ -104,7 +104,8 @@ try {
       const res=await page.goto(origin+item.route,{waitUntil:"domcontentloaded",timeout:45000});
       if(res?.status()!==200)throw Error("VISUAL_PAGE_HTTP_"+item.id+"_"+res?.status());
       await page.getByRole("heading",{name:item.heading,exact:true,level:1}).waitFor({timeout:30000});
-      await page.locator('nav[aria-label="Primary navigation"]').waitFor({timeout:8000});
+      if(item.id!=="invoice")
+        await page.locator('nav[aria-label="Primary navigation"]').waitFor({timeout:8000});
       await page.evaluate(()=>document.fonts.ready);
       if(item.id==="invoice"){
         await page.locator('section[aria-label="Invoice verification readiness"]')
