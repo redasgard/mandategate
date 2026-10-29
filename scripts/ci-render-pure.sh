@@ -98,6 +98,7 @@ mkdir -p "$CI_PG_TEMP/visual-browser" "$CI_PG_TEMP/playwright-browsers"
 step visual-browser-package npm install --prefix "$CI_PG_TEMP/visual-browser" --no-save --no-audit --no-fund playwright@1.56.1
 step visual-browser-shell env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" "$CI_PG_TEMP/visual-browser/node_modules/.bin/playwright" install chromium-headless-shell
 export CI_VISUAL_BROWSER_ROOT="$CI_PG_TEMP/visual-browser"
+export CI_CAPTURE_AUTH_STATE="$CI_PG_TEMP/visual-auth-state.json"
 step visual-browser-qa env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-visual-qa.mjs
 echo 'CI_STEP=reset-local-next-auth-rate-limiter'
 kill -- "-$web_pid" 2>/dev/null || true
@@ -119,8 +120,11 @@ for i in $(seq 1 70); do
 done
 if [[ "$healthy" != "1" ]]; then echo CI_APP_RESTART_HEALTH_FAILED >&2; tail -n 24 "$CI_PG_TEMP/next-smoke.log" >&2; exit 29; fi
 step signed-in-http-smoke pnpm smoke
+# Real browser screencast on synthetic isolated data; no provider credentials.
+step browser-demo-footage env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-record-demo.mjs
+rm -f -- "$CI_CAPTURE_AUTH_STATE"
 echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
 mkdir -p ci-public
-printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p>See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
+printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
