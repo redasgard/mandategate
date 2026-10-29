@@ -7,6 +7,20 @@ invoices; deterministic vendor, source, risk and payment-authority rules
 control whether a requested payout may execute. Agents never receive
 PayPal credentials or independent payment authority.
 
+## Hackathon judging and submitted capabilities
+
+- **Hosted application:** https://mandategate-web.onrender.com (sign-in required).
+- **Complete local setup:** follow *Run locally* below with an isolated PostgreSQL 18 database and generated secrets; disable payments for local review.
+- **Devpost submission text:** [final-submission-copy.md](devpost/final-submission-copy.md)
+- **Judge testing instructions:** [final-judge-instructions.md](devpost/final-judge-instructions.md)
+- **Real-browser demonstration plan:** [final-demo-script.md](devpost/final-demo-script.md)
+- **Current evidence and publication blockers:** [final-release-gate-20261029.md](devpost/final-release-gate-20261029.md)
+- **Historical PayPal Sandbox receipt:** [Slice 2 verification](devpost/reviews/slice-2-critical-review.md). The application also exposes an authenticated read-only `/sandbox-evidence` page.
+
+The three persisted demonstration decisions are synthetic and **do not** represent three payments. Saved GLM observations are advisory and do not create permission to pay. The earlier recorded PayPal Sandbox SUCCESS arose from a **separate direct-payment request**, not from those AI-reviewed invoices. Strict end-to-end invoice authorization and a fresh invoice-derived Sandbox settlement remain unverified.
+
+**Release check:** The GitHub organization repository must be made public, the tested branch must be selected as default without overwriting divergent `main` history, a real public YouTube video under three minutes must be attached, and judge access must be verified. The project is not marked submitted until Devpost returns a confirmation URL.
+
 ## Operational workflow: agent → MandateGate → PayPal
 
 MandateGate is **agent-driven**. A company operations agent, not the dashboard
