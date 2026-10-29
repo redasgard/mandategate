@@ -119,10 +119,11 @@ for i in $(seq 1 70); do
   sleep 1
 done
 if [[ "$healthy" != "1" ]]; then echo CI_APP_RESTART_HEALTH_FAILED >&2; tail -n 24 "$CI_PG_TEMP/next-smoke.log" >&2; exit 29; fi
-step signed-in-http-smoke pnpm smoke
-# Real browser screencast on synthetic isolated data; no provider credentials.
+# Capture the canonical clean seed before the smoke suite adds history and trust cases.
+# This recorder creates only synthetic decision requests and has no PayPal secrets.
 step browser-demo-footage env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-record-demo.mjs
 rm -f -- "$CI_CAPTURE_AUTH_STATE"
+step signed-in-http-smoke pnpm smoke
 echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
