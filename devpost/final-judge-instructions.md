@@ -31,7 +31,7 @@ pnpm demo:seed
 pnpm dev
 ```
 
-Sign in at http://localhost:3000/sign-in with the locally configured admin account. From the dashboard and Payments screen inspect the seeded fictional normal, anomaly and substituted-recipient scenarios. Open original decision records and confirm their reasons. From the invoice evidence screen, inspect the proof-readiness checklist. No local sandbox payout is needed to review the deterministic policy.
+Sign in at http://localhost:3000/sign-in with the locally configured admin account. Open **/demo** and select **Load or replay three demo decisions** to create or reuse the three fictional canonical records. Then open Payments to inspect the persisted normal, anomalous-amount and substituted-recipient outcomes, including exact reason codes. The startup seed configures the demo vendor and policy; it does **not** itself submit those three payment requests. On the invoice evidence screen, inspect the T2/T3/T4 readiness checklist. No local Sandbox payout is needed to review the deterministic policy.
 
 To run the automated test suite, use `pnpm test`, `pnpm typecheck` and `pnpm build` against the isolated database. The fully provisioned Render CI additionally exercises two migrations, two seeds, authenticated loopback smoke and real Chromium desktop/mobile checks.
 
