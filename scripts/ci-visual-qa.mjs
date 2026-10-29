@@ -79,6 +79,14 @@ try {
   }
   if(loginErrors.length)throw Error("VISUAL_SIGNIN_CLIENT_ERRORS");
   const signedInState=await signInContext.storageState();
+  // Private temporary cookie state for synthetic video capture AFTER smoke.
+  // Never publish or log this file. Its containing temp directory is cleaned.
+  if(process.env.CI_CAPTURE_AUTH_STATE){
+    const authPath=resolve(process.env.CI_CAPTURE_AUTH_STATE);
+    if(!authPath.startsWith("/tmp/mandategate-pg."))
+      throw Error("CI_AUTH_STATE_OUTSIDE_TEMP");
+    writeFileSync(authPath,JSON.stringify(signedInState),{mode:0o600});
+  }
   await signInContext.close();
   console.log("VISUAL_SIGNIN_UI_PASS");
 
