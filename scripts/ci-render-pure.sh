@@ -122,10 +122,21 @@ if [[ "$healthy" != "1" ]]; then echo CI_APP_RESTART_HEALTH_FAILED >&2; tail -n 
 # Capture the canonical clean seed before the smoke suite adds history and trust cases.
 # This recorder creates only synthetic decision requests and has no PayPal secrets.
 step browser-demo-footage env PLAYWRIGHT_BROWSERS_PATH="$CI_PG_TEMP/playwright-browsers" node scripts/ci-record-demo.mjs
+if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
+  echo "CI_STEP=prepare-licensed-audio-mux"
+  if [[ -x /usr/bin/ffmpeg ]]; then
+    export CI_DEMO_FFMPEG=/usr/bin/ffmpeg
+  else
+    npm install --prefix "$CI_PG_TEMP/media" --no-save --no-audit --no-fund ffmpeg-static@5.2.0
+    export CI_DEMO_FFMPEG="$CI_PG_TEMP/media/node_modules/ffmpeg-static/ffmpeg"
+    if [[ ! -x "$CI_DEMO_FFMPEG" ]]; then echo CI_DEMO_FFMPEG_NOT_FOUND >&2; exit 30; fi
+  fi
+  step narrated-demo-mp4 node scripts/ci-mux-demo.mjs
+fi
 rm -f -- "$CI_CAPTURE_AUTH_STATE"
 step signed-in-http-smoke pnpm smoke
 echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
 mkdir -p ci-public
-printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
+printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. <a href="demo/mandategate-demo-final.mp4">Narrated real UI demo (MP4)</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
