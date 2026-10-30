@@ -8,7 +8,7 @@ export function HistoricalGlmProof(){
  return <section id="demo-historical-glm" className="review-stage"
   aria-label="Earlier separate GLM factual observation">
   <p className="eyebrow">GLM-5.3 Flash / earlier fictional document</p>
-  <h2>AI proposed an invalid amount. Policy did not trust it.</h2>
+  <h2>AI proposed an invalid amount. The observation stayed untrusted.</h2>
   <p className="muted">A separate, previously saved fictional test shows the
    language model interpreting hostile document content. This is <strong>not</strong>
    an analysis of the PDF uploaded in this recording, nor a current live AI request.</p>
