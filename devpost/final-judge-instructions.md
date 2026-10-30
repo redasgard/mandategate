@@ -31,7 +31,32 @@ pnpm demo:seed
 pnpm dev
 ```
 
-Sign in at http://localhost:3000/sign-in with the locally configured admin account. Open **/demo** and select **Load or replay three demo decisions** to create or reuse the three fictional canonical records. Then open Payments to inspect the persisted normal, anomalous-amount and substituted-recipient outcomes, including exact reason codes. The startup seed configures the demo vendor and policy; it does **not** itself submit those three payment requests. On the invoice evidence screen, inspect the T2/T3/T4 readiness checklist. No local Sandbox payout is needed to review the deterministic policy.
+Sign in at http://localhost:3000/sign-in with the locally configured administrator. **Do not rely on `/demo` when running the default local `legacy` profile:** that route is intentionally enabled only in gated Neon preview/Sandbox modes.
+
+To exercise the **real scoped agent API and policy kernel** on a clean local database, submit these three fictional requests to `POST /api/agent/payment-requests` using the **local-only** `DEMO_PAYMENT_AGENT_API_KEY`. Set `MANDATEGATE_DISABLE_PAYMENTS=1` in `.env.local` before starting; use a fresh idempotency key per request. Do not supply PayPal credentials.
+
+| Case | invoiceNumber | amountCents | paymentDestination | Expected |
+| --- | --- | ---: | --- | --- |
+| Normal | `LOCAL-JUDGE-NORMAL-2026` | 120000 | `ap@northstar.example` | ALLOW |
+| Unusual amount | `LOCAL-JUDGE-ANOMALY-2026` | 280000 | `ap@northstar.example` | ESCALATE |
+| Changed recipient | `LOCAL-JUDGE-DESTINATION-2026` | 120000 | `changed-payee@synthetic.invalid` | DENY |
+
+For each case, send JSON with `vendorId="vendor_northstar"`, `currency="USD"` and the fields above, plus `Authorization: Bearer <your local payment-agent key>`, `Content-Type: application/json`, and an `Idempotency-Key` header of at least eight characters. The corresponding decision and reason codes should appear on the Payments screen. `paymentExecuted` must be `false`.
+
+Example for the normal case (enter the **local** agent key, never a real provider credential):
+
+```bash
+read -rsp "Local payment-agent key: " MG_PAYMENT_KEY; echo
+curl --fail-with-body --silent --show-error \
+  -X POST http://localhost:3000/api/agent/payment-requests \
+  -H "Authorization: Bearer $MG_PAYMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: judge-normal-local-2026" \
+  --data '{"vendorId":"vendor_northstar","invoiceNumber":"LOCAL-JUDGE-NORMAL-2026","amountCents":120000,"currency":"USD","paymentDestination":"ap@northstar.example"}'
+unset MG_PAYMENT_KEY
+```
+
+Repeat with the other two case values and distinct idempotency keys. An imported AP history may **escalate** a request, so use the freshly seeded database and do not mislabel a changed outcome as a successful fixed scenario. From the invoice evidence screen, inspect the proof-readiness checklist. These synthetic policy cases never constitute settled PayPal payments.
 
 To run the automated test suite, use `pnpm test`, `pnpm typecheck` and `pnpm build` against the isolated database. The fully provisioned Render CI additionally exercises two migrations, two seeds, authenticated loopback smoke and real Chromium desktop/mobile checks.
 
