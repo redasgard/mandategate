@@ -158,8 +158,22 @@ try{
   "ESCALATE · unusual amount · queued for human review; no payout.");
  await captureAgentDecision(cases[2],
   "DENY · recipient mismatch · untrusted destination remains blocked.");
- await show("/invoice-artifacts","Process an invoice",
-  "Invoice source checks T2/T3/T4 are NOT satisfied. AI observations do not authorize payment.",18);
+ // A real user upload in the actual browser, using a generated fictional image.
+ // No external model is called and an image cannot pass the independent PDF
+ // verification gate. The resulting review screen MUST show that restriction.
+ await page.goto(origin+"/invoice-artifacts",{waitUntil:"domcontentloaded"});
+ await page.getByRole("heading",{name:"Upload your invoice"}).waitFor();
+ const invoicePage=await ctx.newPage();
+ await invoicePage.setContent('<html><body style="font:23px Arial;color:#142332;background:#fff;padding:40px"><h1>FICTIONAL INVOICE - TEST ONLY</h1><p>Northstar Test Services</p><p>Invoice: VIDEO-SOURCE-2026</p><p>Amount: USD 1200.00</p><p>Payee: example.test - NOT REAL</p><p>No purchase or payment authority</p></body></html>');
+ const invoiceBytes=await invoicePage.screenshot({type:"png",fullPage:true});
+ await invoicePage.close();
+ await page.locator('section[aria-label="Upload an invoice"] input[type="file"]')
+  .setInputFiles({name:"fictional-northstar-invoice.png",mimeType:"image/png",buffer:invoiceBytes});
+ await page.getByRole("button",{name:/Upload & review invoice/}).click();
+ await page.waitForURL(/\\/invoice-artifacts\\/[a-f0-9-]{36}$/i,{timeout:20000});
+ const invoicePath=new URL(page.url()).pathname;
+ await show(invoicePath,"Payment not yet available",
+  "Real fictional invoice uploaded and SHA-256 stored. Image evidence cannot authorize a payout.",15,true);
  await show("/sandbox-evidence","PayPal Sandbox integration evidence",
   "ARCHIVE ONLY: separate earlier Sandbox payout; not from these invoices.",19);
  await show("/dashboard","Payment operations",
