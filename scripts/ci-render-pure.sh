@@ -9,7 +9,24 @@ done
 if [[ -e .env || -e .env.local ]]; then echo CI_REPOSITORY_ENV_FILE_PRESENT >&2; exit 22; fi
 sha="$(git rev-parse HEAD)"
 if [[ -z "${CI_EXPECTED_SHA:-}" || "$sha" != "$CI_EXPECTED_SHA" ]]; then echo CI_SHA_MISMATCH >&2; exit 23; fi
-if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi
+if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi\nif [[ "${CI_VIDEO_INSPECT_ONLY:-}" == "1" ]]; then
+  export CI=true
+  echo 'CI_MODE=isolated-existing-video-review-no-database'
+  CI_VIDEO_TMP="$(mktemp -d /tmp/mandategate-video-XXXXXX)"
+  trap 'rm -rf -- "$CI_VIDEO_TMP"' EXIT
+  if [[ -x /usr/bin/ffmpeg ]]; then
+    export CI_VIDEO_FFMPEG=/usr/bin/ffmpeg
+  else
+    npm install --prefix "$CI_VIDEO_TMP" --no-save --no-audit --no-fund ffmpeg-static@5.2.0
+    export CI_VIDEO_FFMPEG="$CI_VIDEO_TMP/node_modules/ffmpeg-static/ffmpeg"
+  fi
+  node --check scripts/ci-video-review.mjs
+  node scripts/ci-video-review.mjs
+  printf '<!doctype html><title>MandateGate video review</title><a href="/demo/storyboard.jpg">Recorded video storyboard</a><p><a href="/demo/mandategate-demo-final.mp4">Original video preserved</a></p>' > ci-public/index.html
+  echo CI_RESULT=INSPECTION_ONLY
+  exit 0
+fi
+
 export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:55432/mandategate"
 export BETTER_AUTH_URL="http://127.0.0.1:3000"
 # Render reserves PORT=10000 for hosted services. This is an ephemeral
