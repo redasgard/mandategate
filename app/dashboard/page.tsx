@@ -36,8 +36,8 @@ export default async function DashboardPage() {
 
       <section className="panel">
         <div className="panel-head">
-          <div><p className="eyebrow">Recent authority decisions</p><h2>Agent requests, MandateGate decisions</h2></div>
-          <span className="badge">No payment execution in slice 1</span>
+          <div><p className="eyebrow">Recent authority decisions</p><h2>Agent requests and authorization outcomes</h2></div>
+          <span className="badge">Decisions are not payment confirmations</span>
         </div>
         {rows.length === 0 ? (
           <div className="empty">
