@@ -22,9 +22,11 @@ if [[ "${CI_VIDEO_INSPECT_ONLY:-}" == "1" ]]; then
     export CI_VIDEO_FFMPEG="$CI_VIDEO_TMP/node_modules/ffmpeg-static/ffmpeg"
   fi
   node --check scripts/ci-video-review.mjs
+  node --check scripts/ci-video-repair.mjs
   node scripts/ci-video-review.mjs
-  printf '<!doctype html><title>MandateGate video review</title><a href="/demo/storyboard.jpg">Recorded video storyboard</a><p><a href="/demo/mandategate-demo-final.mp4">Original video preserved</a></p>' > ci-public/index.html
-  echo CI_RESULT=INSPECTION_ONLY
+  node scripts/ci-video-repair.mjs
+  printf '<!doctype html><title>MandateGate revised demo</title><h1>MandateGate actual browser demo</h1><p>Timing-only repair of previously recorded synthetic UI. No PayPal payout was initiated.</p><a href="/demo/mandategate-demo-repaired.mp4">Revised narrated demo MP4</a><p><a href="/demo/storyboard-repaired.jpg">Revised storyboard</a> · <a href="/demo/repair-proof.json">Machine-verifiable timing report</a></p><p><a href="/demo/mandategate-demo-final.mp4">Original preserved for comparison</a></p>' > ci-public/index.html
+  echo CI_RESULT=VIDEO_REPAIR_PASS
   exit 0
 fi
 
