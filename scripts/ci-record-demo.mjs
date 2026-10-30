@@ -69,9 +69,9 @@ try{
  await fixtureContext.close();
 
  const ctx=await browser.newContext({
-  viewport:{width:1440,height:900},deviceScaleFactor:1,
+  viewport:{width:1440,height:810},deviceScaleFactor:1,
   colorScheme:"dark",reducedMotion:"reduce",storageState:authState,
-  recordVideo:{dir:output,size:{width:1440,height:900}},
+  recordVideo:{dir:output,size:{width:1440,height:810}},
  });
  await ctx.route("**/*",route=>{
   const url=new URL(route.request().url());
@@ -152,7 +152,17 @@ try{
    const button=page.getByRole("button",{name:"Load or replay three demo decisions"});
    await scrollTo(button);
    await page.waitForTimeout(700);
+   const responsePromise=page.waitForResponse(r=>
+    new URL(r.url()).pathname==="/api/admin/demo-scenarios" &&
+    r.request().method()==="POST",{timeout:25000});
    await button.click();
+   const submittedResponse=await responsePromise;
+   assert.equal(submittedResponse.status(),200,"CI_DEMO_UI_SUBMISSION_REJECTED");
+   const submission=await submittedResponse.json();
+   assert(Array.isArray(submission.scenarios)&&submission.scenarios.length===3 &&
+     submission.scenarios.every(x=>x.hasExecution===false &&
+       x.outcome===x.expectedOutcome && x.requestId),
+     "CI_DEMO_ADMIN_UI_CANONICAL_SUBMISSION_INVALID");
    await page.getByText("Three synthetic decisions are available.",{exact:false})
     .first().waitFor({timeout:25000});
    for(const item of expected){
@@ -183,7 +193,21 @@ try{
     mimeType:"application/pdf",buffer:fixture});
    await page.waitForTimeout(700);
    const upload=page.getByRole("button",{name:/Upload & review invoice/});
+   const uploadResponsePromise=page.waitForResponse(r=>
+    new URL(r.url()).pathname==="/api/admin/invoice-artifacts" &&
+    r.request().method()==="POST",{timeout:25000});
    await upload.click();
+   const uploadResponse=await uploadResponsePromise;
+   assert([200,201].includes(uploadResponse.status()),
+     "CI_DEMO_UI_PDF_UPLOAD_STATUS_"+uploadResponse.status());
+   const stored=await uploadResponse.json();
+   assert(stored?.trustState==="STORED_UNTRUSTED" &&
+    stored?.sourceVerified===false &&
+    stored?.issuerAuthenticated===false &&
+    stored?.paymentExecuted===false &&
+    stored?.sourcePreparation?.state==="PARSER_TEXT_AVAILABLE_UNVERIFIED" &&
+    stored?.sourcePreparation?.pageCount>=1,
+    "CI_DEMO_REAL_PDF_PARSER_OR_PROVENANCE_FAILED");
    await page.waitForURL(url=>/^\/invoice-artifacts\/[a-f0-9-]{36}$/.test(url.pathname),{timeout:30000});
    const body=await page.locator("main").innerText();
    assert(body.includes("AI-assisted invoice processing") &&
