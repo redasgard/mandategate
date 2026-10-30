@@ -138,6 +138,7 @@ try{
   await page.mouse.wheel(0,255);
   await page.waitForTimeout(650);
  }
+ let recordingComplete=false;
  try{
   await scene("01-control-overview",8,async()=>{
    await navigate("/dashboard","Payment operations");
@@ -186,11 +187,13 @@ try{
 
   await scene("06-original-pdf-and-archived-glm",26,async()=>{
    await navigate("/invoice-artifacts","Process an invoice");
+   console.log("CI_DEMO_PDF_STAGE=navigated");
    await stage("ORIGINAL FICTIONAL PDF · upload and independent source hash");
    const input=page.locator('input[type="file"]').first();
    await scrollTo(input);
    await input.setInputFiles({name:"northstar-fictional-test.pdf",
     mimeType:"application/pdf",buffer:fixture});
+   console.log("CI_DEMO_PDF_STAGE=file_selected bytes="+fixture.length);
    await page.waitForTimeout(700);
    const upload=page.getByRole("button",{name:/Upload & review invoice/});
    const uploadResponsePromise=page.waitForResponse(r=>
@@ -198,6 +201,7 @@ try{
     r.request().method()==="POST",{timeout:25000});
    await upload.click();
    const uploadResponse=await uploadResponsePromise;
+   console.log("CI_DEMO_PDF_STAGE=received_response status="+uploadResponse.status());
    assert([200,201].includes(uploadResponse.status()),
      "CI_DEMO_UI_PDF_UPLOAD_STATUS_"+uploadResponse.status());
    const stored=await uploadResponse.json();
@@ -259,6 +263,7 @@ try{
 
   assert(browserErrors.length===0,"CI_DEMO_BROWSER_ERRORS_"+browserErrors.join("|"));
   assert(submitted===3&&uploaded===1,"CI_DEMO_ACTUAL_ACTIONS_MISSING");
+  recordingComplete=true;
  }finally{
   const video=page.video();
   await ctx.close();
@@ -268,6 +273,8 @@ try{
    renameSync(from,to);
    assert(statSync(to).size>150000,"CI_DEMO_VIDEO_EMPTY");
    const length=seconds();
+   if(!recordingComplete){console.error("CI_DEMO_INCOMPLETE_RECORDING_NOT_PUBLISHABLE");}
+   if(recordingComplete){
    assert(length>85&&length<165,"CI_DEMO_LENGTH_INVALID_"+length);
    writeFileSync(join(output,"manifest.json"),JSON.stringify({
     contract:"mandategate/real-browser-demo/v2",
@@ -283,6 +290,7 @@ try{
    },null,2)+"\n");
    console.log("CI_DEMO_REAL_INTERACTIONS_PASS source_pdf="+uploaded+
     " submitted_decisions="+submitted+" payout_posts=0 seconds="+length.toFixed(2));
+   }
   }
  }
 }finally{
