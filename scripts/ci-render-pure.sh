@@ -9,7 +9,8 @@ done
 if [[ -e .env || -e .env.local ]]; then echo CI_REPOSITORY_ENV_FILE_PRESENT >&2; exit 22; fi
 sha="$(git rev-parse HEAD)"
 if [[ -z "${CI_EXPECTED_SHA:-}" || "$sha" != "$CI_EXPECTED_SHA" ]]; then echo CI_SHA_MISMATCH >&2; exit 23; fi
-if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi\nif [[ "${CI_VIDEO_INSPECT_ONLY:-}" == "1" ]]; then
+if [[ "$(node -v)" != "v24.21.0" ]]; then echo CI_NODE_PIN_MISMATCH >&2; exit 24; fi
+if [[ "${CI_VIDEO_INSPECT_ONLY:-}" == "1" ]]; then
   export CI=true
   echo 'CI_MODE=isolated-existing-video-review-no-database'
   CI_VIDEO_TMP="$(mktemp -d /tmp/mandategate-video-XXXXXX)"
