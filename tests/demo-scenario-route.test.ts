@@ -7,10 +7,19 @@ describe("synthetic demo HTTP gate",()=>{
    method:"POST",headers:{origin:"https://evil.example"}}));
   expect(r.status).toBe(403);
  });
- it("refuses access outside the exact Neon demo preview",async()=>{
-  const r=await POST(new Request(origin+"/api/admin/demo-scenarios",{
-   method:"POST",headers:{origin}}));
-  expect(r.status).toBe(404);
-  expect((await r.json()).error).toBe("DEMO_PREVIEW_DISABLED");
+ it("refuses access without the exact preview or disposable CI admission",async()=>{
+  // The ordinary unit-test runner may use the exact payment-disabled CI lab;
+  // remove its trust marker so the negative route assertion remains honest.
+  const original=process.env.MANDATEGATE_EMBEDDED_POSTGRES_CI;
+  process.env.MANDATEGATE_EMBEDDED_POSTGRES_CI="0";
+  try{
+   const r=await POST(new Request(origin+"/api/admin/demo-scenarios",{
+    method:"POST",headers:{origin}}));
+   expect(r.status).toBe(404);
+   expect((await r.json()).error).toBe("DEMO_PREVIEW_DISABLED");
+  }finally{
+   if(original===undefined)delete process.env.MANDATEGATE_EMBEDDED_POSTGRES_CI;
+   else process.env.MANDATEGATE_EMBEDDED_POSTGRES_CI=original;
+  }
  });
 });
