@@ -3,12 +3,12 @@ import {spawnSync} from "node:child_process";
 import {readFileSync,writeFileSync,statSync} from "node:fs";
 import {resolve} from "node:path";
 
-assert(process.env.CI_VIDEO_INSPECT_ONLY==="1" &&
+assert((process.env.CI_VIDEO_INSPECT_ONLY==="1" || process.env.MANDATEGATE_RUNTIME_MODE==="legacy") &&
  process.env.CI==="true" && process.env.MANDATEGATE_DISABLE_PAYMENTS==="1" &&
  process.env.CI_EXPECTED_SHA && !process.env.PAYPAL_CLIENT_SECRET &&
  !process.env.EXPLABS_API_KEY,"DEMO_REPAIR_ISOLATED_ONLY");
-const ffmpeg=process.env.CI_VIDEO_FFMPEG;
-assert(ffmpeg==="/usr/bin/ffmpeg" || ffmpeg?.startsWith("/tmp/mandategate-video-"),
+const ffmpeg=process.env.CI_VIDEO_FFMPEG??process.env.CI_DEMO_FFMPEG;
+assert(ffmpeg==="/usr/bin/ffmpeg" || ffmpeg?.startsWith("/tmp/mandategate-video-") || ffmpeg?.startsWith("/tmp/mandategate-pg."),
  "DEMO_REPAIR_UNTRUSTED_FFMPEG");
 const original=resolve("ci-public/demo/mandategate-demo-final.mp4");
 const fixed=resolve("ci-public/demo/mandategate-demo-repaired.mp4");
@@ -60,12 +60,15 @@ for(let i=0;i<edges.length-1;i+=2){
  keep.push({start:edges[i],end:edges[i+1]});
 }
 assert(keep.every(x=>x.end-x.start>1.0),"DEMO_REPAIR_SHORT_KEEP_SEGMENT");
-const filters=[];
+const filters=[
+ "[0:v]split="+keep.length+keep.map((_,i)=>"[vs"+i+"]").join(""),
+ "[0:a]asplit="+keep.length+keep.map((_,i)=>"[as"+i+"]").join("")
+];
 for(let i=0;i<keep.length;i++){
  const k=keep[i];
- filters.push("[0:v]trim=start="+k.start.toFixed(3)+":end="+k.end.toFixed(3)+
+ filters.push("[vs"+i+"]trim=start="+k.start.toFixed(3)+":end="+k.end.toFixed(3)+
   ",setpts=PTS-STARTPTS[v"+i+"]");
- filters.push("[0:a]atrim=start="+k.start.toFixed(3)+":end="+k.end.toFixed(3)+
+ filters.push("[as"+i+"]atrim=start="+k.start.toFixed(3)+":end="+k.end.toFixed(3)+
   ",asetpts=PTS-STARTPTS[a"+i+"]");
 }
 filters.push(keep.map((_,i)=>"[v"+i+"][a"+i+"]").join("")+
@@ -88,9 +91,9 @@ const check=spawnSync(ffmpeg,["-hide_banner","-i",fixed,
  "-af","silencedetect=n=-38dB:d=0.30","-f","null","-"],{
  encoding:"utf8",timeout:50000,maxBuffer:4000000});
 assert(check.status===0,"DEMO_REPAIR_AUDIO_DECODE_FAILED");
-const silenceStarts=[...check.stderr.matchAll(/silence_start: ([0-9.]+)/g)].map(m=>Number(m[1]));
-const silenceEnds=[...check.stderr.matchAll(/silence_end: ([0-9.]+)/g)].map(m=>Number(m[1]));
-const remaining=silenceStarts.map((s,i)=>Number(((silenceEnds[i]??seconds)-s).toFixed(2)));
+const repairedStarts=[...check.stderr.matchAll(/silence_start: ([0-9.]+)/g)].map(m=>Number(m[1]));
+const repairedEnds=[...check.stderr.matchAll(/silence_end: ([0-9.]+)/g)].map(m=>Number(m[1]));
+const remaining=repairedStarts.map((s,i)=>Number(((repairedEnds[i]??seconds)-s).toFixed(2)));
 const maxSilence=Math.max(0,...remaining);
 assert(maxSilence<6.0,"DEMO_REPAIR_LONG_SILENCE_REMAINS_"+maxSilence);
 const storyboard=resolve("ci-public/demo/storyboard-repaired.jpg");
@@ -104,7 +107,7 @@ console.log("CI_REPAIRED_STORYBOARD_COUNT="+chunks.length);
 chunks.forEach((chunk,i)=>console.log("CI_REPAIRED_STORYBOARD_"+String(i).padStart(3,"0")+"="+chunk));
 const proof={sourceCommit:manifest.commit,sourceUrl:null,
  videoFile:"mandategate-demo-repaired.mp4",
- sourceDuration:review.durationSeconds,outputDuration:seconds,
+ sourceDuration:durationSeconds,outputDuration:seconds,
  cutSeconds:Number(removed.toFixed(2)),cuts,
  maxSilenceSeconds:maxSilence,
  outputBytes:statSync(fixed).size,
