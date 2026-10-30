@@ -170,7 +170,7 @@ try{
  await page.locator('section[aria-label="Upload an invoice"] input[type="file"]')
   .setInputFiles({name:"fictional-northstar-invoice.png",mimeType:"image/png",buffer:invoiceBytes});
  await page.getByRole("button",{name:/Upload & review invoice/}).click();
- await page.waitForURL(/\\/invoice-artifacts\\/[a-f0-9-]{36}$/i,{timeout:20000});
+ await page.waitForURL(/\/invoice-artifacts\/[a-f0-9-]{36}$/i,{timeout:20000});
  const invoicePath=new URL(page.url()).pathname;
  await show(invoicePath,"Payment not yet available",
   "Real fictional invoice uploaded and SHA-256 stored. Image evidence cannot authorize a payout.",15,true);
