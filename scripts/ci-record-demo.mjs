@@ -217,13 +217,13 @@ try{
     .waitFor({timeout:30000});
    await page.getByText("Confirm the invoice details",{exact:false}).first()
     .waitFor({timeout:15000});
-   const body=await page.locator("main").innerText();
+   const reviewHeading=page.locator("main").getByRole("heading",{
+    name:"Three short checks before payment"});
+   assert(await reviewHeading.isVisible(),"CI_DEMO_PDF_REVIEW_HEADING_NOT_VISIBLE");
+   const verifyHeading=page.locator("main").getByRole("heading",{
+    name:"Confirm the invoice details"});
+   assert(await verifyHeading.isVisible(),"CI_DEMO_PDF_VERIFY_WORKFLOW_MISSING");
    console.log("CI_DEMO_PDF_STAGE=review_loaded pathname="+new URL(page.url()).pathname);
-   assert(body.includes("AI-assisted invoice processing") &&
-     body.includes("Three short checks before payment"),
-     "CI_DEMO_REAL_PDF_REVIEW_NOT_VISIBLE");
-   assert(body.includes("Confirm the invoice details"),
-     "CI_DEMO_PDF_VERIFY_WORKFLOW_MISSING");
    const originalSource=page.getByRole("link",{name:/View original invoice/});
    assert(await originalSource.count()>0,"CI_DEMO_ORIGINAL_PDF_LINK_MISSING");
    const evidence=page.getByText("Show PDF source text and hashes",{exact:false});
