@@ -175,6 +175,8 @@ try{
  await page.getByRole("button",{name:/Upload & review invoice/}).click();
  await page.waitForURL(/\/invoice-artifacts\/[a-f0-9-]{36}$/i,{timeout:20000});
  const invoicePath=new URL(page.url()).pathname;
+ assert(/^\/invoice-artifacts\/[a-f0-9-]{36}$/i.test(invoicePath),"CI_DEMO_INVOICE_ARTIFACT_ROUTE_INVALID");
+ console.log("CI_DEMO_SYNTHETIC_INVOICE_UPLOAD_PASS payment_authority=false");
  await show(invoicePath,"Payment not yet available",
   "Real fictional invoice uploaded and SHA-256 stored. Image evidence cannot authorize a payout.",15,true);
  await show("/sandbox-evidence","PayPal Sandbox integration evidence",
