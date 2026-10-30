@@ -1,50 +1,46 @@
-# MandateGate | Demo script and capture plan
+# MandateGate | Final demo narration and shot ledger (October 29, 2026)
 
-**Format:** English narration over REAL browser footage of the working app, 16:9, target duration 2:20–2:40; YouTube public and **under 3:00**. No slides pretending to be the product. Use actual recorded interactions, not a fictional paid-invoice animation.
+**Actual output:** https://mg-review-ci.onrender.com/demo/mandategate-demo-final.mp4
 
-**Recording environment:** current tested Next.js build on a local isolated PostgreSQL 18 with synthetic data and payments globally disabled, or a verified hosted read-only judge account. Never show credentials, session tokens or provider keys. Avoid displaying personal or production vendor data.
+This 139.3-second recording was generated from real Playwright browser interactions with the actual Next.js app, isolated PostgreSQL18 and payments disabled. The H.264/AAC MP4 was built by Render CI at commit `874d0cde49bae561f940406403d1c686841940cd` and deployed as `dep-dbi1iq61egvs73ekrmdg`. Recording and mux proof is in [video-proof-20261029.md](video-proof-20261029.md). Public YouTube upload and external manual playback QA remain outstanding.
 
-## Shot plan (recorded UI, not static presentation)
+## Recorded scenes and on-screen captions
 
-**00:00–00:20 | The problem:** Open the signed-in MandateGate dashboard. Point to the attention queue, evidence and payment controls. Show that agents can submit requests while financial authority remains server-side.
+| Time | Actual browser page | Main factual message |
+| --- | --- | --- |
+| 00:00–00:14 | Signed-in /dashboard | Agent requests reach MandateGate; credentials and policy authority stay server-side |
+| 00:14–00:26 | /payments | Three fictional requests entered through the genuine scoped agent API |
+| 00:26–00:44 | /payments/{normal-id} | Deterministic ALLOW and baseline reason, **no payout** |
+| 00:44–01:02 | /payments/{anomaly-id} | ESCALATE on abnormal amount |
+| 01:02–01:20 | /payments/{changed-recipient-id} | DENY on payment-destination mismatch |
+| 01:20–01:38 | /invoice-artifacts | GLM evidence is non-authorizing; T2/T3/T4 proof readiness is distinct |
+| 01:38–02:00 | /sandbox-evidence | Explicitly separate earlier archived PayPal Sandbox SUCCESS and webhook proof |
+| 02:00–02:19 | /dashboard | Summary: model proposes, deterministic policy owns authority, trusted executor handles PayPal |
 
-**00:20–00:50 | ALLOW:** Open Payments and the saved fictional normal vendor invoice decision. Show `ALLOW`, `WITHIN_TRUSTED_BASELINE` and evidence. Say this is a policy outcome, **not** a payout from this invoice.
+The browser recording is roughly 139.3 seconds. The original single-take ElevenLabs `eleven_v4` narration lasts 91.87 seconds and is segmented across the eight scenes with deliberate pauses. Timings indicate scene windows, not literal spoken-word time codes.
 
-**00:50–01:15 | ESCALATE:** Open the anomalous amount decision, show `ESCALATE` and reason `AMOUNT_OUTSIDE_VENDOR_BASELINE`. Show human review needed; no PayPal request.
+## Narration actually generated
 
-**01:15–01:40 | DENY:** Open substituted destination, show `DENY` and `DESTINATION_MISMATCH`. Explain that the invoice cannot rewrite trusted recipient state.
+An AI agent can read an invoice. But should that give it permission to send money?
 
-**01:40–02:00 | AI evidence:** Open invoice intake/review and any saved GLM observation. Show suggestions marked unverified, and the T2/T3/T4 proof checklist. Never portray model text as supplier verification or payment authorization.
+MandateGate sits between autonomous operations agents and PayPal. Agents can submit payment requests, but they never get payment credentials or the authority to approve themselves.
 
-**02:00–02:20 | Real PayPal evidence, with explicit separation:** Show the existing project's historical PayPal Sandbox receipt panel or the documented verified provider receipt. Read the recorded batch/item and webhook/reconciliation statuses. On-screen caption: **“Separate earlier PayPal Sandbox transaction; not caused by these demo invoices.”** Do not claim the current video executes or settles a new payout.
+Here is a normal request from a known vendor. The destination matches our trusted record, and the amount is inside policy limits. The system records ALLOW, with reasons you can inspect. That does not mean a payment was sent.
 
-**02:20–02:35 | Close:** Return to the dashboard. State the boundary: models may propose, policy authorizes, and only the trusted server-side executor can contact PayPal.
+Now the invoice amount is unusually high. MandateGate escalates the request for human review. No automatic payout.
 
-## Narration (natural, ~270 words)
+And here is an attempted recipient change. The system denies it. A field inside an invoice cannot silently change where the company sends money.
 
-“An AI agent can read an invoice. But should that give it permission to send money?
+GLM can extract and explain invoice content, but its suggestions remain untrusted. Independent document and issuer checks are required before any invoice-derived payment can move.
 
-MandateGate is the control layer between autonomous operations agents and PayPal. Agents can submit invoices and payment requests. They never get payment credentials or the power to approve their own work.
+The PayPal Sandbox integration has also processed a separate earlier payment with a recorded successful batch, item status and verified webhook. That historical transaction was not caused by the fictional invoices shown here.
 
-Here’s the ordinary case. A known vendor requests an amount within the configured limits, using the trusted recipient. The deterministic policy records ALLOW, with an explanation we can inspect. That decision is not itself proof of payment.
+That is the idea behind MandateGate: AI can propose. Deterministic policy controls authority. The trusted payment executor alone can contact PayPal.
 
-Now an invoice comes in above the vendor’s usual amount. The result is ESCALATE. It stays in the review queue rather than becoming an automatic payment.
+## Final publication criteria
 
-Third, a document asks for a different recipient. The system denies it. A text field in a PDF cannot silently rewrite where the company sends money.
-
-GLM helps interpret the document. But the extracted values are suggestions, not verified source facts. Before a payment can move, MandateGate needs independent origin, recipient and exact approval evidence. Here’s where the app shows what’s still missing.
-
-We also integrated PayPal’s Sandbox Payouts API with persistent idempotency and verified asynchronous webhook handling. This archived receipt shows an earlier successful Sandbox transaction. It is separate from the fictional invoice cases you just saw.
-
-The important part is not making an AI system say ‘approved.’ It’s making sure the system can’t pay unless the authorization holds up even when the model is wrong.
-
-MandateGate lets agents work, without handing them the keys to the money.”
-
-## Video acceptance
-
-- Exact actual browser footage inspected end-to-end, not only screenshots or logs.
-- The screen demonstrates live user input/navigation, persisted decision changes or API evaluation, and an honest PayPal evidence trail.
-- Narrration claims match the displayed state; no recycled transaction shown as freshly paid.
-- No real secrets or personal data. Any AI-generated voice or music must be licensed. Prefer a human-recorded narration.
-- Video is < 180 seconds by media metadata, playable, audio audible, public on YouTube, and pasted into Devpost.
-- If the actual screen or separate receipt cannot be recorded, disclose the limit rather than fabricating an end-to-end payment flow.
+- Actual video contains real application browser footage; **no fabricated PayPal payouts or issuer proofs**.
+- Inspect complete H.264/AAC MP4 visually and audibly; the automated build PASS alone is not independent media review.
+- Public YouTube link under 3 minutes, no secret/PII display, no unlicensed music or imagery.
+- Update Devpost with exact public YouTube URL and verified source-repository link.
+- This video shows a working beta with separate historical PayPal and advisory GLM evidence, **not** the unverified invoice-derived strict Gate H settlement chain.
