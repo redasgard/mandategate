@@ -23,7 +23,7 @@ assert(manifest.contract==="mandategate/real-browser-demo/v2" &&
 assert(statSync(original).size>500000,"DEMO_REPAIR_SOURCE_MISSING");
 const inputProbe=spawnSync(ffmpeg,["-hide_banner","-i",original],{
  encoding:"utf8",timeout:15000,maxBuffer:2000000});
-const sourceDuration=inputProbe.stderr.match(/Duration:\\s*(\\d+):(\\d+):(\\d+\\.\\d+)/);
+const sourceDuration=inputProbe.stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
 assert(sourceDuration && /Video: h264/.test(inputProbe.stderr) &&
  /Audio: aac/.test(inputProbe.stderr),"DEMO_REPAIR_SOURCE_MEDIA_INVALID");
 const durationSeconds=Number(sourceDuration[1])*3600+
