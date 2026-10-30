@@ -84,6 +84,7 @@ const ctx=await browser.newContext({
 const page=await ctx.newPage();
 const start=Date.now();
 const traces=[];
+let fictionalInvoiceUploaded=false;
 page.on("pageerror",error=>{throw Error("CI_DEMO_BROWSER_JS_ERROR:"+String(error).slice(0,180))});
 await ctx.route("**/*",route=>{
  const u=new URL(route.request().url());
@@ -185,6 +186,7 @@ try{
  const invoicePath=new URL(page.url()).pathname;
  assert(/^\/invoice-artifacts\/[a-f0-9-]{36}$/i.test(invoicePath),"CI_DEMO_INVOICE_ARTIFACT_ROUTE_INVALID");
  console.log("CI_DEMO_SYNTHETIC_INVOICE_UPLOAD_PASS payment_authority=false");
+ fictionalInvoiceUploaded=true;
  await show(invoicePath,"Payment not yet available",
   "Real fictional invoice uploaded and SHA-256 stored. Image evidence cannot authorize a payout.",15,true);
  await show("/sandbox-evidence","PayPal Sandbox integration evidence",
@@ -201,13 +203,17 @@ try{
   renameSync(source,destination);
   const bytes=statSync(destination).size;
   assert(bytes>150_000,"CI_DEMO_VIDEO_EMPTY");
+  assert(fictionalInvoiceUploaded && cases.every(item=>Boolean(item.requestId)),
+   "CI_DEMO_REQUIRED_JOURNEY_INCOMPLETE");
   const seconds=(Date.now()-start)/1000;
   assert(seconds<175 && seconds>85,"CI_DEMO_VIDEO_LENGTH_OUT_OF_RANGE_"+seconds);
   writeFileSync(join(output,"manifest.json"),JSON.stringify({
    contract:"mandategate/real-browser-demo/v1",
    commit:expectedSha,
    environment:"isolated synthetic Next.js + disposable PostgreSQL 18",
-   paymentsDisabled:true,paymentPosts:0,providerCalls:0,
+   paymentsDisabled:true,paymentPosts:0,providerPayoutPosts:0,providerCalls:0,
+   agentPaymentRequestPosts:cases.filter(item=>Boolean(item.requestId)).length,
+   fictionalInvoiceArtifactUploaded:fictionalInvoiceUploaded,
    class:"Real browser recording, NOT end-to-end invoice payout",
    historicalReceiptSeparate:true,
    captureDurationSeconds:Number(seconds.toFixed(1)),
