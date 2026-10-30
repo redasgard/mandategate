@@ -53,6 +53,8 @@ echo 'CI_MODE=private-build-disposable-local-postgresql18'
 step() { echo "CI_STEP=$1"; shift; "$@"; }
 step video-recorder-syntax node --check scripts/ci-record-demo.mjs
 step video-mux-syntax node --check scripts/ci-mux-demo.mjs
+step video-stage-syntax node --check scripts/ci-stage-voiceover.mjs
+step video-repair-syntax node --check scripts/ci-video-repair.mjs
 step video-output-qa-syntax node --check scripts/ci-qa-demo-output.mjs
 step pnpm-version pnpm --version
 step frozen-install pnpm install --frozen-lockfile
@@ -67,6 +69,10 @@ cleanup() {
   if [[ -n "${CI_PG_TEMP:-}" && -d "$CI_PG_TEMP" ]]; then rm -rf -- "$CI_PG_TEMP"; fi
 }
 trap cleanup EXIT
+if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
+  export CI_DEMO_VOICEOVER_FILE="$CI_PG_TEMP/voiceover-source.mp3"
+  step stage-licensed-voiceover node scripts/ci-stage-voiceover.mjs
+fi
 echo 'CI_STEP=install-temporary-postgresql18'
 npm install --prefix "$CI_PG_TEMP" --no-save --no-audit --no-fund embedded-postgres@18.4.0-beta.17
 cp scripts/ci-embedded-postgres.mjs "$CI_PG_TEMP/start.mjs"
@@ -155,6 +161,8 @@ if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
     if [[ ! -x "$CI_DEMO_FFMPEG" ]]; then echo CI_DEMO_FFMPEG_NOT_FOUND >&2; exit 30; fi
   fi
   step narrated-demo-mp4 node scripts/ci-mux-demo.mjs
+  step final-media-machine-qa node scripts/ci-qa-demo-output.mjs
+  step cut-audible-dead-air node scripts/ci-video-repair.mjs
   step narrated-demo-frame-and-audio-review node scripts/ci-qa-demo-output.mjs
 fi
 rm -f -- "$CI_CAPTURE_AUTH_STATE"
@@ -163,4 +171,4 @@ echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
 mkdir -p ci-public
-printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. <a href="demo/mandategate-demo-final.mp4">Narrated real UI demo (MP4)</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
+printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. <a href="demo/mandategate-demo-repaired.mp4">REPAIRED REAL UI DEMO (MP4)</a> · <a href="demo/mandategate-demo-final.mp4">Original full recording</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
