@@ -90,7 +90,7 @@ for(let i=0;i<8;i++){
   ':all=1[o'+i+']');
 }
 filters.push(Array.from({length:8},(_,i)=>'[o'+i+']').join('')+
- 'amix=inputs=8:normalize=0:duration=longest,apad[aout]');
+ 'amix=inputs=8:normalize=0:duration=longest,atrim=duration='+\n manifest.captureDurationSeconds+',asetpts=N/SR/TB[aout]');
 const args=['-hide_banner','-y','-i',source,'-i',audio,
  '-filter_complex',filters.join(';'),
  '-map','0:v:0','-map','[aout]','-c:v','libx264','-preset','veryfast',
