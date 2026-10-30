@@ -12,7 +12,7 @@ vi.mock("next/navigation",()=>({
 vi.mock("../src/auth/auth",()=>({
   auth:{api:{getSession:mocks.session}},
 }));
-vi.mock("../src/demo/scenarios",()=>({demoPreviewEnabled:()=>true}));
+vi.mock("../src/demo/scenarios",()=>({demoPreviewEnabled:()=>true,isolatedCiDemoEnabled:()=>false}));
 vi.mock("../src/demo/scenarios-store",()=>({
   listDemoScenarios:mocks.scenarios,
   DemoScenarioError:class DemoScenarioError extends Error {
