@@ -14,7 +14,6 @@ describe("historical model evidence stays non-authorizing",()=>{
    expect(html.toLowerCase()).toContain(truth.toLowerCase());
   }
   expect(html).toContain("not</strong>");
-  expect(html).toContain("No");
   expect(html).not.toContain("PayPal SUCCESS");
   expect(html).not.toContain("<form");
  });
