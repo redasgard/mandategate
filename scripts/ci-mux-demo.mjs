@@ -38,10 +38,15 @@ assert(process.env.CI_CAPTURE_AUTH_STATE?.startsWith('/tmp/mandategate-pg.'),
 const audio=resolve(dirname(process.env.CI_CAPTURE_AUTH_STATE),'voiceover-source.mp3');
 writeFileSync(audio,buffer,{mode:0o600});
 const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
-assert(manifest.commit===process.env.CI_EXPECTED_SHA&&
- manifest.paymentsDisabled===true&&manifest.paymentPosts===0&&
- manifest.historicalReceiptSeparate===true&&
- manifest.captureDurationSeconds<175,
+assert(manifest.contract==='mandategate/real-browser-demo/v2' &&
+ manifest.commit===process.env.CI_EXPECTED_SHA &&
+ manifest.paymentsDisabled===true && manifest.paymentPosts===0 &&
+ manifest.actualUiSubmittedCanonicalDecisions===3 &&
+ manifest.fictionalPdfUploaded===true &&
+ manifest.sourcePdfNotPayPalAuthorized===true &&
+ manifest.historicalReceiptSeparate===true &&
+ Array.isArray(manifest.scenes) && manifest.scenes.length===8 &&
+ manifest.captureDurationSeconds>80 && manifest.captureDurationSeconds<165,
  'CI_DEMO_RECORDING_PROVENANCE_INVALID');
 assert(statSync(source).size>150000,'CI_DEMO_RECORDING_MISSING');
 const probe=spawnSync(ffmpeg,['-hide_banner','-i',audio,'-af',
@@ -78,7 +83,14 @@ for(let i=0;i<wordCounts.length-1;i++){
  valid.sort((a,b)=>Math.abs(a.time-estimate)-Math.abs(b.time-estimate));
  boundaries.push(Number((valid[0]?.time??estimate).toFixed(3)));
 }
-const starts=[0.8,14.0,26.0,44.0,62.0,80.0,98.0,120.0];
+// Align each spoken paragraph to its real recorded interaction segment.
+const starts=manifest.scenes.map((s,i)=>{
+ if(typeof s.startSeconds!=='number'||typeof s.endSeconds!=='number'||
+    s.endSeconds<=s.startSeconds || s.startSeconds<0 ||
+    (i>0 && s.startSeconds<manifest.scenes[i-1].endSeconds-0.15))
+  throw Error('CI_DEMO_SCENE_TIMELINE_INVALID_'+i);
+ return Number((s.startSeconds+0.35).toFixed(3));
+});
 const edges=[0,...boundaries,audioDuration];
 const split=Array.from({length:8},(_,i)=>'[a'+i+']').join('');
 const filters=['[1:a]asplit=8'+split];
@@ -88,6 +100,11 @@ for(let i=0;i<8;i++){
   ':end='+edges[i+1].toFixed(3)+
   ',asetpts=PTS-STARTPTS,adelay='+Math.round(starts[i]*1000)+
   ':all=1[o'+i+']');
+}
+for(let i=0;i<7;i++){
+ const length=edges[i+1]-edges[i];
+ if(starts[i]+length>starts[i+1]+2)
+  throw Error('CI_DEMO_NARRATION_OVERLAPS_NEXT_SCENE_'+i);
 }
 filters.push(Array.from({length:8},(_,i)=>'[o'+i+']').join('')+
  'amix=inputs=8:normalize=0:duration=longest,atrim=duration='+
