@@ -51,6 +51,7 @@ echo 'CI_MODE=private-build-disposable-local-postgresql18'
 step() { echo "CI_STEP=$1"; shift; "$@"; }
 step video-recorder-syntax node --check scripts/ci-record-demo.mjs
 step video-mux-syntax node --check scripts/ci-mux-demo.mjs
+step video-output-qa-syntax node --check scripts/ci-qa-demo-output.mjs
 step pnpm-version pnpm --version
 step frozen-install pnpm install --frozen-lockfile
 CI_PG_TEMP="$(mktemp -d /tmp/mandategate-pg.XXXXXX)"
@@ -152,6 +153,7 @@ if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
     if [[ ! -x "$CI_DEMO_FFMPEG" ]]; then echo CI_DEMO_FFMPEG_NOT_FOUND >&2; exit 30; fi
   fi
   step narrated-demo-mp4 node scripts/ci-mux-demo.mjs
+  step narrated-demo-frame-and-audio-review node scripts/ci-qa-demo-output.mjs
 fi
 rm -f -- "$CI_CAPTURE_AUTH_STATE"
 step signed-in-http-smoke pnpm smoke
