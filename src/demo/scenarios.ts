@@ -22,7 +22,26 @@ const allowedNeonHosts = new Set([
   "ep-silent-poetry-arjowm4d.c-4.us-west-2.aws.neon.tech",
   "ep-silent-poetry-arjowm4d-pooler.c-4.us-west-2.aws.neon.tech",
 ]);
+/**
+ * Fully isolated, disposable render-CI demo. Never enabled on a live or
+ * externally accessible database, even if an operator sets CI=true.
+ * Models and PayPal providers are absent, and global payouts are disabled.
+ */
+export function isolatedCiDemoEnabled(env:Record<string,string|undefined>):boolean{
+ return env.CI==="true" &&
+  env.MANDATEGATE_EMBEDDED_POSTGRES_CI==="1" &&
+  env.MANDATEGATE_RUNTIME_MODE==="legacy" &&
+  env.MANDATEGATE_DISABLE_PAYMENTS==="1" &&
+  env.BETTER_AUTH_URL==="http://127.0.0.1:3000" &&
+  env.PORT==="3000" &&
+  env.DATABASE_URL==="postgresql://postgres:postgres@127.0.0.1:55432/mandategate" &&
+  env.DEMO_ADMIN_EMAIL==="admin@mandategate.local" &&
+  env.DEMO_PAYMENT_AGENT_API_KEY==="mg_payment_ci_only_synthetic_agent_key_2026" &&
+  !env.PAYPAL_CLIENT_ID && !env.PAYPAL_CLIENT_SECRET &&
+  !env.EXPLABS_API_KEY && !env.DEMO_PAYPAL_RECEIVER_EMAIL;
+}
 export function demoPreviewEnabled(env:Record<string,string|undefined>):boolean {
+  if(isolatedCiDemoEnabled(env))return true;
   const mode = env.MANDATEGATE_RUNTIME_MODE;
   if (mode !== "neon-preview" && mode !== "neon-sandbox") return false;
   if (mode === "neon-preview" && env.MANDATEGATE_DISABLE_PAYMENTS !== "1") return false;
