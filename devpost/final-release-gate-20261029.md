@@ -46,3 +46,12 @@ As of this release gate, optional scheduling, Elastic, Bryntum, AG Grid sponsor 
 ## Critique gate
 
 Step: last-mile submission assessment. Decision **BLOCK**, score **5.4/10**, review independence **self-review** with deterministic GitHub/Render/Neon corroboration. Missing publication, video and judge-access requirements are HIGH severity. The next safe state is a documented release package followed by owner publication and account steps; no assertion of final submission.
+
+## October 29 21:18 Pacific: media and isolated acceptance update
+
+- **Video construction is VERIFIED by Render CI**, not independently played back: narrated real-browser MP4 at https://mg-review-ci.onrender.com/demo/mandategate-demo-final.mp4; manifest at https://mg-review-ci.onrender.com/demo/manifest.json.
+- Exact media-capable source commit `874d0cde49bae561f940406403d1c686841940cd` passed isolated Render deployment `dep-dbi1iq61egvs73ekrmdg`, LIVE 2026-10-30 04:17:59 UTC; `CI_RESULT=PASS` after 114 test files / 570 Vitest tests, build, migrations, authenticated smoke and desktop/mobile browser checks.
+- CI log: `CI_DEMO_NARRATED_MP4_PASS bytes=4367262 audio_seconds=91.87 video_seconds=139.3 scene_segments=8 payment_posts=0`; `CI_DEMO_REAL_BROWSER_CAPTURE_PASS bytes=6424730 seconds=139.3 payment_posts=0`.
+- 3 agent API outcomes were observed in recorder: ALLOW / ESCALATE / DENY with `paymentExecuted=false` each. Archived PayPal proof is shown as separate historical evidence; no new invoice-derived payout.
+- Cross-org archived receipt privacy was repaired on the tested code; CI synthetic signed-in cross-org smoke passed. The final release branch has additional **documentation-only** changes after the tested code SHA; no new financial execution code.
+- **Still BLOCK for submission:** repository remains PRIVATE, `main` is outdated/diverged, hosted judge access not verified, final video not independently inspected or published to public YouTube, and no Devpost submitted-entry confirmation. Internal 18:00 Pacific October 29 target has been missed; official 12:00 Pacific November 12 deadline remains available. Do not claim completed submission or strict Gate H.
