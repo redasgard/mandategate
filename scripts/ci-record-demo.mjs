@@ -184,7 +184,7 @@ try{
    await page.waitForTimeout(700);
    const upload=page.getByRole("button",{name:/Upload & review invoice/});
    await upload.click();
-   await page.waitForURL(/\\/invoice-artifacts\\/[a-f0-9-]{36}$/, {timeout:30000});
+   await page.waitForURL(url=>/^\/invoice-artifacts\/[a-f0-9-]{36}$/.test(url.pathname),{timeout:30000});
    const body=await page.locator("main").innerText();
    assert(body.includes("AI-assisted invoice processing") &&
      body.includes("Three short checks before payment"),
