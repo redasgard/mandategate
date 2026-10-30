@@ -33,6 +33,7 @@ echo 'CI_MODE=private-build-disposable-local-postgresql18'
 step() { echo "CI_STEP=$1"; shift; "$@"; }
 step video-recorder-syntax node --check scripts/ci-record-demo.mjs
 step video-mux-syntax node --check scripts/ci-mux-demo.mjs
+step video-stage-syntax node --check scripts/ci-stage-voiceover.mjs
 step pnpm-version pnpm --version
 step frozen-install pnpm install --frozen-lockfile
 CI_PG_TEMP="$(mktemp -d /tmp/mandategate-pg.XXXXXX)"
@@ -46,6 +47,10 @@ cleanup() {
   if [[ -n "${CI_PG_TEMP:-}" && -d "$CI_PG_TEMP" ]]; then rm -rf -- "$CI_PG_TEMP"; fi
 }
 trap cleanup EXIT
+if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
+  export CI_DEMO_VOICEOVER_FILE="$CI_PG_TEMP/voiceover-source.mp3"
+  step stage-licensed-voiceover node scripts/ci-stage-voiceover.mjs
+fi
 echo 'CI_STEP=install-temporary-postgresql18'
 npm install --prefix "$CI_PG_TEMP" --no-save --no-audit --no-fund embedded-postgres@18.4.0-beta.17
 cp scripts/ci-embedded-postgres.mjs "$CI_PG_TEMP/start.mjs"
