@@ -47,12 +47,12 @@ const cases=[
  {id:"DENY",invoice:"VIDEO-MG-CHANGED-PAYEE-2026",amount:120000,destination:"changed-payee@synthetic.invalid",
   expected:"DENY",reason:"DESTINATION_MISMATCH"},
 ];
-for (const item of cases){
+async function submitSyntheticAgentRequest(item){
  const response=await fetch(origin+"/api/agent/payment-requests",{
   method:"POST",headers:{
    authorization:"Bearer "+key,
    "content-type":"application/json",
-   "idempotency-key":"mandategate-video-ci-"+item.id.toLowerCase()+"-v1",
+   "idempotency-key":"mandategate-video-ci-"+item.id.toLowerCase()+"-v2",
   },
   body:JSON.stringify({
    vendorId:"vendor_northstar",invoiceNumber:item.invoice,
@@ -70,6 +70,8 @@ for (const item of cases){
  item.requestId=json.requestId;
  console.log("CI_DEMO_DECISION_"+item.id+"="+json.decision.outcome+
   " PAYMENT_EXECUTED=false");
+ return {requestId:json.requestId,outcome:json.decision.outcome,
+  reasonCodes:json.decision.reasonCodes,paymentExecuted:false};
 }
 
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
@@ -88,9 +90,11 @@ await ctx.route("**/*",route=>{
  return u.origin===origin?route.continue():route.abort("blockedbyclient");
 });
 
-async function show(path,requiredText,caption,seconds){
- const response=await page.goto(origin+path,{waitUntil:"domcontentloaded",timeout:45000});
- assert.equal(response?.status(),200,"CI_DEMO_PAGE_FAILED_"+path);
+async function show(path,requiredText,caption,seconds,alreadyOpen=false){
+ if(!alreadyOpen){
+  const response=await page.goto(origin+path,{waitUntil:"domcontentloaded",timeout:45000});
+  assert.equal(response?.status(),200,"CI_DEMO_PAGE_FAILED_"+path);
+ }
  await page.getByText(requiredText,{exact:false}).first().waitFor({timeout:20000});
  await page.evaluate(text=>{
   document.getElementById("ci-demo-caption")?.remove();
@@ -99,37 +103,67 @@ async function show(path,requiredText,caption,seconds){
   el.textContent=text;
   el.style.cssText=[
    "position:fixed","bottom:13px","left:50%","transform:translateX(-50%)",
-   "width:max-content","max-width:93%","padding:15px 22px",
-   "background:rgba(5,13,19,.92)","border:1px solid #b98744",
-   "color:#fff4e8","font:600 20px/1.4 system-ui,sans-serif",
+   "max-width:90%","padding:11px 18px",
+   "background:rgba(5,13,19,.94)","border:1px solid #b98744",
+   "color:#fff4e8","font:600 18px/1.35 system-ui,sans-serif",
    "letter-spacing:.01em","text-align:center","border-radius:12px",
    "box-shadow:0 5px 22px rgba(0,0,0,.6)","pointer-events:none",
    "z-index:2147483647",
   ].join(";");
   document.body.append(el);
  },caption);
- await page.mouse.move(920,350);
+ const voiceAt=Number(((Date.now()-start)/1000).toFixed(3));
+ await page.screenshot({path:join(output,"scene-"+String(traces.length+1).padStart(2,"0")+".png"),fullPage:false});
+ await page.mouse.move(740,250);
+ if(path.startsWith("/payments/")){
+  await page.locator('section[aria-label="Decision explanation"]').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(Math.min(2500,seconds*250));
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+ }
  await page.waitForTimeout(seconds*1000);
- traces.push({path,seconds,caption});
+ traces.push({path,seconds,caption,voiceAt});
+}
+async function captureAgentDecision(item,caption){
+ // The browser is already on the Payments ledger. Show an actual agent API
+ // submission occurring DURING recording, then a real ledger update and click.
+ const result=await submitSyntheticAgentRequest(item);
+ await page.evaluate(value=>{
+  document.getElementById("ci-demo-request")?.remove();
+  const box=document.createElement("pre");
+  box.id="ci-demo-request";
+  box.setAttribute("aria-label","Recorded scoped agent API response");
+  box.textContent="POST /api/agent/payment-requests\\n"+
+   JSON.stringify(value,null,2);
+  box.style.cssText="position:fixed;z-index:2147483646;right:22px;top:96px;max-width:510px;padding:18px;background:#101b23;color:#e9f2df;border:1px solid #b98744;border-radius:10px;font:15px/1.5 ui-monospace,monospace;pointer-events:none;box-shadow:0 8px 35px #0009;white-space:pre-wrap";
+  document.body.append(box);
+ },result);
+ await page.waitForTimeout(1700);
+ await page.goto(origin+"/payments",{waitUntil:"domcontentloaded"});
+ const row=page.locator('a[href="/payments/'+result.requestId+'"]').first();
+ await row.waitFor({timeout:12000});
+ await row.scrollIntoViewIfNeeded();
+ await page.waitForTimeout(1100);
+ await row.click();
+ await show("/payments/"+result.requestId,item.invoice,caption,15,true);
 }
 
 try{
  await show("/dashboard","Payment operations",
-  "Agent requests enter MandateGate. The payment credentials stay server-side.",14);
+  "MandateGate controls payment authority. Agents never hold PayPal credentials.",12);
  await show("/payments","Payments",
-  "Three synthetic requests were submitted through the real scoped agent API.",12);
- await show("/payments/"+cases[0].requestId,cases[0].invoice,
-  "ALLOW: policy permits this request. No PayPal payout was sent.",18);
- await show("/payments/"+cases[1].requestId,cases[1].invoice,
-  "ESCALATE: the unusual amount requires human investigation.",18);
- await show("/payments/"+cases[2].requestId,cases[2].invoice,
-  "DENY: a PDF cannot replace the trusted payment destination.",18);
+  "Watch three scoped agent API requests enter the real payment ledger.",10);
+ await captureAgentDecision(cases[0],
+  "ALLOW · trusted recipient · within policy limits · payout disabled in this demo.");
+ await captureAgentDecision(cases[1],
+  "ESCALATE · unusual amount · queued for human review; no payout.");
+ await captureAgentDecision(cases[2],
+  "DENY · recipient mismatch · untrusted destination remains blocked.");
  await show("/invoice-artifacts","Process an invoice",
-  "GLM observations are advisory. Independent T2 / T3 / T4 evidence is required.",18);
+  "Invoice source checks T2/T3/T4 are NOT satisfied. AI observations do not authorize payment.",18);
  await show("/sandbox-evidence","PayPal Sandbox integration evidence",
-  "Archived SUCCESS from an earlier separate Sandbox payout, NOT these PDFs.",22);
+  "ARCHIVE ONLY: separate earlier Sandbox payout; not from these invoices.",19);
  await show("/dashboard","Payment operations",
-  "AI can propose. Deterministic policy controls authority. PayPal executes only approved payments.",16);
+  "The agent submits. MandateGate authorizes. PayPal execution remains a separate trusted step.",14);
 } finally{
  const video=page.video();
  await ctx.close();
