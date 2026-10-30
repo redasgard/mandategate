@@ -78,7 +78,12 @@ for(let i=0;i<wordCounts.length-1;i++){
  valid.sort((a,b)=>Math.abs(a.time-estimate)-Math.abs(b.time-estimate));
  boundaries.push(Number((valid[0]?.time??estimate).toFixed(3)));
 }
-const starts=[0.8,14.0,26.0,44.0,62.0,80.0,98.0,120.0];
+assert(Array.isArray(manifest.scenes)&&manifest.scenes.length===8,
+ 'CI_DEMO_SCENE_COUNT_INVALID');
+const starts=manifest.scenes.map(s=>Number(s.voiceAt));
+assert(starts.every((v,i)=>Number.isFinite(v)&&v>=0&&v<
+ manifest.captureDurationSeconds&&(i===0||v>starts[i-1]+3)),
+ 'CI_DEMO_SCENE_TIMING_INVALID');
 const edges=[0,...boundaries,audioDuration];
 const split=Array.from({length:8},(_,i)=>'[a'+i+']').join('');
 const filters=['[1:a]asplit=8'+split];
