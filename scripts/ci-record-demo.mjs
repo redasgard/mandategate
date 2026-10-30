@@ -184,7 +184,7 @@ try{
   await scene("04-escalation",12,async()=>detail(expected[1]));
   await scene("05-denial",12,async()=>detail(expected[2]));
 
-  await scene("06-original-pdf-upload",23,async()=>{
+  await scene("06-original-pdf-and-archived-glm",26,async()=>{
    await navigate("/invoice-artifacts","Process an invoice");
    await stage("ORIGINAL FICTIONAL PDF · upload and independent source hash");
    const input=page.locator('input[type="file"]').first();
@@ -223,8 +223,20 @@ try{
    await evidence.click();
    await page.getByText("DEMO-PDF-OCT29-2026",{exact:false}).first().waitFor();
    uploaded=1;
-   await stage("PDF stored + parsed; AI and issuer authority NOT verified");
+   await stage("PDF source stored and parsed · issuer/payment not verified");
    console.log("CI_DEMO_PDF_SOURCE_REVIEW_PASS uploaded=1");
+   await page.waitForTimeout(1200);
+   await navigate("/demo","Three decisions");
+   const earlier=page.locator("#demo-historical-glm");
+   await scrollTo(earlier);
+   const archivedText=await earlier.innerText();
+   assert(archivedText.includes("DOCUMENT_INSTRUCTIONS_SUSPECTED") &&
+      archivedText.includes("INVALID_AMOUNT") &&
+      archivedText.includes("DEMO-GLM-INVOICE-003") &&
+      archivedText.includes("not") && archivedText.includes("this recording"),
+    "CI_DEMO_ARCHIVED_GLM_EVIDENCE_INVALID");
+   await stage("Earlier GLM flagged a hostile invoice · SEPARATE test");
+   console.log("CI_DEMO_HISTORICAL_GLM_ARCHIVE_VISIBLE");
   });
 
   await scene("07-archived-paypal-sandbox",17,async()=>{
@@ -265,7 +277,7 @@ try{
     fictionalPdfUploaded:uploaded===1,
     actualUiSubmittedCanonicalDecisions:submitted,
     sourcePdfNotPayPalAuthorized:true,
-    historicalReceiptSeparate:true,
+    historicalReceiptSeparate:true,historicalGlmObservationSeparate:true,
     captureDurationSeconds:Number(length.toFixed(2)),
     file:"mandategate-real-browser-demo.webm",bytes:statSync(to).size,scenes:traces,
    },null,2)+"\n");
