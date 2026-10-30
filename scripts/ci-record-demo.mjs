@@ -113,7 +113,15 @@ async function show(path,requiredText,caption,seconds,alreadyOpen=false){
   document.body.append(el);
  },caption);
  const voiceAt=Number(((Date.now()-start)/1000).toFixed(3));
- await page.screenshot({path:join(output,"scene-"+String(traces.length+1).padStart(2,"0")+".png"),fullPage:false});
+ const sceneNumber=traces.length+1;
+ await page.screenshot({path:join(output,"scene-"+String(sceneNumber).padStart(2,"0")+".png"),fullPage:false});
+ // Inspect actual recorded frames, not just green headless-browser checks.
+ if([3,6,7].includes(sceneNumber)){
+  const frame=(await page.screenshot({type:"jpeg",quality:43})).toString("base64");
+  const chunks=frame.match(/.{1,3000}/g)??[];
+  console.log("CI_DEMO_FRAME_"+sceneNumber+"_COUNT="+chunks.length);
+  chunks.forEach((part,i)=>console.log("CI_DEMO_FRAME_"+sceneNumber+"_"+i+"="+part));
+ }
  await page.mouse.move(740,250);
  if(path.startsWith("/payments/")){
   await page.locator('section[aria-label="Decision explanation"]').scrollIntoViewIfNeeded();
