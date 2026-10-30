@@ -44,3 +44,12 @@ That is the idea behind MandateGate: AI can propose. Deterministic policy contro
 - Public YouTube link under 3 minutes, no secret/PII display, no unlicensed music or imagery.
 - Update Devpost with exact public YouTube URL and verified source-repository link.
 - This video shows a working beta with separate historical PayPal and advisory GLM evidence, **not** the unverified invoice-derived strict Gate H settlement chain.
+
+## Replacement demo correction (2026-10-30, review pending)
+
+The previous video is **REJECTED** as a final judge demo. The recorder submitted three synthetic requests before starting the browser video, so it showed only static pages and captions, not requests being evaluated. It also opened the invoice screen without uploading an invoice. Its 91.87-second narration was aligned against hard-coded timings of a 139-second recording rather than measured scene boundaries. A media encoder PASS does not equal an actual visual or audio review.
+
+The new recorder in `scripts/ci-record-demo.mjs` must: (1) open the real Payments ledger; (2) submit each synthetic payment request while browser recording is active; (3) display the actual sanitized agent response, refresh the real ledger, click the new row, and inspect deterministic reason/evidence; (4) use the UI upload form to submit a newly generated explicitly fictional invoice image, follow its real review route, and prove that image evidence **cannot** authorize payment; (5) show the earlier PayPal Sandbox receipt clearly labeled as a different transaction; (6) conclude on the dashboard. Nothing claims live GLM inference or fresh PayPal execution. The mux aligns voice at real recorded scene starts, and the voice asset is staged before the full CI build to avoid signed URL expiry. Selected frames are emitted for visual review.
+
+Acceptance requires a fresh exact-commit Render CI PASS, `CI_DEMO_SYNTHETIC_INVOICE_UPLOAD_PASS`, all three `CI_DEMO_DECISION_*=...` with `paymentExecuted=false`, a narrated MP4 with verified runtime less than 180 seconds, actual frame inspection, and no live provider calls. Prior video must remain rejected until then. Full manual video playback remains a separate required release gate.
+
