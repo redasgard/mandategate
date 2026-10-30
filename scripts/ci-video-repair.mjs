@@ -12,13 +12,35 @@ assert(ffmpeg==="/usr/bin/ffmpeg" || ffmpeg?.startsWith("/tmp/mandategate-video-
  "DEMO_REPAIR_UNTRUSTED_FFMPEG");
 const original=resolve("ci-public/demo/mandategate-demo-final.mp4");
 const fixed=resolve("ci-public/demo/mandategate-demo-repaired.mp4");
-const review=JSON.parse(readFileSync("ci-public/demo/media-review.json","utf8"));
-assert(review.testedSource==="https://mg-review-ci.onrender.com/demo/mandategate-demo-final.mp4",
- "DEMO_REPAIR_UNTRUSTED_SOURCE");
-assert(review.durationSeconds>115 && review.durationSeconds<125 &&
- statSync(original).size>500_000,"DEMO_REPAIR_SOURCE_INVALID");
-
-const gaps=review.silencePeriods.filter(x=>x.seconds>=3).sort((a,b)=>a.start-b.start);
+const manifest=JSON.parse(readFileSync("ci-public/demo/manifest.json","utf8"));
+assert(manifest.contract==="mandategate/real-browser-demo/v2" &&
+ manifest.commit===process.env.CI_EXPECTED_SHA &&
+ manifest.actualUiSubmittedCanonicalDecisions===3 &&
+ manifest.fictionalPdfUploaded===true &&
+ manifest.sourcePdfNotPayPalAuthorized===true &&
+ manifest.paymentPosts===0 && manifest.historicalReceiptSeparate===true,
+ "DEMO_REPAIR_SOURCE_PROVENANCE_INVALID");
+assert(statSync(original).size>500000,"DEMO_REPAIR_SOURCE_MISSING");
+const inputProbe=spawnSync(ffmpeg,["-hide_banner","-i",original],{
+ encoding:"utf8",timeout:15000,maxBuffer:2000000});
+const sourceDuration=inputProbe.stderr.match(/Duration:\\s*(\\d+):(\\d+):(\\d+\\.\\d+)/);
+assert(sourceDuration && /Video: h264/.test(inputProbe.stderr) &&
+ /Audio: aac/.test(inputProbe.stderr),"DEMO_REPAIR_SOURCE_MEDIA_INVALID");
+const durationSeconds=Number(sourceDuration[1])*3600+
+ Number(sourceDuration[2])*60+Number(sourceDuration[3]);
+assert(durationSeconds>110 && durationSeconds<150,"DEMO_REPAIR_SOURCE_LENGTH_INVALID");
+const silence=spawnSync(ffmpeg,["-hide_banner","-i",original,
+ "-af","silencedetect=n=-38dB:d=0.30","-f","null","-"],{
+ encoding:"utf8",timeout:50000,maxBuffer:4000000});
+assert(silence.status===0,"DEMO_REPAIR_AUDIO_DECODE_INVALID");
+const silenceStarts=[...silence.stderr.matchAll(/silence_start: ([0-9.]+)/g)]
+ .map(m=>Number(m[1]));
+const silenceEnds=[...silence.stderr.matchAll(/silence_end: ([0-9.]+)/g)]
+ .map(m=>Number(m[1]));
+const gaps=silenceStarts.map((start,i)=>({
+ start,end:silenceEnds[i]??durationSeconds,
+ seconds:(silenceEnds[i]??durationSeconds)-start,
+})).filter(x=>x.seconds>=3).sort((a,b)=>a.start-b.start);
 assert(gaps.some(x=>x.seconds>15&&x.start>70&&x.end<100),
  "DEMO_REPAIR_EXPECTED_LONG_PAUSE_MISSING");
 const cuts=gaps.map(x=>{
@@ -32,7 +54,7 @@ assert(cuts.length===4 && cuts.every((c,i)=>c.start<c.end &&
  (i===0||c.start>cuts[i-1].end)),"DEMO_REPAIR_CUTS_NOT_EXPECTED");
 const removed=cuts.reduce((n,c)=>n+c.end-c.start,0);
 assert(removed>15&&removed<27,"DEMO_REPAIR_EDIT_TOO_AGGRESSIVE");
-const edges=[0,...cuts.flatMap(c=>[c.start,c.end]),review.durationSeconds];
+const edges=[0,...cuts.flatMap(c=>[c.start,c.end]),durationSeconds];
 const keep=[];
 for(let i=0;i<edges.length-1;i+=2){
  keep.push({start:edges[i],end:edges[i+1]});
@@ -80,7 +102,7 @@ const b64=readFileSync(storyboard).toString("base64");
 const chunks=b64.match(/.{1,2800}/g)??[];
 console.log("CI_REPAIRED_STORYBOARD_COUNT="+chunks.length);
 chunks.forEach((chunk,i)=>console.log("CI_REPAIRED_STORYBOARD_"+String(i).padStart(3,"0")+"="+chunk));
-const proof={sourceUrl:review.testedSource,
+const proof={sourceCommit:manifest.commit,sourceUrl:null,
  videoFile:"mandategate-demo-repaired.mp4",
  sourceDuration:review.durationSeconds,outputDuration:seconds,
  cutSeconds:Number(removed.toFixed(2)),cuts,
