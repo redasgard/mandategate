@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {headers} from "next/headers";
-import {redirect} from "next/navigation";
+import {notFound,redirect} from "next/navigation";
+import {pool} from "@/src/db/pool";
+import {DEMO_ORG_ID} from "@/src/demo/scenarios";
 import {auth} from "@/src/auth/auth";
 import {HistoricalSandboxProof} from "@/app/demo/historical-sandbox-proof";
 
@@ -12,6 +14,11 @@ import {HistoricalSandboxProof} from "@/app/demo/historical-sandbox-proof";
 export default async function SandboxEvidencePage(){
  const session=await auth.api.getSession({headers:await headers()});
  if(!session)redirect("/sign-in");
+ const authorized=await pool.query(
+  "select 1 from organization_admin_memberships where organization_id=$1 and user_id=$2 and role='ADMIN' and active=true limit 1",
+  [DEMO_ORG_ID,session.user.id],
+ );
+ if(authorized.rows.length!==1)notFound();
  return <main className="shell">
   <Link className="back" href="/payments">← Payment records</Link>
   <section className="panel detail">
