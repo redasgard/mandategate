@@ -230,7 +230,14 @@ try{
    await evidence.waitFor({timeout:8000});
    await scrollTo(evidence);
    await evidence.click();
-   await page.getByText("DEMO-PDF-OCT29-2026",{exact:false}).first().waitFor();
+   const sourcePre=page.locator(".review-page pre").first();
+   await sourcePre.waitFor({state:"visible",timeout:12000});
+   const pdfSourceText=await sourcePre.innerText();
+   assert(pdfSourceText.includes("DEMO-PDF-OCT29-2026") &&
+      pdfSourceText.includes("Northstar Components") &&
+      pdfSourceText.includes("ap@northstar.example"),
+      "CI_DEMO_SOURCE_TEXT_NOT_EVIDENCED");
+   console.log("CI_DEMO_PDF_STAGE=original_text_visible");
    uploaded=1;
    await stage("PDF source stored and parsed · issuer/payment not verified");
    console.log("CI_DEMO_PDF_SOURCE_REVIEW_PASS uploaded=1");
