@@ -2,7 +2,8 @@ import Link from "next/link";
 import {headers} from "next/headers";
 import {notFound,redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
-import {demoPreviewEnabled} from "@/src/demo/scenarios";
+import {demoPreviewEnabled,isolatedCiDemoEnabled} from "@/src/demo/scenarios";
+import {HistoricalGlmProof} from "./historical-glm-proof";
 import {listDemoScenarios,DemoScenarioError} from "@/src/demo/scenarios-store";
 import {readDemoEvidence} from "@/src/demo/evidence";
 import {DemoVisionEvidence} from "./vision-evidence";
@@ -50,6 +51,7 @@ export default async function DemoPage(){
         <p className="muted">The historical direct PayPal Sandbox payout was a different workflow. Do not describe it as a payment caused by these PDFs.</p>
       </nav>
       <DemoVisionEvidence evidence={evidence}/>
+      {isolatedCiDemoEnabled(process.env)?<HistoricalGlmProof/>:null}
       {unsafeReplay?null:<LoadDemoScenarios/>}
       <section className="review-stage" aria-label="Optional historical AP demonstration">
         <p className="eyebrow">Optional / historical anomaly detection</p>
