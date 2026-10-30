@@ -104,6 +104,15 @@ export async function verifyDashboardCrossOrgHttp(baseUrl: string, pool: Pool) {
       [userIds[0],orgs[0],orgs[1],userIds[1]],
     );
     const a=await signIn(0),b=await signIn(1);
+    // Historical Sandbox batch/item evidence belongs to org_demo alone.
+    // Neither a different organization ADMIN nor a reviewer may read it.
+    for(const [identity,cookie] of [["org_a",a],["org_b",b]] as const){
+      const response=await fetch(baseUrl+"/sandbox-evidence",{
+        headers:{cookie,"cache-control":"no-store"},redirect:"manual",
+      });
+      if(response.status!==404)throw Error(
+        "ARCHIVED_SANDBOX_FOREIGN_TENANT_EXPOSURE_"+identity+"_"+response.status);
+    }
     await dashboard(a,true,false,1,"A admin/B reviewer");
     await dashboard(b,false,true,1,"B independent admin");
     await detail(a,0,200,"A owns A");
