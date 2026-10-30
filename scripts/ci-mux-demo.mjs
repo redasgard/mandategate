@@ -23,20 +23,13 @@ assert(process.env.CI==='true'&&process.env.MANDATEGATE_DISABLE_PAYMENTS==='1'&&
  'CI_DEMO_MUX_REQUIRES_PAYMENT_DISABLED_DISPOSABLE_DATABASE');
 assert(ffmpeg?.startsWith('/tmp/mandategate-pg.')||ffmpeg==='/usr/bin/ffmpeg',
  'CI_DEMO_FFMPEG_UNTRUSTED');
-const url=new URL(urlString);
-assert(url.protocol==='https:'&&url.hostname==='storage.googleapis.com'&&
- url.pathname==='/xi-backend/database/workspace/7fabfb9b85e8407b8ae20d815c58a053/content_generation/CMItzllkFNiQtVPFgRn3/J92LMKujKAJPc6Y2RvSG/content.mp3',
- 'CI_DEMO_AUDIO_SOURCE_NOT_ALLOWLISTED');
-const response=await fetch(urlString,{signal:AbortSignal.timeout(30000),redirect:'error'});
-assert(response.ok,'CI_DEMO_AUDIO_FETCH_'+response.status);
-assert(/audio|octet-stream/.test(response.headers.get('content-type')??''),
- 'CI_DEMO_AUDIO_NOT_MPEG');
-const buffer=Buffer.from(await response.arrayBuffer());
-assert(buffer.length>25000&&buffer.length<10_000_000,'CI_DEMO_AUDIO_BYTE_LIMIT');
-assert(process.env.CI_CAPTURE_AUTH_STATE?.startsWith('/tmp/mandategate-pg.'),
- 'CI_DEMO_TMP_PATH_REQUIRED');
-const audio=resolve(dirname(process.env.CI_CAPTURE_AUTH_STATE),'voiceover-source.mp3');
-writeFileSync(audio,buffer,{mode:0o600});
+const audio=process.env.CI_DEMO_VOICEOVER_FILE;
+assert(audio?.startsWith("/tmp/mandategate-pg.") &&
+ audio.endsWith("/voiceover-source.mp3"),
+ "CI_DEMO_STAGED_VOICE_PATH_INVALID");
+const staged=readFileSync(audio);
+assert(staged.length>25000 && staged.length<10_000_000,
+ "CI_DEMO_STAGED_AUDIO_BYTES_INVALID");
 const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
 assert(manifest.contract==='mandategate/real-browser-demo/v2' &&
  manifest.commit===process.env.CI_EXPECTED_SHA &&
