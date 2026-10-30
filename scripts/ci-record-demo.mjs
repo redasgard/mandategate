@@ -124,8 +124,11 @@ async function show(path,requiredText,caption,seconds,alreadyOpen=false){
  traces.push({path,seconds,caption,voiceAt});
 }
 async function captureAgentDecision(item,caption){
- // The browser is already on the Payments ledger. Show an actual agent API
- // submission occurring DURING recording, then a real ledger update and click.
+ // Keep the ledger visible during submission. Every request is made DURING
+ // browser recording and every result is independently checked.
+ if(new URL(page.url()).pathname!=="/payments")
+  await page.goto(origin+"/payments",{waitUntil:"domcontentloaded"});
+ await page.getByRole("heading",{name:"Payments",exact:true}).waitFor();
  const result=await submitSyntheticAgentRequest(item);
  await page.evaluate(value=>{
   document.getElementById("ci-demo-request")?.remove();
