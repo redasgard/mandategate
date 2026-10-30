@@ -31,6 +31,8 @@ unset NODE_ENV
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_MODE=private-build-disposable-local-postgresql18'
 step() { echo "CI_STEP=$1"; shift; "$@"; }
+step video-recorder-syntax node --check scripts/ci-record-demo.mjs
+step video-mux-syntax node --check scripts/ci-mux-demo.mjs
 step pnpm-version pnpm --version
 step frozen-install pnpm install --frozen-lockfile
 CI_PG_TEMP="$(mktemp -d /tmp/mandategate-pg.XXXXXX)"
