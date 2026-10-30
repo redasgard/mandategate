@@ -213,7 +213,12 @@ try{
     stored?.sourcePreparation?.pageCount>=1,
     "CI_DEMO_REAL_PDF_PARSER_OR_PROVENANCE_FAILED");
    await page.waitForURL(url=>/^\/invoice-artifacts\/[a-f0-9-]{36}$/.test(url.pathname),{timeout:30000});
+   await page.getByRole("heading",{name:"Three short checks before payment"})
+    .waitFor({timeout:30000});
+   await page.getByText("Confirm the invoice details",{exact:false}).first()
+    .waitFor({timeout:15000});
    const body=await page.locator("main").innerText();
+   console.log("CI_DEMO_PDF_STAGE=review_loaded pathname="+new URL(page.url()).pathname);
    assert(body.includes("AI-assisted invoice processing") &&
      body.includes("Three short checks before payment"),
      "CI_DEMO_REAL_PDF_REVIEW_NOT_VISIBLE");
