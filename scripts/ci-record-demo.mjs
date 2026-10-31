@@ -144,7 +144,7 @@ try{
  }
  let recordingComplete=false;
  try{
-  await scene("01-business-problem",17,async()=>{
+  await scene("01-business-problem",19,async()=>{
    await navigate("/dashboard","Payment operations");
    await stage("AI agents request payments · MandateGate controls authority");
    await page.mouse.move(820,430,{steps:18});
@@ -289,7 +289,7 @@ try{
    await page.mouse.move(660,390,{steps:14});
   });
 
-  await scene("08-business-outcome",16,async()=>{
+  await scene("08-business-outcome",20,async()=>{
    await navigate("/dashboard","Payment operations");
    await stage("AI interprets · policy authorizes · PayPal executes");
    await page.mouse.move(540,370,{steps:18});
