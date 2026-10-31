@@ -36,6 +36,7 @@ assert(manifest.contract==='mandategate/real-browser-demo/v2' &&
  manifest.paymentsDisabled===true && manifest.paymentPosts===0 &&
  manifest.actualUiSubmittedCanonicalDecisions===3 &&
  manifest.fictionalPdfUploaded===true &&
+ manifest.humanEscalationDeclined===true &&
  manifest.sourcePdfNotPayPalAuthorized===true &&
  manifest.historicalReceiptSeparate===true &&
  Array.isArray(manifest.scenes) && manifest.scenes.length===8 &&
