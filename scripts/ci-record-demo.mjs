@@ -133,62 +133,28 @@ try{
   const text=await page.locator("main").innerText();
   assert(text.includes(item.reason) && text.includes(item.result),
    "CI_DEMO_REAL_DECISION_MISSING_"+item.id);
-  await stage(item.result+"  ·  "+item.reason+"  ·  no payout");
+  await stage(item.id==="normal"
+   ?"ALLOW · trusted destination + within limit"
+   :item.id==="anomaly"
+    ?"ESCALATE · amount above vendor baseline"
+    :"DENY · attempted recipient substitution");
   await page.waitForTimeout(600);
   await page.mouse.wheel(0,255);
   await page.waitForTimeout(650);
  }
  let recordingComplete=false;
  try{
-  await scene("01-control-overview",8,async()=>{
+  await scene("01-business-problem",17,async()=>{
    await navigate("/dashboard","Payment operations");
-   await stage("MANDATEGATE · financial authority stays server-side");
+   await stage("AI agents request payments · MandateGate controls authority");
    await page.mouse.move(820,430,{steps:18});
    await page.getByRole("link",{name:"Payments",exact:true}).first().hover();
   });
 
-  await scene("02-create-real-synthetic-requests",16,async()=>{
-   await navigate("/demo","Three decisions");
-   await stage("REAL UI ACTION · submit three synthetic requests");
-   const button=page.getByRole("button",{name:"Load or replay three demo decisions"});
-   await scrollTo(button);
-   await page.waitForTimeout(700);
-   const responsePromise=page.waitForResponse(r=>
-    new URL(r.url()).pathname==="/api/admin/demo-scenarios" &&
-    r.request().method()==="POST",{timeout:25000});
-   await button.click();
-   const submittedResponse=await responsePromise;
-   assert.equal(submittedResponse.status(),200,"CI_DEMO_UI_SUBMISSION_REJECTED");
-   const submission=await submittedResponse.json();
-   assert(Array.isArray(submission.scenarios)&&submission.scenarios.length===3 &&
-     submission.scenarios.every(x=>x.hasExecution===false &&
-       x.outcome===x.expectedOutcome && x.requestId),
-     "CI_DEMO_ADMIN_UI_CANONICAL_SUBMISSION_INVALID");
-   await page.getByText("Three synthetic decisions are available.",{exact:false})
-    .first().waitFor({timeout:25000});
-   for(const item of expected){
-    const card=page.locator("#demo-decisions article.risk-evidence-card")
-      .filter({hasText:item.title});
-    await card.getByText("Observed outcome: "+item.result,{exact:false}).waitFor();
-    const text=await card.innerText();
-    assert(text.includes(item.reason),"CI_DEMO_UI_REASON_MISSING_"+item.id);
-    assert(text.includes("No payment execution record"),
-     "CI_DEMO_UI_PAYOUT_STATE_MISSING_"+item.id);
-   }
-   submitted=3;
-   await scrollTo(page.locator("#demo-decisions"));
-   await stage("3 actual decisions persisted · 0 PayPal payouts");
-   console.log("CI_DEMO_UI_REQUEST_CREATION_PASS="+submitted);
-  });
-
-  await scene("03-allow-and-evidence",18,async()=>detail(expected[0]));
-  await scene("04-escalation",12,async()=>detail(expected[1]));
-  await scene("05-denial",12,async()=>detail(expected[2]));
-
-  await scene("06-original-pdf-and-archived-glm",26,async()=>{
+  await scene("02-invoice-document-review",29,async()=>{
    await navigate("/invoice-artifacts","Process an invoice");
    console.log("CI_DEMO_PDF_STAGE=navigated");
-   await stage("ORIGINAL FICTIONAL PDF · upload and independent source hash");
+   await stage("Upload invoice PDF · preserve original source evidence");
    const input=page.locator('input[type="file"]').first();
    await scrollTo(input);
    await input.setInputFiles({name:"northstar-fictional-test.pdf",
@@ -239,7 +205,7 @@ try{
       "CI_DEMO_SOURCE_TEXT_NOT_EVIDENCED");
    console.log("CI_DEMO_PDF_STAGE=original_text_visible");
    uploaded=1;
-   await stage("PDF source stored and parsed · issuer/payment not verified");
+   await stage("PDF saved · fields extracted · reviewer checks source");
    console.log("CI_DEMO_PDF_SOURCE_REVIEW_PASS uploaded=1");
    await page.waitForTimeout(1200);
    await navigate("/demo","Three decisions");
@@ -251,11 +217,66 @@ try{
       archivedText.includes("DEMO-GLM-INVOICE-003") &&
       archivedText.includes("not") && archivedText.includes("this recording"),
     "CI_DEMO_ARCHIVED_GLM_EVIDENCE_INVALID");
-   await stage("Earlier GLM flagged a hostile invoice · SEPARATE test");
+   await stage("GLM analysis: suspicious invoice instruction flagged");
    console.log("CI_DEMO_HISTORICAL_GLM_ARCHIVE_VISIBLE");
   });
 
-  await scene("07-archived-paypal-sandbox",17,async()=>{
+  await scene("03-agent-submits-requests",17,async()=>{
+   await navigate("/demo","Three decisions");
+   await stage("An operations agent submits 3 requests for the same supplier");
+   const button=page.getByRole("button",{name:"Load or replay three demo decisions"});
+   await scrollTo(button);
+   await page.waitForTimeout(700);
+   const responsePromise=page.waitForResponse(r=>
+    new URL(r.url()).pathname==="/api/admin/demo-scenarios" &&
+    r.request().method()==="POST",{timeout:25000});
+   await button.click();
+   const submittedResponse=await responsePromise;
+   assert.equal(submittedResponse.status(),200,"CI_DEMO_UI_SUBMISSION_REJECTED");
+   const submission=await submittedResponse.json();
+   assert(Array.isArray(submission.scenarios)&&submission.scenarios.length===3 &&
+     submission.scenarios.every(x=>x.hasExecution===false &&
+       x.outcome===x.expectedOutcome && x.requestId),
+     "CI_DEMO_ADMIN_UI_CANONICAL_SUBMISSION_INVALID");
+   await page.getByText("Three synthetic decisions are available.",{exact:false})
+    .first().waitFor({timeout:25000});
+   for(const item of expected){
+    const card=page.locator("#demo-decisions article.risk-evidence-card")
+      .filter({hasText:item.title});
+    await card.getByText("Observed outcome: "+item.result,{exact:false}).waitFor();
+    const text=await card.innerText();
+    assert(text.includes(item.reason),"CI_DEMO_UI_REASON_MISSING_"+item.id);
+    assert(text.includes("No payment execution record"),
+     "CI_DEMO_UI_PAYOUT_STATE_MISSING_"+item.id);
+   }
+   submitted=3;
+   await scrollTo(page.locator("#demo-decisions"));
+   await stage("Actual policy results: ALLOW · ESCALATE · DENY");
+   console.log("CI_DEMO_UI_REQUEST_CREATION_PASS="+submitted);
+  });
+
+  await scene("04-allow-trusted-payment",16,async()=>detail(expected[0]));
+  await scene("05-escalation-human-review",23,async()=>{
+   await detail(expected[1]);
+   const explanation=page.locator('section[aria-label="Human escalation review"] textarea').first();
+   await scrollTo(explanation);
+   await explanation.fill("Amount is above this supplier's normal threshold. Decline pending independent review.");
+   page.once("dialog",dialog=>void dialog.accept());
+   const receipt=page.waitForResponse(r=>
+    /^\/api\/admin\/payments\/[^/]+\/review$/.test(new URL(r.url()).pathname) &&
+    r.request().method()==="POST",{timeout:25000});
+   await page.getByRole("button",{name:"Decline without payout"}).click();
+   const reviewed=await receipt;
+   assert.equal(reviewed.status(),200,"CI_DEMO_HUMAN_REVIEW_FAILED");
+   const result=await reviewed.json();
+   assert(result && !result.paymentExecuted,"CI_DEMO_REVIEW_COULD_NOT_SUBMIT_PAYOUT");
+   await stage("Human review: declined with a reason · no payout");
+   console.log("CI_DEMO_HUMAN_ESCALATION_DECLINED_WITHOUT_PAYOUT");
+  });
+
+  await scene("06-deny-changed-recipient",14,async()=>detail(expected[2]));
+
+  await scene("07-paypal-sandbox-proof",22,async()=>{
    await navigate("/sandbox-evidence","PayPal Sandbox integration evidence");
    const proof=page.getByText("SUCCESS (historical)",{exact:false}).first();
    await scrollTo(proof);
@@ -263,13 +284,13 @@ try{
    assert(body.includes("Payout batch:") && body.includes("Payout item:") &&
     body.includes("verified webhook"),
     "CI_DEMO_ARCHIVED_PAYPAL_EVIDENCE_INCOMPLETE");
-   await stage("ARCHIVED PayPal Sandbox payout · separate from these invoices");
+   await stage("PayPal Sandbox integration test · SUCCESS + verified webhook");
    await page.mouse.move(660,390,{steps:14});
   });
 
-  await scene("08-summary",9,async()=>{
+  await scene("08-business-outcome",16,async()=>{
    await navigate("/dashboard","Payment operations");
-   await stage("Agent requests → deterministic policy → guarded PayPal executor");
+   await stage("AI interprets · policy authorizes · PayPal executes");
    await page.mouse.move(540,370,{steps:18});
   });
 
@@ -287,7 +308,7 @@ try{
    const length=seconds();
    if(!recordingComplete){console.error("CI_DEMO_INCOMPLETE_RECORDING_NOT_PUBLISHABLE");}
    if(recordingComplete){
-   assert(length>85&&length<165,"CI_DEMO_LENGTH_INVALID_"+length);
+   assert(length>85&&length<178,"CI_DEMO_LENGTH_INVALID_"+length);
    writeFileSync(join(output,"manifest.json"),JSON.stringify({
     contract:"mandategate/real-browser-demo/v2",
     commit:env.CI_EXPECTED_SHA,recordingType:"actual_interactive_application",
