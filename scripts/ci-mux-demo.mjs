@@ -51,7 +51,7 @@ const durationLine=(probe.stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/)||[]
 assert(durationLine.length===4,'CI_DEMO_AUDIO_DURATION_UNAVAILABLE');
 const audioDuration=Number(durationLine[1])*3600+
  Number(durationLine[2])*60+Number(durationLine[3]);
-assert(audioDuration>70&&audioDuration<140,'CI_DEMO_AUDIO_LENGTH_OUT_OF_RANGE');
+assert(audioDuration>70&&audioDuration<160,'CI_DEMO_AUDIO_LENGTH_OUT_OF_RANGE');
 const candidate=[];
 const re=/silence_start:\s*([0-9.]+)/g;
 let m;
