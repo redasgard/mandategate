@@ -162,7 +162,7 @@ if [[ -n "${CI_DEMO_VOICEOVER_URL:-}" ]]; then
   fi
   step narrated-demo-mp4 node scripts/ci-mux-demo.mjs
   step final-media-machine-qa node scripts/ci-qa-demo-output.mjs
-  step cut-audible-dead-air node scripts/ci-video-repair.mjs
+  cp ci-public/demo/mandategate-demo-final.mp4 ci-public/demo/mandategate-explained.mp4
   step narrated-demo-frame-and-audio-review node scripts/ci-qa-demo-output.mjs
 fi
 rm -f -- "$CI_CAPTURE_AUTH_STATE"
@@ -171,4 +171,4 @@ echo "CI_RESULT=PASS"
 echo "CI_SOURCE_SHA=$sha"
 echo 'CI_DB=POSTGRESQL18_ISOLATED'
 mkdir -p ci-public
-printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. <a href="demo/mandategate-demo-repaired.mp4">REPAIRED REAL UI DEMO (MP4)</a> · <a href="demo/mandategate-demo-final.mp4">Original full recording</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
+printf '<!doctype html><html lang="en"><meta charset="utf-8"><title>MandateGate v2 CI</title><body><h1>Isolated UI verification</h1><p>PostgreSQL 18, synthetic data and payments disabled. This is NOT the live app.</p><p><a href="/visual/">Review desktop and mobile captures</a></p><p><a href="demo/mandategate-real-browser-demo.webm">Play recorded real UI demo</a>. <a href="demo/mandategate-explained.mp4">EXPLANATORY REAL UI DEMO (MP4)</a> · <a href="demo/mandategate-demo-final.mp4">Same recording with standard name</a>. See CI logs for validated SHA and test results.</p></body></html>\n' > ci-public/index.html
