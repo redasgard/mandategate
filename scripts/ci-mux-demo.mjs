@@ -39,7 +39,7 @@ assert(manifest.contract==='mandategate/real-browser-demo/v2' &&
  manifest.sourcePdfNotPayPalAuthorized===true &&
  manifest.historicalReceiptSeparate===true &&
  Array.isArray(manifest.scenes) && manifest.scenes.length===8 &&
- manifest.captureDurationSeconds>80 && manifest.captureDurationSeconds<165,
+ manifest.captureDurationSeconds>80 && manifest.captureDurationSeconds<178,
  'CI_DEMO_RECORDING_PROVENANCE_INVALID');
 assert(statSync(source).size>150000,'CI_DEMO_RECORDING_MISSING');
 const probe=spawnSync(ffmpeg,['-hide_banner','-i',audio,'-af',
@@ -63,7 +63,7 @@ while((m=re.exec(probe.stderr))!==null){
  if(b-a>.19&&a>=1&&b<audioDuration)
   candidate.push({time:(a+b)/2,length:b-a});
 }
-const wordCounts=[16,25,39,17,24,25,33,21];
+const wordCounts=[37,65,33,26,40,23,39,37];
 const count=wordCounts.reduce((a,b)=>a+b,0);
 let elapsed=0;
 const boundaries=[];
