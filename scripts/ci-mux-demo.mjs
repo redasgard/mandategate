@@ -63,7 +63,7 @@ while((m=re.exec(probe.stderr))!==null){
  if(b-a>.19&&a>=1&&b<audioDuration)
   candidate.push({time:(a+b)/2,length:b-a});
 }
-const wordCounts=[37,65,33,26,40,23,39,37];
+const wordCounts=[37,63,33,26,40,23,39,37];
 const count=wordCounts.reduce((a,b)=>a+b,0);
 let elapsed=0;
 const boundaries=[];
