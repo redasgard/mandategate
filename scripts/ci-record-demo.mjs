@@ -151,7 +151,7 @@ try{
    await page.getByRole("link",{name:"Payments",exact:true}).first().hover();
   });
 
-  await scene("02-invoice-document-review",29,async()=>{
+  await scene("02-invoice-document-review",32,async()=>{
    await navigate("/invoice-artifacts","Process an invoice");
    console.log("CI_DEMO_PDF_STAGE=navigated");
    await stage("Upload invoice PDF · preserve original source evidence");
@@ -217,7 +217,7 @@ try{
       archivedText.includes("DEMO-GLM-INVOICE-003") &&
       archivedText.includes("not") && archivedText.includes("this recording"),
     "CI_DEMO_ARCHIVED_GLM_EVIDENCE_INVALID");
-   await stage("GLM analysis: suspicious invoice instruction flagged");
+   await stage("Separate saved GLM test · suspicious invoice instruction flagged");
    console.log("CI_DEMO_HISTORICAL_GLM_ARCHIVE_VISIBLE");
   });
 
