@@ -81,7 +81,7 @@ try{
  const browserErrors=[];
  page.on("pageerror",e=>browserErrors.push(String(e).slice(0,200)));
  const start=Date.now();
- let submitted=0,uploaded=0;
+ let submitted=0,uploaded=0,declined=0;
  function seconds(){return (Date.now()-start)/1000;}
  async function stage(label){
   await page.evaluate(text=>{
@@ -270,6 +270,7 @@ try{
    assert.equal(reviewed.status(),200,"CI_DEMO_HUMAN_REVIEW_FAILED");
    const result=await reviewed.json();
    assert(result && !result.paymentExecuted,"CI_DEMO_REVIEW_COULD_NOT_SUBMIT_PAYOUT");
+   declined=1;
    await stage("Human review: declined with a reason · no payout");
    console.log("CI_DEMO_HUMAN_ESCALATION_DECLINED_WITHOUT_PAYOUT");
   });
@@ -295,7 +296,7 @@ try{
   });
 
   assert(browserErrors.length===0,"CI_DEMO_BROWSER_ERRORS_"+browserErrors.join("|"));
-  assert(submitted===3&&uploaded===1,"CI_DEMO_ACTUAL_ACTIONS_MISSING");
+  assert(submitted===3&&uploaded===1&&declined===1,"CI_DEMO_ACTUAL_ACTIONS_MISSING");
   recordingComplete=true;
  }finally{
   const video=page.video();
@@ -316,6 +317,7 @@ try{
     paymentsDisabled:true,paymentPosts:0,providerCalls:0,
     fictionalPdfUploaded:uploaded===1,
     actualUiSubmittedCanonicalDecisions:submitted,
+    humanEscalationDeclined:declined===1,
     sourcePdfNotPayPalAuthorized:true,
     historicalReceiptSeparate:true,historicalGlmObservationSeparate:true,
     captureDurationSeconds:Number(length.toFixed(2)),
