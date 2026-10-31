@@ -11,6 +11,7 @@ assert(process.env.CI==="true" && process.env.MANDATEGATE_DISABLE_PAYMENTS==="1"
  manifest.commit===process.env.CI_EXPECTED_SHA &&
  manifest.actualUiSubmittedCanonicalDecisions===3 &&
  manifest.fictionalPdfUploaded===true &&
+ manifest.humanEscalationDeclined===true &&
  manifest.sourcePdfNotPayPalAuthorized===true &&
  manifest.historicalReceiptSeparate===true && manifest.paymentPosts===0,
  "CI_DEMO_MEDIA_REVIEW_PROVENANCE_INVALID");
@@ -57,6 +58,7 @@ const result={contract:"mandategate/media-qa/v2",
  fictionalPdfUploadVerified:manifest.fictionalPdfUploaded,
  paymentProviderPosts:0,totalLargeSilenceSeconds:Number(totalLarge.toFixed(2)),
  maxSilenceSeconds:Number(maxGap.toFixed(2)),
+ humanEscalationDeclined:true,
  result:"MACHINE_VERIFIED_NOT_HUMAN_PLAYBACK_REVIEWED"};
 writeFileSync(resolve("ci-public/demo/media-qa.json"),JSON.stringify(result,null,2)+"\n");
 console.log("CI_DEMO_FINAL_MEDIA_MACHINE_QA_PASS");
