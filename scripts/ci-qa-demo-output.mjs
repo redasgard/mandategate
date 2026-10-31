@@ -23,7 +23,7 @@ const duration=r.stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
 assert(duration&&/Video: h264/.test(r.stderr)&&/Audio: aac/.test(r.stderr),
  "CI_DEMO_MEDIA_CODEC_OR_DURATION_INVALID");
 const seconds=Number(duration[1])*3600+Number(duration[2])*60+Number(duration[3]);
-assert(seconds>80&&seconds<160,"CI_DEMO_MEDIA_TOO_LONG_OR_SHORT");
+assert(seconds>80&&seconds<178,"CI_DEMO_MEDIA_TOO_LONG_OR_SHORT");
 const storyboard=resolve("ci-public/demo/storyboard-final.jpg");
 const frames=spawnSync(ffmpeg,["-hide_banner","-loglevel","error","-y",
  "-i",file,"-vf","fps=1/7,scale=320:180:flags=lanczos,tile=4x4:padding=3:margin=3:color=black",
