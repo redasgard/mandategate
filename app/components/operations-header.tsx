@@ -55,10 +55,10 @@ export function OperationsHeader({
 
       <p className="mg-nav-heading mg-nav-heading-later">CONTROL & EVIDENCE</p>
       <nav aria-label="Control and evidence navigation" className="mg-nav">
-        <Link className={"mg-nav-item" + (active === "assistant" ? " active" : "")} href="/assistant"><NavIcon name="documents"/><span>Assistant</span>{active === "assistant" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
-        <Link className={"mg-nav-item" + (active === "autopay" ? " active" : "")} href="/autopay"><NavIcon name="mandates"/><span>Standing mandates</span>{active === "autopay" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
-        <Link className={"mg-nav-item" + (active === "obligations" ? " active" : "")} href="/obligations"><NavIcon name="history"/><span>AP horizon</span>{active === "obligations" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
-        <Link className={"mg-nav-item" + (active === "documents" ? " active" : "")} href="/invoice-artifacts"><NavIcon name="documents"/><span>Source documents</span>{active === "documents" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
+        <Link className={"mg-nav-item" + (active === "assistant" ? " active" : "")} aria-current={active === "assistant" ? "page" : undefined} href="/assistant"><NavIcon name="documents"/><span>Assistant</span>{active === "assistant" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
+        <Link className={"mg-nav-item" + (active === "autopay" ? " active" : "")} aria-current={active === "autopay" ? "page" : undefined} href="/autopay"><NavIcon name="mandates"/><span>Standing mandates</span>{active === "autopay" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
+        <Link className={"mg-nav-item" + (active === "obligations" ? " active" : "")} aria-current={active === "obligations" ? "page" : undefined} href="/obligations"><NavIcon name="history"/><span>AP horizon</span>{active === "obligations" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
+        <Link className={"mg-nav-item" + (active === "documents" ? " active" : "")} aria-current={active === "documents" ? "page" : undefined} href="/invoice-artifacts"><NavIcon name="documents"/><span>Source documents</span>{active === "documents" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
       </nav>
       <div className="mg-sidebar-foot">
         <div className="mg-sidebar-foot-symbol" aria-hidden="true">↗</div>
