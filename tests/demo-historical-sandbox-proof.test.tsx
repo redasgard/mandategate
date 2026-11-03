@@ -38,8 +38,8 @@ describe("separate historical Sandbox proof in the judge walkthrough", () => {
     expect(html).toContain("SUCCESS (historical)");
     expect(html).toContain(proof.paypalPayoutBatchId);
     expect(html).toContain(proof.paypalPayoutItemId);
-    expect(html).toContain("not caused by the GLM-reviewed PDF invoices");
-    expect(html).toContain("not records from the current Neon demo database");
+    expect(html).toContain("not caused by the invoices");
+    expect(html).toContain("not records from this demo database");
     expect(html).toContain("not contacted PayPal or reverified settlement");
     expect(html).toContain("not permission to");
     expect(html).toContain('rel="noopener noreferrer"');

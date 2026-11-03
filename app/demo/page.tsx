@@ -76,8 +76,10 @@ export default async function DemoPage(){
           <p>{item.explanation}</p>
           <p><strong>Fictional invoice:</strong> {item.invoiceNumber} / {money(item.amountCents)}</p>
           <p><strong>Expected deterministic outcome:</strong> {item.expectedOutcome}</p>
-          <p><strong>Observed outcome:</strong> {item.outcome??"Not loaded"}
-            {item.status?" / "+item.status:""}</p>
+          <p><strong>Observed outcome:</strong>{" "}
+            {item.outcome
+              ? <span className={"decision "+(item.outcome==="ALLOW"?"allow":item.outcome==="ESCALATE"?"escalate":"deny")}>{item.outcome}</span>
+              : "Not loaded"}{item.status?" / "+item.status:""}</p>
           {item.reasonCodes.length>0?<p><strong>Actual policy reason codes:</strong> <code>{item.reasonCodes.join(", ")}</code></p>:null}
           {item.outcome && item.outcome!==item.expectedOutcome?<p role="alert" className="error">Actual decision differs from expected deterministic case. Stop and inspect.</p>:null}
           {item.requestId?<p><Link href={"/payments/"+item.requestId}>Inspect original decision and evidence →</Link></p>:null}

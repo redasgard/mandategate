@@ -21,7 +21,7 @@ export default async function SandboxEvidencePage(){
  );
  if(authorized.rows.length!==1)notFound();
  return <main className="shell mg-shell">
-  <OperationsHeader active="none" title="PayPal Sandbox integration evidence"
+  <OperationsHeader active="payments" title="PayPal Sandbox integration evidence"
     description="Archived provider evidence from an earlier, separately authorized direct-agent payout. This page reads no live financial records and contacts no provider."
     email={session.user.email} context="EVIDENCE ARCHIVE"/>
   <Link className="back" href="/payments">← Payment records</Link>
