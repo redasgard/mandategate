@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
+import { OperationsHeader } from "@/app/components/operations-header";
 import { pool } from "@/src/db/pool";
 import { VendorOriginChannelEnroll } from "./enroll-form";
 import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
@@ -28,15 +29,12 @@ export default async function VendorOriginChannelPage(){
       "order by ch.created_at desc limit 100",
     ].join(" "),[session.user.id]),
   ]);
-  return <main className="shell narrow">
-    <Link href="/invoice-artifacts" className="back">← Invoice intake</Link>
+  return <main className="shell mg-shell">
+    <OperationsHeader active="documents" title="Supplier sources"
+      context="SOURCE DOCUMENTS"
+      description="For real suppliers, an out-of-band record must exist before invoices arrive. The clearly labeled Sandbox test supplier option does not authenticate a vendor; source document contents and AI observations can never enroll or change a trusted channel."
+      email={session.user.email}/>
     <section className="panel detail">
-      <p className="eyebrow">Vendor source-of-truth registry</p>
-      <h1>Issuer channels are enrolled before invoices arrive</h1>
-      <p className="muted">
-        For real suppliers, an out-of-band record must exist. The clearly labeled Sandbox test supplier option does not authenticate a vendor. Source document contents and AI
-        observations can never enroll or change a trusted channel.
-      </p>
       <VendorOriginChannelEnroll sandboxDemoEnabled={sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar")} vendors={vendors.rows.map(row=>({
         organizationId:row.organization_id as string,
         organizationName:row.organization_name as string,
