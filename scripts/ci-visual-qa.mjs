@@ -135,7 +135,7 @@ try {
           headingBounds:h1?.getBoundingClientRect().toJSON(),
           mainBounds:main?.getBoundingClientRect().toJSON(),
           primaryNavCount:nav?.querySelectorAll("a").length??0,
-          currentNavCount:nav?.querySelectorAll('[aria-current="page"]').length??0,
+          currentNavCount:document.querySelectorAll('aside[aria-label="Workspace sidebar"] nav [aria-current="page"]').length,
           skipLink:Boolean(document.querySelector('a[href="#main-content"]')),
           internalLinks:[...document.querySelectorAll("main a[href]")].length,
         };
