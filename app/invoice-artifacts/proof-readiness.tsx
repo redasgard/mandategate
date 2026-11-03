@@ -66,24 +66,24 @@ export function InvoiceProofReadiness({organizations,preferredOrganizationId}:{o
  const c=readiness?.counts;
  const stages=[
   {name:"Original invoice",count:c?.invoiceArtifacts??0,
-   detail:"Original document bytes recorded; still untrusted"},
+   detail:"Original document saved; not yet trusted"},
   {name:"Document fields (T2)",count:c?.verifiedPdfClaims??0,
-   detail:"Parser-backed fields independently reviewed"},
+   detail:"Fields read from the PDF and checked by a reviewer"},
   {name:"Issuer/source check (T3)",count:c?.currentHumanOriginAttestations??0,
-   detail:"Recorded out-of-band issuer assertion; requires review"},
+   detail:"Supplier confirmed out of band before the invoice arrived"},
   {name:"Exact payment approval (T4)",count:c?.authorizedBindings??0,
-   detail:"Recorded frozen binding; requires independent authorization review"},
+   detail:"Exact amount and recipient approved by a reviewer"},
  ];
  return <section className="invoice-task-card" aria-label="Invoice verification readiness">
   <div className="invoice-proof-head">
    <div>
     <p className="eyebrow">Payment authority</p>
     <h2>Verification readiness</h2>
-    <p className="muted">Organization-wide evidence counts only. They do not form a verified chain for any specific invoice, establish a genuine supplier, prove compliant AI processing, or authorize payment.</p>
+    <p className="muted">A payment needs all four checks to pass on the exact same invoice. These counts show what your organization has recorded so far; they never authorize money on their own.</p>
    </div>
    <div className="invoice-overview-aside">
     <span>Invoice-to-payment gate</span>
-    <strong>{readiness?"Blocked":"Not verified"}</strong>
+    <strong>{readiness?"Awaiting checks":"Not verified"}</strong>
     <span className="invoice-status needs-review">No payment authorization</span>
    </div>
   </div>
@@ -105,25 +105,24 @@ export function InvoiceProofReadiness({organizations,preferredOrganizationId}:{o
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,220px),1fr))",gap:12}}>
     {stages.map(stage=><div className="invoice-proof-stage" key={stage.name}>
      <strong>{stage.name}</strong>
-     <p>{stage.count===0?"Missing":stage.count+" recorded"}</p>
+     <p>{stage.count===0?"Not yet recorded":stage.count+" recorded"}</p>
      <p className="muted">{stage.detail}</p>
     </div>)}
    </div>
    <p className="invoice-small-note">
-    Independently parsed PDF pages: {c.independentPdfPages}.
-    Pre-existing non-synthetic issuer-channel/invoice pairs: {c.eligiblePreexistingChannelInvoicePairs}.
-    Synthetic advisory observations: {c.consentedSyntheticGlmObservations}.
+    Parsed PDF pages: {c.independentPdfPages}.
+    Eligible supplier-source matches: {c.eligiblePreexistingChannelInvoicePairs}.
+    Advisory AI observations: {c.consentedSyntheticGlmObservations}.
    </p>
    <p className="muted">
-    Provider ZDR/no-training/capture settings require separate verification.
-    Payment rows ({c.allPaymentExecutions}) require independent PayPal reconciliation
-    even when present. Strict invoice-derived payout verification remains blocked.
+    AI suggestions are advisory. Recorded payments ({c.allPaymentExecutions}) still need
+    independent PayPal reconciliation before they count as settled.
    </p>
   </>:null}
   <p className="muted">
-   Next: <Link href="/vendor-origin-channels">check known supplier sources</Link>,
-   then open an uploaded invoice below to verify exact PDF evidence and review the payment binding.
-   <Link href="/invoice-artifacts/privacy"> Review AI privacy requirements</Link>.
+   Next: enroll a known supplier source, then open an invoice below to check the PDF
+   evidence and the payment approval.
+   <Link href="/invoice-artifacts/privacy"> AI privacy details</Link>.
   </p>
  </section>;
 }
