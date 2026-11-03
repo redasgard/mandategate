@@ -267,9 +267,39 @@ try{
     r.request().method()==="POST",{timeout:25000});
    await page.getByRole("button",{name:"Decline without payout"}).click();
    const reviewed=await receipt;
-   assert.equal(reviewed.status(),200,"CI_DEMO_HUMAN_REVIEW_FAILED");
+   assert.equal(reviewed.status(),201,"CI_DEMO_HUMAN_REVIEW_FAILED");
    const result=await reviewed.json();
-   assert(result && !result.paymentExecuted,"CI_DEMO_REVIEW_COULD_NOT_SUBMIT_PAYOUT");
+   const review=result?.review;
+   assert(review&&review.action==="DECLINE"&&review.status==="DECLINED"&&
+    review.approvedForExecution===false&&review.executed===false&&
+    typeof review.reviewId==="string"&&typeof review.requestId==="string",
+    "CI_DEMO_HUMAN_REVIEW_RESPONSE_INVALID");
+   const declinedRequestId=review.requestId;
+   {
+    // Independent read-only database proof: the request is persisted
+    // DECLINED with the human explanation stored, and no payment execution
+    // row exists. HTTP success alone is not accepted as evidence.
+    const {default:pg}=await import("pg");
+    const db=new pg.Pool({connectionString:env.DATABASE_URL,max:1});
+    try{
+     const persisted=await db.query(
+      "select status from payment_requests where id=$1",[declinedRequestId]);
+     assert(persisted.rows.length===1,"CI_DEMO_DECLINED_REQUEST_MISSING");
+     assert.equal(persisted.rows[0].status,"DECLINED","CI_DEMO_DECLINED_STATE_NOT_PERSISTED");
+     const storedReview=await db.query(
+      "select action,explanation from payment_escalation_reviews where payment_request_id=$1",
+      [declinedRequestId]);
+     assert(storedReview.rows.length===1&&storedReview.rows[0].action==="DECLINE"&&
+      String(storedReview.rows[0].explanation).includes("independent review"),
+      "CI_DEMO_DECLINED_REVIEW_NOT_PERSISTED");
+     const executions=await db.query(
+      "select count(*)::int as n from payment_executions where payment_request_id=$1",
+      [declinedRequestId]);
+     assert.equal(executions.rows[0].n,0,"CI_DEMO_DECLINED_PAYOUT_ROW_PRESENT");
+    }finally{
+     await db.end().catch(()=>undefined);
+    }
+   }
    declined=1;
    await stage("Human review: declined with a reason · no payout");
    console.log("CI_DEMO_HUMAN_ESCALATION_DECLINED_WITHOUT_PAYOUT");
