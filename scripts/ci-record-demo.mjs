@@ -89,10 +89,10 @@ try{
    if(!el){el=document.createElement("aside");el.id="mg-demo-status";
     el.style.cssText=[
      "position:fixed","right:24px","bottom:20px","z-index:2147483646",
-     "max-width:320px","background:rgba(16,23,29,.94)",
+     "max-width:264px","background:rgba(16,23,29,.94)",
      "color:#f5e8d4","border:1px solid #caa06d",
-     "border-radius:10px","padding:12px 15px",
-     "font:600 17px/1.35 system-ui,sans-serif",
+     "border-radius:9px","padding:9px 12px",
+     "font:600 15px/1.3 system-ui,sans-serif",
      "box-shadow:0 4px 18px rgba(0,0,0,.35)","pointer-events:none",
     ].join(";");
     document.body.appendChild(el);

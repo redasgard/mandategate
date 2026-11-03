@@ -4,6 +4,10 @@ import { INCIDENT_FILTERS, type Incident, type IncidentFilter } from "@/src/db/d
 const labels: Record<IncidentFilter, string> = {
   ALL:"All cases", REVIEW:"Needs review", BLOCKED:"Blocked", PAYOUT:"Payout issues",
 };
+const emptyText: Record<IncidentFilter, string> = {
+  ALL:"No cases to display", REVIEW:"No reviews to display",
+  BLOCKED:"No blocked cases to display", PAYOUT:"No payout issues to display",
+};
 
 function formatAmount(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US",{style:"currency",currency}).format(cents/100);
@@ -24,7 +28,7 @@ export function IncidentInvestigation({incidents,activeFilter}:{
     </div>
     {shown.length===0 ? <div className="mg-case-empty" role="status">
       <span className="mg-case-empty-icon" aria-hidden="true">✓</span>
-      <div><strong>No {labels[activeFilter].toLowerCase()} to display</strong>
+      <div><strong>{emptyText[activeFilter]}</strong>
         <small>There are no matching recorded cases in your authorized organizations. This is not a guarantee that every provider event or external invoice was ingested.</small></div>
     </div> : <div className="mg-case-list">
       {shown.map(incident=><Link

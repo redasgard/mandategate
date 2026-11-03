@@ -1,5 +1,17 @@
 import { presentDecisionEvidence } from "@/src/history/decision-evidence-presentation";
 
+const sourceLabel=(source:string)=>{
+  const known:Record<string,string>={
+    "vendor.trusted_destination":"Vendor trusted destination",
+    "vendor.normal_max_amount_cents":"Vendor normal amount limit",
+    "policy.auto_pay_max_amount_cents":"Policy auto-pay limit",
+    "deterministic_policy":"Deterministic policy",
+  };
+  if(known[source])return known[source];
+  if(source.startsWith("ap_history."))return "Imported AP history";
+  return source;
+};
+
 export function DecisionEvidencePanel({
   evidence, reasonCodes, currency,
 }: {
@@ -21,7 +33,7 @@ export function DecisionEvidencePanel({
         <p className="eyebrow">{item.code}</p>
         <h3>{item.title}</h3>
         <p>{item.explanation}</p>
-        {item.source ? <p className="muted"><strong>Detection source:</strong> <code>{item.source}</code></p> : null}
+        {item.source ? <p className="muted"><strong>Detection source:</strong> {sourceLabel(item.source)}</p> : null}
         {item.observed !== null || item.expected !== null ? <dl>
           {item.observed !== null ? <div><dt>Observed</dt><dd>{item.observed}</dd></div> : null}
           {item.expected !== null ? <div><dt>Compared with</dt><dd>{item.expected}</dd></div> : null}

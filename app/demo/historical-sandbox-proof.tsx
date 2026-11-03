@@ -16,7 +16,7 @@ export function HistoricalSandboxProof() {
     </p>
     <div className="risk-evidence-list">
       <article className="risk-evidence-card">
-        <p className="eyebrow">Earlier Render environment / archived proof</p>
+        <p className="eyebrow">Archived provider evidence</p>
         <h3>PayPal Sandbox <span className="decision allow">SUCCESS (historical)</span></h3>
         <p><strong>Logical payment:</strong> <code>{proof.logicalPaymentId}</code></p>
         <p><strong>Payout batch:</strong> <code>{proof.paypalPayoutBatchId}</code></p>
@@ -29,22 +29,21 @@ export function HistoricalSandboxProof() {
           {" "}{proof.webhookReconcileFailuresObserved} reconciliation failures</p>
         <p>
           <a href={proof.buildLedgerUrl} target="_blank" rel="noopener noreferrer">
-            View historical build ledger and receipt details ↗
+            Build ledger and receipt details ↗
           </a>
           {" · "}
           <a href={proof.reviewUrl} target="_blank" rel="noopener noreferrer">
-            Read Slice 2 critical review ↗
+            Original critical review ↗
           </a>
         </p>
       </article>
     </div>
     <p role="note" className="muted">
-      <strong>Separate evidence paths:</strong> This archived Sandbox transfer
-      was <strong>not caused by the GLM-reviewed PDF invoices</strong>. Its IDs
-      are not records from the current Neon demo database, and this page has
-      not contacted PayPal or reverified settlement. It is not permission to
-      execute or repeat any payout. The fictional invoice observations remain
-      advisory-only and blocked from financial authority.
+      <strong>Archived evidence:</strong> this Sandbox transfer came from an earlier,
+      separately authorized direct-agent payment. It was not caused by the invoices
+      reviewed in this demo, its IDs are not records from this demo database, and
+      this page has not contacted PayPal or reverified settlement. Archived evidence
+      is not permission to execute or repeat any payout.
     </p>
   </section>;
 }
