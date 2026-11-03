@@ -654,8 +654,10 @@ const obligationsDenied=await fetch(baseUrl+"/obligations",{redirect:"manual"});
 if(![302,303,307,308].includes(obligationsDenied.status))
   throw Error("anonymous imported AP obligations view was not restricted");
 const obligationsPage=await fetch(baseUrl+"/obligations",{headers:{cookie:adminCookie}});
-if(obligationsPage.status!==200 || !(await obligationsPage.text())
-  .includes("Time to act on outstanding invoices."))
+const obligationsHtml=await obligationsPage.text();
+if(obligationsPage.status!==200 ||
+   !obligationsHtml.includes("AP horizon") ||
+   !obligationsHtml.includes("Imported outstanding invoices"))
   throw Error("signed-in imported AP obligations view not rendered");
 const obligationsDashboard=await fetch(baseUrl+"/dashboard",{headers:{cookie:adminCookie}});
 if(obligationsDashboard.status!==200 ||
