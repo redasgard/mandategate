@@ -10,6 +10,12 @@ import {ConfigureSandboxRecipient} from "./configure-sandbox-recipient";
 import {sandboxFictionalIssuerChannelAllowed} from "@/src/demo/sandbox-fictional-origin";
 import {InvoiceProofReadiness} from "./proof-readiness";
 
+const formatUtc=(value:unknown)=>{
+  const date=new Date(value as string|number|Date);
+  return Number.isFinite(date.getTime())
+    ? date.toISOString().slice(0,16).replace("T"," ")+" UTC" : "Unknown";
+};
+
 export default async function InvoiceArtifactListPage(){
   const session=await auth.api.getSession({headers:await headers()});
   if(!session)redirect("/sign-in");
@@ -94,7 +100,7 @@ export default async function InvoiceArtifactListPage(){
           <tbody>{result.rows.map(row=><tr key={row.id}>
             <td data-label="Document"><Link href={"/invoice-artifacts/"+encodeURIComponent(row.id)}>
               Open invoice →</Link>
-              <details className="invoice-technical"><summary>Document ID and SHA-256</summary>
+              <details className="invoice-technical"><summary>Show document ID and SHA-256</summary>
                 <p className="mono">{String(row.id)}</p>
                 <p className="mono">{row.mime_type} / {String(row.sha256)}</p>
               </details>
@@ -112,7 +118,7 @@ export default async function InvoiceArtifactListPage(){
             </td>
             <td data-label="Review status">{row.analysis_status==="FAILED"?"Needs AI retry":
               row.ai_invoice?"AI ready for review":row.analysis_status==="STORED"?"Ready for AI":"Review pending"}</td>
-            <td data-label="Created">{(row.created_at as Date).toISOString()}</td>
+            <td data-label="Created">{formatUtc(row.created_at)}</td>
           </tr>)}</tbody>
         </table></div>}
       </div>

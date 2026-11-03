@@ -106,7 +106,9 @@ export default async function DashboardPage({searchParams}:{
             <div className="mg-stat-top"><span className="mg-stat-label">Upcoming · 14 days</span>
               <span className="mg-stat-badge">IMPORTED AP</span></div>
             <div className="mg-stat-value">{centsLabel(obligations.upcoming.cents)}</div>
-            <p className="mg-stat-hint">{obligations.upcoming.count} imported open entries; not scheduled PayPal payments.</p>
+            <p className="mg-stat-hint">{obligations.upcoming.count===0
+              ?"No imported open entries. Imported history never schedules a PayPal payment."
+              :obligations.upcoming.count+" imported open entries from history; none of them schedules a PayPal payment."}</p>
           </article>
           <article className="mg-stat">
             <div className="mg-stat-top"><span className="mg-stat-label">Overdue</span>

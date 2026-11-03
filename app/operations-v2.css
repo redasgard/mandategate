@@ -106,7 +106,7 @@ body:has(.mg-shell)::before { display:none; }
 .mg-section-kicker {font-size:10px;color:#91a5a1;letter-spacing:.15em;font-weight:800;}
 .mg-dashboard-topnote {display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:#84928f;font-size:11px;
   margin:-5px 0 2px;}
-.mg-tiny-dot {width:7px;height:7px;display:inline-block;flex:0 0 7px;background:#81ba99;border-radius:50%;}
+.mg-tiny-dot {width:7px;height:7px;display:inline-block;flex:0 0 7px;background:#8a9494;border-radius:50%;}
 .mg-surface {background:var(--mg-surface);border:1px solid var(--mg-stroke);border-radius:10px;overflow:hidden;}
 .mg-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;}
 .mg-stat {min-height:151px;display:flex;flex-direction:column;justify-content:space-between;

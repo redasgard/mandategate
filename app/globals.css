@@ -370,6 +370,10 @@ button.policy-outline {background:transparent;color:var(--amber);border:1px soli
 .invoice-upload-form label{min-width:0;}
 .invoice-upload-form select,.invoice-upload-form input[type=file]{width:100%;border-radius:9px;
   border:1px solid var(--line);background:#101416;color:var(--text);padding:11px;min-height:47px;}
+.invoice-product input[type=file]::file-selector-button{
+  background:var(--surface-2);color:var(--text);border:1px solid var(--line);
+  border-radius:7px;padding:9px 13px;font-weight:700;margin-right:12px;cursor:pointer;}
+.invoice-product input[type=file]::file-selector-button:hover{background:#2a3133;}
 .invoice-upload-form .invoice-primary-action{grid-column:1 / -1;}
 .invoice-upload-form .invoice-small-note{grid-column:1 / -1;}
 .invoice-list-table .invoice-technical{margin-top:8px;padding:9px;background:var(--surface);}
