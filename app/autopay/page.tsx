@@ -21,7 +21,7 @@ export default async function AutopayPage(){
   const data=await readAutopayMandateConsole(session.user.id);
   const active=data.mandates.filter(g=>g.state==="ACTIVE").length;
   return <main className="shell mg-shell">
-    <OperationsHeader active="policies" title="Standing mandates" context="POLICY / AUTONOMY"
+    <OperationsHeader active="autopay" title="Standing mandates" context="POLICY / AUTONOMY"
       description="Bounded, revocable payment authority for agents. Every request must still satisfy current vendor trust and policy."
       email={session.user.email}/>
     <div className="mg-dashboard">

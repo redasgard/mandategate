@@ -2,6 +2,7 @@ import Link from "next/link";
 import {headers} from "next/headers";
 import {redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
+import {OperationsHeader} from "@/app/components/operations-header";
 import {pool} from "@/src/db/pool";
 import {ApHistoryImport} from "./import-form";
 import {loadAdminApBaselines} from "@/src/history/baselines";
@@ -27,16 +28,12 @@ export default async function ApHistoryPage(){
     ].join(" "),[session.user.id]),
     loadAdminApBaselines(session.user.id),
   ]);
-  return <main className="shell">
-    <Link className="back" href="/dashboard">← Dashboard</Link>
+  return <main className="shell mg-shell">
+    <OperationsHeader active="none" title="Evidence-backed AP baselines"
+      context="IMPORTED AP HISTORY"
+      description="Import an existing export. The original source is retained with a SHA-256 fingerprint, normalized accepted observations, and quarantined rows. A historical CSV can never re-enroll a vendor's payment destination."
+      email={session.user.email}/>
     <section className="panel detail">
-      <p className="eyebrow">MandateGate / historical analysis</p>
-      <h1>Evidence-backed AP baselines</h1>
-      <p className="muted">
-        Import an existing export. The original source is retained with a SHA-256
-        fingerprint, normalized accepted observations, and quarantined rows.
-        A historical CSV can never re-enroll a vendor's payment destination.
-      </p>
       {fictionalPreview?<section className="review-stage" aria-label="Optional fictional AP export">
         <p className="eyebrow">Optional judge fixture / not real history</p>
         <h2>Try paid-invoice behavior without a payment</h2>

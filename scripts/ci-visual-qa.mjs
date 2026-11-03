@@ -27,6 +27,7 @@ const cases=[
   {route:"/policies",id:"policies",heading:"Policies & mandates"},
   {route:"/activity",id:"activity",heading:"Activity"},
   {route:"/autopay",id:"mandates",heading:"Standing mandates"},
+  {route:"/obligations",id:"horizon",heading:"AP horizon"},
   {route:"/invoice-artifacts",id:"invoice",heading:"Process an invoice"},
 ];
 const viewports=[

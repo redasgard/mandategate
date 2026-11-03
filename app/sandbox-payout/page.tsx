@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
+import { OperationsHeader } from "@/app/components/operations-header";
 import { pool } from "@/src/db/pool";
 import { DEMO_ORG_ID } from "@/src/demo/scenarios";
 import {
@@ -31,18 +32,12 @@ export default async function SandboxPayoutPage() {
     }
   }
   const configuredReceiver = enabled ? process.env.DEMO_PAYPAL_RECEIVER_EMAIL : null;
-  return <main className="shell narrow">
-    <Link className="back" href="/dashboard">← Dashboard</Link>
+  return <main className="shell mg-shell">
+    <OperationsHeader active="none" title={invoiceMode?"PayPal invoice execution":"PayPal Sandbox payout"}
+      context="SANDBOX PAYOUT"
+      description="Each payout requires independent payment authority. PayPal Sandbox uses test balances only, never production funds."
+      email={session.user.email}/>
     <section className="panel detail">
-      <p className="eyebrow">PayPal AI Hackathon / actual Sandbox API</p>
-      <h1>{invoiceMode?"PayPal invoice execution":"PayPal Sandbox payout"}</h1>
-      <p className="muted">
-        {invoiceMode
-          ? "Upload and verify an invoice, review the exact payment details, and submit an approved payout through PayPal Sandbox. AI observations cannot approve or send funds."
-          : "A prepared payment can be sent through the real PayPal Sandbox Payouts API."}
-        {" "}Each payout requires independent payment authority.
-        PayPal Sandbox uses test balances only, never production funds.
-      </p>
       {invoiceMode ? <section className="review-stage">
         <h2>Invoice to PayPal execution</h2>
         <p>Begin with the original PDF, source evidence and an exact administrator
