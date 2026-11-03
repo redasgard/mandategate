@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
+import { OperationsHeader } from "@/app/components/operations-header";
 import { pool } from "@/src/db/pool";
 import { InvoiceArtifactUpload } from "./upload-form";
 import { InvoiceJourney } from "@/app/components/invoice-journey";
@@ -51,15 +52,16 @@ export default async function InvoiceArtifactListPage(){
   const sandboxFixtureAvailable=
     sandboxFictionalIssuerChannelAllowed("org_demo","vendor_northstar") &&
     organizations.rows.some(row=>row.id==="org_demo");
-  return <main className="shell invoice-product">
-    <Link className="back" href="/dashboard">← Dashboard</Link>
+  return <main className="shell mg-shell invoice-product">
+    <OperationsHeader active="documents" title="Process an invoice"
+      description="Upload an invoice, let AI read the details, review the payment, and execute through PayPal Sandbox after approval."
+      email={session.user.email} context="SOURCE DOCUMENTS"/>
     <InvoiceJourney stage="upload"/>
     <section className="panel invoice-main">
       <div className="invoice-overview">
         <div><p className="eyebrow">Invoices</p>
-          <h1>Process an invoice</h1>
-          <p className="muted">Upload an invoice, let AI read the details, review the payment,
-            and execute through PayPal Sandbox after approval.</p></div>
+          <p className="muted">Received documents stay unverified until a reviewer
+            confirms the source and the exact payment details.</p></div>
         <div className="invoice-overview-aside"><span>Payment flow</span>
           <strong>AI → PayPal</strong><span className="invoice-status pending">Human approval required</span>
         </div>

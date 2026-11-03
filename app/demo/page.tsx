@@ -2,6 +2,7 @@ import Link from "next/link";
 import {headers} from "next/headers";
 import {notFound,redirect} from "next/navigation";
 import {auth} from "@/src/auth/auth";
+import {OperationsHeader} from "@/app/components/operations-header";
 import {demoPreviewEnabled,isolatedCiDemoEnabled} from "@/src/demo/scenarios";
 import {HistoricalGlmProof} from "./historical-glm-proof";
 import {listDemoScenarios,DemoScenarioError} from "@/src/demo/scenarios-store";
@@ -30,11 +31,13 @@ export default async function DemoPage(){
   const unsafeReplay=evidence.organizationExecutionRows>0 ||
     scenarios.some(item=>item.hasExecution ||
       (item.outcome!=null && item.outcome!==item.expectedOutcome));
-  return <main className="shell">
-    <Link className="back" href="/dashboard">← Dashboard</Link>
+  return <main className="shell mg-shell">
+    <OperationsHeader active="none" title="Synthetic decision lab"
+      description="Deterministic ALLOW, ESCALATE and DENY outcomes for fictional Northstar invoices. This page cannot move money."
+      email={session.user.email} context="TEST LAB"/>
     <section className="panel detail">
       <p className="eyebrow">MandateGate / synthetic test lab</p>
-      <h1>{unsafeReplay?"Replay halted: unexpected financial state":"Three decisions. Zero current demo executions."}</h1>
+      <h2>{unsafeReplay?"Replay halted: unexpected financial state":"Three decisions. Zero current demo executions."}</h2>
       {unsafeReplay?<p role="alert" className="error">A synthetic decision or payment execution record is inconsistent. Do not replay until investigated.</p>:null}
       <p className="muted">Use these fictional Northstar Components invoices to explain why an agent
         can request a payment but cannot authorize one. These deterministic decisions are a separate simulation:

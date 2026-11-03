@@ -8,7 +8,7 @@ export const PRIMARY_OPERATIONS_AREAS = [
   { key: "activity", label: "Activity", href: "/activity", icon: "activity" },
 ] as const;
 
-export type OperationsArea = (typeof PRIMARY_OPERATIONS_AREAS)[number]["key"];
+export type OperationsArea = (typeof PRIMARY_OPERATIONS_AREAS)[number]["key"] | "documents" | "none";
 type Glyph = "overview" | "payments" | "vendors" | "policies" | "activity" | "mandates" | "history" | "documents";
 
 function NavIcon({name}:{name:Glyph}) {
@@ -34,6 +34,7 @@ export function OperationsHeader({
   email: string;
   context?: string;
 }) {
+  const sessionEmail = typeof email === "string" && email.length > 0 ? email : "signed-in administrator";
   return <>
     <a className="mg-skip" href="#main-content">Skip to main content</a>
     <aside className="mg-sidebar" aria-label="Workspace sidebar">
@@ -57,7 +58,7 @@ export function OperationsHeader({
         <Link className="mg-nav-item" href="/assistant"><NavIcon name="documents"/><span>Assistant</span></Link>
         <Link className="mg-nav-item" href="/autopay"><NavIcon name="mandates"/><span>Standing mandates</span></Link>
         <Link className="mg-nav-item" href="/obligations"><NavIcon name="history"/><span>AP horizon</span></Link>
-        <Link className="mg-nav-item" href="/invoice-artifacts"><NavIcon name="documents"/><span>Source documents</span></Link>
+        <Link className={"mg-nav-item" + (active === "documents" ? " active" : "")} href="/invoice-artifacts"><NavIcon name="documents"/><span>Source documents</span>{active === "documents" ? <span className="mg-nav-selected" aria-hidden="true"/> : null}</Link>
       </nav>
       <div className="mg-sidebar-foot">
         <div className="mg-sidebar-foot-symbol" aria-hidden="true">↗</div>
@@ -69,8 +70,8 @@ export function OperationsHeader({
       <div className="mg-breadcrumb"><span>WORKSPACE</span><span aria-hidden="true">/</span><strong>{context}</strong></div>
       <div className="mg-session">
         <span className="mg-session-label">ADMIN VIEW</span>
-        <span className="mg-session-avatar" aria-hidden="true">{email.slice(0,1).toUpperCase() || "A"}</span>
-        <span className="mg-session-email" title={email}>{email}</span>
+        <span className="mg-session-avatar" aria-hidden="true">{sessionEmail.slice(0,1).toUpperCase() || "A"}</span>
+        <span className="mg-session-email" title={sessionEmail}>{sessionEmail}</span>
       </div>
     </div>
     <header id="main-content" className="mg-pagehead" tabIndex={-1}>

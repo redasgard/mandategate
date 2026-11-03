@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
+import { OperationsHeader } from "@/app/components/operations-header";
 import { pool } from "@/src/db/pool";
 import { assessHistoricalPaymentRisk } from "@/src/history/anomaly";
 import { InvoiceReviewActions } from "./review-actions";
@@ -67,16 +68,17 @@ export default async function InvoiceBindingReviewPage({params}:{params:Promise<
   const amountText=new Intl.NumberFormat("en-US",{
     style:"currency",currency:binding.currency,
   }).format(amount/100);
-  return <main className="shell invoice-product">
+  return <main className="shell mg-shell invoice-product">
+    <OperationsHeader active="documents" title="Authorize this payment"
+      description={`Invoice ${binding.invoice_number} from ${binding.vendor_name}. Verify the exact recipient and amount before approving.`}
+      email={session.user.email} context="SOURCE DOCUMENTS"/>
     <Link href={"/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)}
       className="back">← Invoice review</Link>
     <InvoiceJourney stage="approve"/>
     <section className="panel invoice-main">
       <header className="invoice-overview">
         <div><p className="eyebrow">Approval required</p>
-          <h1>Authorize this payment</h1>
-          <p className="muted">Invoice {binding.invoice_number} from {binding.vendor_name}.
-            Verify the exact recipient and amount before approving.</p>
+          <p className="muted">Verify the exact recipient and amount before approving.</p>
           <a className="invoice-secondary-link" target="_blank" rel="noopener noreferrer"
             href={"/api/admin/invoice-artifacts/"+encodeURIComponent(binding.artifact_id)+"/source"}>
             View original invoice ↗</a>
