@@ -213,8 +213,7 @@ export default async function DashboardPage({searchParams}:{
 
       <footer className="mg-footnote">
         MandateGate separates payment requests, deterministic decisions, review authority, and PayPal settlement.
-        Source evidence and imported AP records may be incomplete. All displayed records are scoped to active administrator memberships.
-        The separate Northstar USD 1.01 Sandbox fixture is not the ordinary user workflow.
+        Source evidence and imported AP records may be incomplete; records are scoped to your active administrator memberships.
       </footer>
     </div>
   </main>;

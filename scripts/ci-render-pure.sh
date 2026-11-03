@@ -103,6 +103,10 @@ step autonomous-preview pnpm jobs:autopay:preview
 step judge-smoke-fixture node scripts/test-judge-smoke-fixture.mjs
 step typecheck pnpm typecheck
 step complete-unit-and-database-tests pnpm test
+# The vitest database suite provisions throwaway organizations and grants the
+# demo admin membership in them; membership-scoped screens would otherwise
+# capture that test data. Remove foreign memberships before the app starts.
+step clean-ci-capture-visibility node scripts/ci-clean-shared-visibility.mjs
 step full-production-build pnpm build
 if ! command -v setsid >/dev/null 2>&1; then echo CI_SETSID_REQUIRED >&2; exit 27; fi
 echo 'CI_STEP=authenticated-loopback-smoke'

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/auth/auth";
+import { OperationsHeader } from "@/app/components/operations-header";
 import { loadInvoiceArtifactForHumanReview } from "@/src/artifacts/postgres-store";
 import { loadStoredPdfSourcePages } from "@/src/invoices/pdf-source-store";
 import { pool } from "@/src/db/pool";
@@ -45,16 +45,17 @@ export default async function InvoiceArtifactReviewPage({
   const originalSource="/api/admin/invoice-artifacts/"+encodeURIComponent(id)+"/source";
 
   if(artifact.mimeType!=="application/pdf") {
-    return <main className="shell invoice-product">
-      <Link href="/invoice-artifacts" className="back">← All invoices</Link>
+    return <main className="shell mg-shell invoice-product">
+      <OperationsHeader active="documents" title={number}
+        description="Review what AI extracted from the image. Source verification is not available for images on this payment path."
+        email={session.user.email} context="SOURCE DOCUMENTS"/>
       <InvoiceJourney stage="review"/>
       <section className="panel invoice-main">
         <header className="invoice-overview">
           <div>
             <p className="eyebrow">AI-assisted invoice processing</p>
-            <h1>{number}</h1>
-            <p className="muted">Review what AI extracted from the image.
-              Source verification is not available for images on this payment path.</p>
+            <p className="muted">Image-only fields cannot satisfy the independent
+              PDF evidence required by the current invoice execution flow.</p>
           </div>
           <div className="invoice-overview-aside">
             <span>AI-suggested total</span>
@@ -132,18 +133,17 @@ export default async function InvoiceArtifactReviewPage({
     evidenceReference:r.independent_evidence_reference as string,
     expiresAt:(r.expires_at as Date).toISOString(),
   }));
-  return <main className="shell invoice-product">
-    <Link href="/invoice-artifacts" className="back">← All invoices</Link>
+  return <main className="shell mg-shell invoice-product">
+    <OperationsHeader active="documents" title={number}
+      description="Review the printed facts, approve the exact payment and complete the transfer in PayPal Sandbox."
+      email={session.user.email} context="SOURCE DOCUMENTS"/>
     <InvoiceJourney stage="review"/>
     <section className="panel invoice-main">
       <header className="invoice-overview">
         <div>
           <p className="eyebrow">AI-assisted invoice processing</p>
-          <h1>{number}</h1>
           <p className="muted">
-            {supplier}{supplier!=="Supplier to review"?" · AI suggested":""}.
-            Review the printed facts, approve the exact payment and
-            complete the transfer in PayPal Sandbox.
+            {supplier}{supplier!=="Supplier to review"?" · AI suggested":""}
           </p>
           <a className="invoice-secondary-link" target="_blank" rel="noopener noreferrer"
             href={originalSource}>View original invoice ↗</a>
