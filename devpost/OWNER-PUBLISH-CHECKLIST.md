@@ -19,6 +19,12 @@ directly. Every push now deploys itself; Hermes verifies each deploy via
 `GET /v1/services/<id>/deploys/<deployId>` and then the live site (design consistency + `/api/health`
 + dark payments ledger). No manual deploys, ever.
 
+First deploy took the pipeline end-to-end (2026-11-04): build `dep-dblneqom7kps73c3d1a0` → commit `4f487c87` → **live 18:23:06Z**.
+Root cause of the long-stale live site: `autoDeploy=yes` but `autoDeployTrigger=checksPass` — GitHub Actions is dead, so
+checks never arrived and deploys never fired. Trigger switched to `commit`. Live verification: CSS chunk rotated
+(`0n0fa8rgn54lv.css` → `10z7rz1ldz2mt.css`), zero periwinkle (`#8bb5ff`) in the served CSS, sign-in page renders the
+charcoal/copper shell (screenshot-verified).
+
 ## Step 2 — Make the repository public (2 minutes, you)
 
 Why: submission requires a public repo with the license visible at the top of the page.

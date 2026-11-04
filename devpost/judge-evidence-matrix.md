@@ -9,8 +9,9 @@ loopback smoke, 13/13 desktop+mobile visual captures, visual gate `VISUAL_PAYMEN
 with populated `.ag-row` ledger, production build, 8-scene interactive demo recording (163.23 s, 0 payout posts).
 **Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `67804bfbc8fb0c6012c226c3b34d7deed0e2eaccb3f967ff54bb678373a82f84`,
 Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). QA: `final-video/QA_REPORT.md`.
-**Live:** https://mandategate-web.onrender.com (health OK; waiting on owner manual deploy of `4b98f27` to
-replace the old mixed-design build).
+**Live:** https://mandategate-web.onrender.com — deploy `dep-dblneqom7kps73c3d1a0` live 2026-11-04 18:23Z at commit
+`4f487c87` (verified: CSS chunk rotated, periwinkle purged, sign-in page renders the charcoal/copper shell; `/api/health` OK).
+Auto-deploy fixed to deploy-on-commit (was `checksPass` against dead GitHub Actions).
 
 Judge-criterion → evidence mapping (rules: `devpost/rules-extract.md`):
 
