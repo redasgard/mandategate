@@ -11,16 +11,16 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 
 ---
 
-## Step 1 — Deploy the live site (5 minutes, you)
+## Step 1 — Enable auto-deploy, once (1 minute, you)
 
-Why: the hosted URL currently serves an OLD build (mixed blue/copper design). After deploy it matches
-the video. This is the top priority — judges may click the link.
+Why: the hosted URL currently serves an OLD build (mixed blue/copper design). Auto-deploy is OFF on the
+service, so nothing ships until this one-time setting is on. After that, every push I make to
+`build/slice-3-invoice-intake` deploys itself — no manual deploys, ever.
 
-1. Go to https://dashboard.render.com → service `mandategate-web` (ID `srv-db39vmm7bikc73c55nh0`).
-2. Manual Deploy → "Deploy latest commit".
-   Branch: `build/slice-3-invoice-intake` — already fast-forwarded to `e4cf2e7` (= product `4b98f27` + the submission docs; I pushed it).
-3. Wait for the deploy to go live, then tell me.
-   I will verify: design consistency + `/api/health` + the payments ledger renders dark.
+1. https://dashboard.render.com → service `mandategate-web` (ID `srv-db39vmm7bikc73c55nh0`).
+2. Settings → Build & Deploy → **Auto-Deploy = On** (branch `build/slice-3-invoice-intake`).
+3. Tell me it's on. I will push a trigger commit (the branch already carries the final tree) and watch
+   the live site until the new build is serving: design consistency + `/api/health` + dark payments ledger.
 
 ## Step 2 — Make the repository public (2 minutes, you)
 
