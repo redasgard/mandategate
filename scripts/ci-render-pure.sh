@@ -109,6 +109,9 @@ step complete-unit-and-database-tests pnpm test
 step clean-ci-capture-visibility node scripts/ci-clean-shared-visibility.mjs
 step full-production-build pnpm build
 if ! command -v setsid >/dev/null 2>&1; then echo CI_SETSID_REQUIRED >&2; exit 27; fi
+# Fail fast if anything already owns the loopback port: a stale server would
+# pass the health check and silently serve an OLD build to smoke/visual QA.
+if ss -ltn 2>/dev/null | grep -qE '[:.]3000[[:space:]]'; then echo CI_PORT_3000_BUSY >&2; exit 31; fi
 echo 'CI_STEP=authenticated-loopback-smoke'
 # Dedicated process group: kill both pnpm and every Next descendant on reset.
 setsid pnpm start > "$CI_PG_TEMP/next.log" 2>&1 &
