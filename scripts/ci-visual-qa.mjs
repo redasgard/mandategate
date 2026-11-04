@@ -95,6 +95,22 @@ try {
   // authenticated integration suite restarts the same local app afterward,
   // retaining normal Better Auth rate limiting in both test phases.
 
+  // Populate the canonical demo decisions first so screenshots exercise real
+  // rows (notably the AG Grid payments ledger) instead of empty states.
+  {
+    const seedCtx=await browser.newContext({storageState:signedInState});
+    const seedPage=await seedCtx.newPage();
+    await seedPage.goto(origin+"/dashboard",{waitUntil:"domcontentloaded",timeout:45000});
+    const seeded=await seedPage.evaluate(async()=>{
+      const r=await fetch("/api/admin/demo-scenarios",{method:"POST",
+        headers:{"content-type":"application/json"},body:"{}"});
+      return r.status;
+    });
+    console.log("VISUAL_DEMO_SCENARIOS_STATUS="+seeded);
+    if(seeded!==200)throw Error("VISUAL_DEMO_SCENARIOS_FAILED_"+seeded);
+    await seedCtx.close();
+  }
+
   for (const vp of viewports) {
     const ctx=await browser.newContext({
       viewport:{width:vp.width,height:vp.height},
@@ -115,6 +131,17 @@ try {
       await page.getByRole("heading",{name:item.heading,exact:true,level:1}).waitFor({timeout:30000});
       if(item.id!=="invoice")
         await page.locator('nav[aria-label="Primary navigation"]').waitFor({timeout:8000});
+      if(item.id==="payments"){
+        // The ledger must render real rows, not just the empty state.
+        await page.locator(".ag-row").first().waitFor({timeout:20000});
+        const gridBg=await page.evaluate(()=>{
+          const el=document.querySelector(".ag-root-wrapper");
+          return el?getComputedStyle(el).backgroundColor:null;
+        });
+        console.log("VISUAL_PAYMENTS_GRID_BG="+gridBg);
+        if(!gridBg||gridBg==="rgb(255, 255, 255)")
+          throw Error("VISUAL_PAYMENTS_GRID_UNTHEMED_"+gridBg);
+      }
       await page.evaluate(()=>document.fonts.ready);
       if(item.id==="invoice"){
         await page.locator('section[aria-label="Invoice verification readiness"]')
