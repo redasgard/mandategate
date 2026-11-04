@@ -70,7 +70,7 @@ try{
 
  const ctx=await browser.newContext({
   viewport:{width:1440,height:810},deviceScaleFactor:1,
-  colorScheme:"dark",reducedMotion:"reduce",storageState:authState,
+  colorScheme:"dark",reducedMotion:"no-preference",storageState:authState,
   recordVideo:{dir:output,size:{width:1440,height:810}},
  });
  await ctx.route("**/*",route=>{
@@ -139,7 +139,8 @@ try{
     ?"ESCALATE · amount above vendor baseline"
     :"DENY · attempted recipient substitution");
   await page.waitForTimeout(600);
-  await page.mouse.wheel(0,255);
+  await page.mouse.move(720,420,{steps:12});
+  await page.evaluate(()=>window.scrollBy({top:255,behavior:"smooth"}));
   await page.waitForTimeout(650);
  }
  let recordingComplete=false;
