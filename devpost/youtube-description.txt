@@ -1,0 +1,33 @@
+YouTube upload — paste-ready
+
+TITLE:
+MandateGate — the payment firewall for AI agents (PayPal AI Hackathon demo)
+
+DESCRIPTION:
+MandateGate is a payment firewall for autonomous operations agents: an agent can prepare and submit vendor payment requests, but it can never grant itself the authority to move money. Every request is independently checked against vendor history, trusted destinations, policy limits and the original invoice document — then it either proceeds to PayPal, escalates to a human, or is denied.
+
+What you'll see:
+0:00 The problem: agents that can read invoices shouldn't be able to pay them
+0:19 Invoice intake: a PDF is stored with its source hash; the AI reads it as an observation, never as authority
+0:51 An operations agent submits three payment requests through the agent API
+1:11 Request 1 → ALLOW: trusted vendor, normal amount
+1:27 Request 2 → ESCALATE: unusual amount → human review with a mandatory written explanation (declined on camera; no payout)
+1:50 Request 3 → DENY: the recipient was changed — blocked before any money could move
+2:03 PayPal Payouts Sandbox: archived, verified payout evidence (clearly labeled in-video; this cut does not claim a live payout for the fictional invoice)
+2:23 The result: every request lands in one auditable payment-decision ledger (AG Grid)
+
+Built with Next.js, TypeScript, PostgreSQL (Neon), Drizzle ORM, Better Auth, the PayPal Payouts REST API (Sandbox), GLM-5.3 Flash for advisory invoice observations, AG Grid Community for the ledger, and Render for hosting. 572 automated tests; the demo was recorded on an isolated CI instance with payments disabled — sandbox only, no production money, ever.
+
+Code: https://github.com/redasgard/mandategate
+Live (supplementary): https://mandategate-web.onrender.com
+
+TAGS (comma-separated):
+paypal, ai agents, agentic commerce, ai security, fintech, accounts payable, nextjs, typescript, aggrid, render
+
+UPLOAD SETTINGS:
+- File: /home/valh4x/.hermes/profiles/product/cache/scratch/mg-audit/final-video/MandateGate_DEMO.mp4
+  (SHA256 67804bfbc8fb0c6012c226c3b34d7deed0e2eaccb3f967ff54bb678373a82f84; 165.75 s; 1440×810)
+- Visibility: Public
+- Audience: "Not made for kids"
+- Category: Science & Technology
+- No music, no third-party assets (narration is synthetic TTS; footage is our own product)

@@ -1,5 +1,33 @@
 # MandateGate Judge Evidence Matrix
 
+## Current snapshot (2026-11-03) — supersedes the October rows below for release purposes
+
+**Branch under review:** `build/slice-3-invoice-intake` @ `4b98f2786e4b4df5c83639d6a34609af139f84e7`
+(fast-forwarded deploy branch; identical tree on `fix/recorder-decline-persisted-proof`).
+**CI:** local full pipeline run 11 — PASS. 572 tests / 115 files, two migrations, two seeds, authenticated
+loopback smoke, 13/13 desktop+mobile visual captures, visual gate `VISUAL_PAYMENTS_GRID_BG=rgb(24, 30, 32)`
+with populated `.ag-row` ledger, production build, 8-scene interactive demo recording (163.23 s, 0 payout posts).
+**Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `67804bfbc8fb0c6012c226c3b34d7deed0e2eaccb3f967ff54bb678373a82f84`,
+Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). QA: `final-video/QA_REPORT.md`.
+**Live:** https://mandategate-web.onrender.com (health OK; waiting on owner manual deploy of `4b98f27` to
+replace the old mixed-design build).
+
+Judge-criterion → evidence mapping (rules: `devpost/rules-extract.md`):
+
+| Criterion | Evidence |
+| --- | --- |
+| Technological Implementation | PayPal Payouts Sandbox adapter (OAuth, idempotency, async status, signed webhook, reconciliation); policy kernel + reason codes (572 tests); agent API with scoped keys; GLM advisory observations with no authority |
+| Design | Unified charcoal/copper shell across all pages; AG Grid ledger integrated + theme-gated in CI; 13/13 visual QA desktop+mobile with 0 overflow |
+| Potential Impact | Real problem (agents + money), bounded authority model, human-review workflow demonstrated on camera (decline with mandatory explanation) |
+| Innovation/Idea | Payment firewall for agent payments: model observes, policy decides, PayPal executes — authority never leaves the server boundary |
+| Presentation | 165.75 s narrated video: problem → invoice intake → 3 decisions → human decline → DENY → labeled archived PayPal evidence → ledger close |
+
+Open release blockers (owner-only): Render manual deploy of `4b98f27`; repo visibility → PUBLIC with MIT
+visible in About; YouTube upload; Devpost form submit; optional Variant A credentials file.
+The October table below remains accurate as of its date; counts (351 → 572 tests) and SHAs are superseded by this snapshot.
+
+---
+
 **Snapshot:** 2026-10-16 Pacific / 2026-10-17 UTC. **Status:** internal evidence index, NOT release acceptance, independent issuer verification, or Devpost submission confirmation.
 **Current checked branch:** `build/slice-3-invoice-intake`, code SHA `a5586882bf54dd383155722fb18da2cc0fbc99be`.
 **External app:** Render `mandategate-web`, deployment `dep-db9cb8hsrm7s739ei99g` LIVE at exactly this code SHA, 2026-10-17T00:49:18Z.
