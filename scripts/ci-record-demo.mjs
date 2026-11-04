@@ -321,9 +321,21 @@ try{
   });
 
   await scene("08-business-outcome",20,async()=>{
-   await navigate("/dashboard","Payment operations");
-   await stage("AI interprets · policy authorizes · PayPal executes");
-   await page.mouse.move(540,370,{steps:18});
+    await navigate("/dashboard","Payment operations");
+    await stage("AI interprets · policy authorizes · PayPal executes");
+    await page.mouse.move(540,370,{steps:18});
+    await page.waitForTimeout(2200);
+    // Every agent request lands in one auditable, filterable ledger (AG Grid).
+    await navigate("/payments","Payments");
+    await stage("Every agent request · one auditable ledger");
+    const search=page.getByLabel("Filter payment records");
+    await search.waitFor({timeout:15000});
+    await scrollTo(search);
+    await page.waitForTimeout(1200);
+    await search.fill("Northstar");
+    await page.waitForTimeout(1600);
+    await search.fill("");
+    await page.waitForTimeout(1200);
   });
 
   assert(browserErrors.length===0,"CI_DEMO_BROWSER_ERRORS_"+browserErrors.join("|"));

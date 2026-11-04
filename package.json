@@ -26,15 +26,17 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.10",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
     "better-auth": "1.7.7",
     "csv-parse": "7.0.3",
     "drizzle-orm": "0.45.3",
     "next": "16.3.8",
+    "pdfjs-dist": "6.4.299",
     "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "4.6.5",
-    "pdfjs-dist": "6.4.299"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
