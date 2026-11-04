@@ -82,13 +82,13 @@ The narration is anchored to **measured content-appearance seconds** from the CI
 | a03 | "An operations agent submits three payment requests…" | 51.5s | load button on screen |
 | a04 | "Here is the routine invoice. One thousand two hundred dollars…" | 71.8s | ALLOW detail visible at 71s |
 | a05 | "The second request is twenty-eight hundred dollars…" | 86.5s | ESCALATE detail visible at 87s |
-| a05b | "Now for the third request." | 106.8s | bridge line over transition |
+| a05b | "Now for the third request." | 108.2s | bridge line over transition |
 | a06 | "Same supplier, normal amount — but the payment address changed." | 110.8s | DENY detail visible at 110s |
 | a07 | "MandateGate integrates directly with PayPal's Sandbox Payouts API…" | 124.0s | evidence page visible at 123s |
-| a08 | "From one place, the company sees what agents requested…" | 146.6s | dashboard visible at 145s (Blocked=1) |
-| a09 | "MandateGate. AI handles the work. MandateGate controls the money." | 161.6s | closing tagline, end-frame hold |
+| a08 | "From one place, the company sees what agents requested…" | 146.1s | dashboard visible at 145s (Blocked=1) |
+| a09 | "MandateGate. AI handles the work. MandateGate controls the money." | 161.0s | closing tagline, end-frame hold |
 
-Total: 166.07s (2:46). Every segment verified against frames at its anchor second
+Total: 165.47s (2:45). Every segment verified against frames at its anchor second
 (active speech −17 to −19 dB RMS at all anchors; content match confirmed per anchor).
 
 **Correction from v5:** the first shipped cut anchored narration to nominal scene cuts;
