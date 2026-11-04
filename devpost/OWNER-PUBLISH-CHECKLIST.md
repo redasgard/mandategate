@@ -11,16 +11,13 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 
 ---
 
-## Step 1 — Enable auto-deploy, once (1 minute, you)
+## Step 1 — DONE (2026-11-04): deploy pipeline live, zero owner action
 
-Why: the hosted URL currently serves an OLD build (mixed blue/copper design). Auto-deploy is OFF on the
-service, so nothing ships until this one-time setting is on. After that, every push I make to
-`build/slice-3-invoice-intake` deploys itself — no manual deploys, ever.
-
-1. https://dashboard.render.com → service `mandategate-web` (ID `srv-db39vmm7bikc73c55nh0`).
-2. Settings → Build & Deploy → **Auto-Deploy = On** (branch `build/slice-3-invoice-intake`).
-3. Tell me it's on. I will push a trigger commit (the branch already carries the final tree) and watch
-   the live site until the new build is serving: design consistency + `/api/health` + dark payments ledger.
+Auto-deploy = **on** for `build/slice-3-invoice-intake`, and a Render API key
+(`~/.config/mandategate/render.env`, chmod 600) lets Hermes trigger deploys and read build status
+directly. Every push now deploys itself; Hermes verifies each deploy via
+`GET /v1/services/<id>/deploys/<deployId>` and then the live site (design consistency + `/api/health`
++ dark payments ledger). No manual deploys, ever.
 
 ## Step 2 — Make the repository public (2 minutes, you)
 
