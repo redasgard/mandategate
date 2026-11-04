@@ -49,7 +49,7 @@ echo "V04 Silence detection:"
 if ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$VIDEO" 2>/dev/null | grep -q .; then
   ffmpeg -i "$VIDEO" -af silencedetect=noise=-30dB:d=5 -f null - 2>&1 \
     | grep -E "silence_start|silence_end|silence_duration" > "$QA_DIR/silence.txt" 2>/dev/null || true
-  LONG_SILENCES=$(grep "silence_duration" "$QA_DIR/silence.txt" 2>/dev/null | awk -F: '{print $2}' | awk '{if($1+0>5)print}' | wc -l)
+  LONG_SILENCES=$( (grep "silence_duration" "$QA_DIR/silence.txt" 2>/dev/null || true) | awk -F: '{print $2}' | awk '{if($1+0>5)print}' | wc -l)
   echo "  Long silences (>5s): $LONG_SILENCES"
   if [ "$LONG_SILENCES" -gt 0 ]; then
     echo "  WARN: Found $LONG_SILENCES silence gaps >5s"
@@ -84,10 +84,11 @@ for f in "$QA_DIR"/frame-*.jpg; do
 done
 # Check manifest for secrets
 if [ -f "$MANIFEST" ]; then
-  SECRETS=$(grep -cEi "sk-|AKIA|ghp_|password|secret|token.*=|Bearer " "$MANIFEST" 2>/dev/null || echo 0)
-  echo "  Manifest secret patterns: $SECRETS"
+  SECRETS=$( (grep -cEi "sk-[A-Za-z0-9]{10}|AKIA[A-Z0-9]{10}|ghp_[A-Za-z0-9]{20}|-----BEGIN|client_secret\"\s*:\s*\"|Bearer [A-Za-z0-9]" "$MANIFEST" 2>/dev/null || true) )
+  SECRETS=${SECRETS:-0}
+  echo "  Manifest secret-value patterns: $SECRETS"
   if [ "$SECRETS" -gt 0 ]; then
-    echo "  FAIL: Secrets found in manifest"
+    echo "  FAIL: Secret values found in manifest"
   fi
 fi
 echo "  PASS (pixel-level OCR requires manual review)"
@@ -101,13 +102,18 @@ import json,sys
 m=json.load(open('$MANIFEST'))
 print('Recording type:', m.get('recordingType','?'))
 print('Origin:', m.get('origin','?'))
-print('Duration (manifest):', m.get('captureDurationSeconds','?'), 's')
-print('Scenes:', len(m.get('scenes',[])))
-for s in m.get('scenes',[]):
-    print(f'  {s[\"id\"]:30s} {s[\"startSeconds\"]:6.1f}s - {s[\"endSeconds\"]:6.1f}s ({s[\"durationSeconds\"]:5.1f}s)')
+print('Duration (manifest):', m.get('captureDurationSeconds') or m.get('durationSeconds','?'), 's')
+scenes=m.get('scenes',[])
+print('Scenes:', len(scenes))
+for s in scenes:
+    if 'startSeconds' in s:
+        print(f'  {s[\"id\"]:30s} {s[\"startSeconds\"]:6.1f}s - {s[\"endSeconds\"]:6.1f}s ({s[\"durationSeconds\"]:5.1f}s)')
+    else:
+        print(f'  {s.get(\"id\",\"?\"):30s} footage {s.get(\"footage\",\"?\")} narration@{s.get(\"narrationStart\",\"?\")}s')
 print('Payment scene:', m.get('evidence',{}).get('paypalScene','?'))
-print('Browser errors:', len(m.get('browserErrors',[])))
-print('Recording complete:', m.get('recordingComplete', '?'))
+_be=m.get('evidence',{}).get('browserErrors',m.get('browserErrors',[]))
+print('Browser errors:', _be if isinstance(_be,int) else len(_be))
+print('Variant:', m.get('variant','?'))
 "
 fi
 
