@@ -70,43 +70,49 @@ Target: 2:30–2:40 (hard cap 3:00). English. 16:9 at 1440×810. Real app intera
 
 ---
 
-## Narration timing estimates
+## Narration timing — SHIPPED v6 anchors (measured, not estimated)
 
-| Scene | Duration | Words | WPM target |
-|-------|----------|-------|------------|
-| 01    | 19s      | 52    | 164        |
-| 02    | 35s      | 97    | 166        |
-| 03    | 17s      | 56    | 198        |
-| 04    | 16s      | 43    | 161        |
-| 05    | 23s      | 57    | 149        |
-| 06    | 14s      | 50    | 214*       |
-| 07A   | 30s      | 73    | 146        |
-| 07B   | 22s      | 62    | 169        |
-| 08    | 20s      | 41    | 123        |
-| Close | 5s       | 10    | 120        |
+The narration is anchored to **measured content-appearance seconds** from the CI footage
+(1 Hz boundary-frame measurement), not to nominal scene cuts:
 
-*Scene 06 is slightly fast; the scroll and visual emphasis will carry the pace.
+| Segment | Spoken text (abbrev.) | Anchor | Notes |
+|---------|----------------------|--------|-------|
+| a01 | "Businesses are starting to let AI agents handle invoices…" | 0.3s | dashboard on screen from 0s |
+| a02 | "MandateGate sits between an operations agent and PayPal…" | 19.5s | invoice intake visible |
+| a03 | "An operations agent submits three payment requests…" | 51.5s | load button on screen |
+| a04 | "Here is the routine invoice. One thousand two hundred dollars…" | 71.8s | ALLOW detail visible at 71s |
+| a05 | "The second request is twenty-eight hundred dollars…" | 86.5s | ESCALATE detail visible at 87s |
+| a05b | "Now for the third request." | 106.8s | bridge line over transition |
+| a06 | "Same supplier, normal amount — but the payment address changed." | 110.8s | DENY detail visible at 110s |
+| a07 | "MandateGate integrates directly with PayPal's Sandbox Payouts API…" | 124.0s | evidence page visible at 123s |
+| a08 | "From one place, the company sees what agents requested…" | 146.6s | dashboard visible at 145s (Blocked=1) |
+| a09 | "MandateGate. AI handles the work. MandateGate controls the money." | 161.6s | closing tagline, end-frame hold |
 
-Total with 07A: ~179s (2:59). Total with 07B: ~171s (2:51).
-Both under the 180s hard cap. 07A is preferred for the complete causal chain.
+Total: 166.07s (2:46). Every segment verified against frames at its anchor second
+(active speech −17 to −19 dB RMS at all anchors; content match confirmed per anchor).
+
+**Correction from v5:** the first shipped cut anchored narration to nominal scene cuts;
+5 of 9 sampled frames showed a 2–4s narration lag at scene boundaries. v6 re-anchored
+everything to measured appearances and added the bridge line. The v5 audit is preserved
+in `qa-report/full-qa.log`; the v6 audit is `qa-report/full-qa-v6.log`.
 
 ## Shot IDs and evidence links
 
 | Shot ID | Evidence                                    |
 |---------|---------------------------------------------|
-| S01     | Dashboard screenshot, live Render host      |
-| S02     | artifact ID, sha256, upload response        |
+| S01     | Dashboard screenshot, CI host at ae886ff    |
+| S02     | artifact upload response, source SHA-256    |
 | S02-GLM | Archived GLM observation (separate invoice) |
 | S03     | 3 scenario request IDs from POST response   |
-| S04     | ALLOW request detail page                   |
-| S05     | DECLINE review ID, 201 response, textarea   |
-| S06     | DENY request detail, destination mismatch   |
-| S07A    | binding ID, prepare response, PayPal batch/item IDs |
-| S07B    | Archived PayPal evidence page               |
-| S08     | Dashboard with decision desk populated      |
+| S04     | ALLOW detail — DEMO-NORMAL-2026, $1,200     |
+| S05     | DECLINE review: 201 + {review…DECLINED}, textarea content, reload readback |
+| S06     | DENY detail — DESTINATION_MISMATCH          |
+| S07B    | Archived PayPal evidence: batch BA7V96FCY8Z64, item A3R9LWD8XTX72 |
+| S08     | Dashboard: Blocked requests = 1             |
 
 ## Variant decision
 
-Use 07A if and only if the live payout is actually executed and reconciled.
-Use 07B as the fallback, clearly labeled as archived evidence.
-Never claim 07B shows the same invoice's payout.
+Variant B is the shipped candidate (owner review pending). Variant A (live invoice-derived
+payout chain) requires the Render deploy + live-admin.env + Execute authorization; its
+narration is pre-generated (`narration/scene-07a-paypal-live.mp3`, 31s) and the live
+recorder is armed (`scripts/live-demo-recorder.mjs`, FINAL_TAKE/EXECUTE_PAYOUT gates).
