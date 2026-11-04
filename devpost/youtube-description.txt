@@ -25,8 +25,8 @@ TAGS (comma-separated):
 paypal, ai agents, agentic commerce, ai security, fintech, accounts payable, nextjs, typescript, aggrid, render
 
 UPLOAD SETTINGS:
-- File: /home/valh4x/.hermes/profiles/product/cache/scratch/mg-audit/final-video/MandateGate_DEMO.mp4
-  (SHA256 67804bfbc8fb0c6012c226c3b34d7deed0e2eaccb3f967ff54bb678373a82f84; 165.75 s; 1440×810)
+- File: /home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4
+  (SHA256 d8dee5d9eb6b16e22ec762e071b8c090abe9f55fb210fe5f61977003dde90adf; 165.75 s; 1440×810)
 - Visibility: Public
 - Audience: "Not made for kids"
 - Category: Science & Technology
