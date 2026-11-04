@@ -75,8 +75,9 @@ Complete independently established invoice-origin evidence, improve provider pri
 
 - **PayPal Payouts REST API / Sandbox**: payout adapter, idempotency, remote status, verified webhooks and automated reconciliation
 - **GLM-5.3 Flash (Experiential Labs)**: invoice-content observations and extraction suggestions; advisory only, cannot grant payment authority
+- **AG Grid (Community, MIT)**: the payment-decision ledger on the investigation surface — sortable columns, quick filtering and pagination over the administrator's scoped records (themed to the product shell)
 - **Render**: hosts Next.js application
 - **Neon PostgreSQL**: persisted payment-request, decision, invoice, policy and authority records
 - **Next.js / React / TypeScript / Better Auth / Drizzle**: application and authentication stack
-- **ElevenLabs**: narrated demo video generation
+- **Microsoft Edge neural TTS**: narrated demo voice-over (US English); ElevenLabs used for voice auditions, final cut rendered with a Microsoft Edge neural voice
 - **Playwright**: automated browser testing and demo recording
