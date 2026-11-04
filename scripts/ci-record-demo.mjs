@@ -332,8 +332,9 @@ try{
     await search.waitFor({timeout:15000});
     await scrollTo(search);
     await page.waitForTimeout(1200);
-    await search.fill("Northstar");
-    await page.waitForTimeout(1600);
+    // Filter to the blocked request so the ledger visibly narrows 3 rows -> 1.
+    await search.fill("DENY");
+    await page.waitForTimeout(1800);
     await search.fill("");
     await page.waitForTimeout(1200);
   });

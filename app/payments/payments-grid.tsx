@@ -3,8 +3,11 @@
 import {useMemo,useState,useCallback} from "react";
 import Link from "next/link";
 import {AgGridReact} from "ag-grid-react";
-import {themeQuartz,type ColDef,type ICellRendererParams} from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
+import {AllCommunityModule,ModuleRegistry,themeQuartz,type ColDef,type ICellRendererParams} from "ag-grid-community";
+
+/* v33+ AG Grid requires explicit module registration. All Community modules
+   are registered once here; the grid itself is read-only. */
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 export type PaymentsGridRow={
   requestId:string;
