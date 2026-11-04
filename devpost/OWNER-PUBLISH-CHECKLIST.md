@@ -18,7 +18,7 @@ the video. This is the top priority — judges may click the link.
 
 1. Go to https://dashboard.render.com → service `mandategate-web` (ID `srv-db39vmm7bikc73c55nh0`).
 2. Manual Deploy → "Deploy latest commit".
-   Branch: `build/slice-3-invoice-intake` — already fast-forwarded to `4b98f27` (I pushed it).
+   Branch: `build/slice-3-invoice-intake` — already fast-forwarded to `e4cf2e7` (= product `4b98f27` + the submission docs; I pushed it).
 3. Wait for the deploy to go live, then tell me.
    I will verify: design consistency + `/api/health` + the payments ledger renders dark.
 
