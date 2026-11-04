@@ -7,8 +7,9 @@
 **CI:** local full pipeline run 11 — PASS. 572 tests / 115 files, two migrations, two seeds, authenticated
 loopback smoke, 13/13 desktop+mobile visual captures, visual gate `VISUAL_PAYMENTS_GRID_BG=rgb(24, 30, 32)`
 with populated `.ag-row` ledger, production build, 8-scene interactive demo recording (163.23 s, 0 payout posts).
-**Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `67804bfbc8fb0c6012c226c3b34d7deed0e2eaccb3f967ff54bb678373a82f84`,
-Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). QA: `final-video/QA_REPORT.md`.
+**Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `d8dee5d9eb6b16e22ec762e071b8c090abe9f55fb210fe5f61977003dde90adf`,
+Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). Master: `~/mandategate-submission/video/`
+(QA report + manifest there; mix rebuilt 2026-11-04 from the unchanged CI footage after a scratch cleanup — see the QA report's rebuild note).
 **Live:** https://mandategate-web.onrender.com — deploy `dep-dblneqom7kps73c3d1a0` live 2026-11-04 18:23Z at commit
 `4f487c87` (verified: CSS chunk rotated, periwinkle purged, sign-in page renders the charcoal/copper shell; `/api/health` OK).
 Auto-deploy fixed to deploy-on-commit (was `checksPass` against dead GitHub Actions).
