@@ -33,9 +33,13 @@ const email=env.LIVE_ADMIN_EMAIL;
 const password=env.LIVE_ADMIN_PASSWORD;
 assert(email&&password,"LIVE_ADMIN_EMAIL and LIVE_ADMIN_PASSWORD required");
 
-const doPayment=env.LIVE_PAYOUT==="1";
-const skipPayment=env.NO_PAYOUT==="1";
-if(doPayment&&skipPayment)throw Error("Cannot set both LIVE_PAYOUT=1 and NO_PAYOUT=1");
+const doPayment=env.EXECUTE_PAYOUT==="1";
+const finalTake=env.FINAL_TAKE==="1";
+if(doPayment&&!finalTake)throw Error("EXECUTE_PAYOUT requires FINAL_TAKE=1");
+// SAFETY: default mode is a read-only selector smoke test. One-shot state
+// (human decline, invoice prepare, payout execute) is only consumed when
+// FINAL_TAKE=1 — never accidentally.
+console.log("LIVE_MODE="+(finalTake?(doPayment?"FINAL_EXECUTE":"FINAL_NO_EXECUTE"):"READ_ONLY_SMOKE"));
 
 // Find Playwright
 const browserRoot=env.CI_VISUAL_BROWSER_ROOT??
@@ -166,6 +170,14 @@ try{
     // === SCENE 2: Invoice upload + AI + source review ===
     await scene("02-invoice-document-review",35,async()=>{
       await navigate("/invoice-artifacts","Process an invoice");
+      if(!finalTake){
+        // READ-ONLY SMOKE: assert the fixture lane is enabled, touch nothing.
+        const fixture=page.getByRole("link",{name:/Download Northstar invoice/});
+        await fixture.waitFor({timeout:10000});
+        console.log("LIVE_SMOKE_FIXTURE_CARD_VISIBLE");
+        await scrollTo(fixture);
+        return;
+      }
       await stage("Upload invoice PDF · preserve original source evidence");
       // Download the Northstar test PDF
       const pdfResponse=await page.evaluate(async(o)=>{
@@ -217,8 +229,15 @@ try{
     });
 
     // === SCENE 3: Agent submits three requests ===
-    await scene("03-agent-submits-requests",17,async()=>{
+    await scene("03-agent-submits-requests",finalTake?17:10,async()=>{
       await navigate("/demo","Three decisions");
+      if(!finalTake){
+        // READ-ONLY SMOKE: button must exist; do not submit yet.
+        await page.getByRole("button",{name:"Load or replay three demo decisions"})
+          .waitFor({timeout:10000});
+        console.log("LIVE_SMOKE_LOAD_BUTTON_VISIBLE");
+        return;
+      }
       await stage("An operations agent submits 3 requests for the same supplier");
       const button=page.getByRole("button",{name:"Load or replay three demo decisions"});
       await scrollTo(button);
@@ -248,9 +267,13 @@ try{
     // === SCENE 4: ALLOW detail ===
     await scene("04-allow-trusted-payment",16,async()=>detail(expected[0]));
 
-    // === SCENE 5: ESCALATE + human DECLINE ===
-    await scene("05-escalation-human-review",23,async()=>{
+    // === SCENE 5: ESCALATE + human DECLINE (one-shot; final take only) ===
+    await scene("05-escalation-human-review",finalTake?23:16,async()=>{
       await detail(expected[1]);
+      if(!finalTake){
+        await stage("ESCALATE · human review required (smoke: nothing submitted)");
+        return;
+      }
       const explanation=page.locator('section[aria-label="Human escalation review"] textarea').first();
       await scrollTo(explanation);
       await explanation.fill("Amount is above this supplier's normal threshold. Decline pending independent review.");
@@ -262,8 +285,21 @@ try{
       const reviewed=await receipt;
       assert.equal(reviewed.status(),201,"LIVE_HUMAN_REVIEW_FAILED");
       const result=await reviewed.json();
-      evidence.declineReviewId=result?.review?.reviewId;
-      evidence.declineRequestId=result?.review?.requestId;
+      const review=result?.review;
+      // Exact response-shape assertion (the CI recorder fix, carried to live).
+      assert(review&&review.action==="DECLINE"&&review.status==="DECLINED"&&
+        review.approvedForExecution===false&&review.executed===false&&
+        typeof review.reviewId==="string"&&typeof review.requestId==="string",
+        "LIVE_HUMAN_REVIEW_SHAPE_INVALID");
+      evidence.declineReviewId=review.reviewId;
+      evidence.declineRequestId=review.requestId;
+      // Independent read-only readback: reload the page and confirm the
+      // persisted DECLINE is what the product now shows.
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+      await page.getByText("Prior human decision",{exact:false}).first().waitFor({timeout:15000});
+      const declinedText=await page.locator("main").innerText();
+      assert(declinedText.includes("DECLINE"),"LIVE_DECLINE_READBACK_MISSING");
+      evidence.declineReadback="reload shows prior DECLINE decision";
       await stage("Human review: declined with a reason · no payout");
     });
 
@@ -271,112 +307,164 @@ try{
     await scene("06-deny-changed-recipient",14,async()=>detail(expected[2]));
 
     // === SCENE 7: Invoice-derived PayPal Sandbox flow ===
-    await scene("07-paypal-sandbox-live",skipPayment?12:30,async()=>{
-      if(skipPayment){
-        // Show the archived evidence page instead
+    await scene("07-paypal-sandbox-live",finalTake?45:12,async()=>{
+      if(!finalTake){
+        // READ-ONLY SMOKE: archived evidence page must render.
         await navigate("/sandbox-evidence","PayPal Sandbox integration evidence");
-        const proof=page.getByText("SUCCESS (historical)",{exact:false}).first();
-        await scrollTo(proof);
-        await stage("PayPal Sandbox integration · SUCCESS + verified webhook");
-        evidence.paypalScene="ARCHIVED_EVIDENCE";
-      }else{
-        // Navigate to invoice-artifacts list, find the uploaded artifact
-        const artifactUrl="/invoice-artifacts/"+evidence.artifactId;
-        await page.goto(origin+artifactUrl,{waitUntil:"domcontentloaded",timeout:45000});
-        await page.getByRole("heading",{name:"Three short checks before payment"}).waitFor({timeout:30000});
+        await page.getByText("SUCCESS (historical)",{exact:false}).first().waitFor({timeout:15000});
+        console.log("LIVE_SMOKE_EVIDENCE_PAGE_OK");
+        evidence.paypalScene="SMOKE_ONLY";
+        return;
+      }
+      assert(evidence.artifactId,"LIVE_ARTIFACT_ID_MISSING");
+      await page.goto(origin+"/invoice-artifacts/"+evidence.artifactId,{waitUntil:"domcontentloaded",timeout:45000});
+      await page.getByRole("heading",{name:"Three short checks before payment"}).waitFor({timeout:30000});
 
-        // Step 1: Read + verify invoice details
-        const readBtn=page.getByRole("button",{name:"Read invoice details"});
-        if(await readBtn.isVisible()){
-          await readBtn.click();
-          await page.waitForTimeout(2000);
-        }
-        const verifyBtn=page.getByRole("button",{name:/Verify invoice details/});
-        if(await verifyBtn.isVisible()&&await verifyBtn.isEnabled()){
-          // Fill reason if empty
-          const reasonArea=page.locator('.invoice-review-reason textarea');
-          const currentReason=await reasonArea.inputValue();
-          if(currentReason.trim().length<16){
-            await reasonArea.fill("Verified Northstar test invoice USD 1.01 against original PDF source.");
-          }
-          await verifyBtn.click();
-          await page.waitForTimeout(1500);
-        }
-        await stage("Invoice details verified · supplier next");
+      // Step 1: read pages + verify facts (hard asserts on API responses)
+      const readBtn=page.getByRole("button",{name:"Read invoice details"});
+      if(await readBtn.isVisible().catch(()=>false)){
+        const pagesResp=page.waitForResponse(r=>
+          /\/pdf-pages$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+          {timeout:30000});
+        await readBtn.click();
+        const pgResp=await pagesResp;
+        assert.equal(pgResp.status(),200,"LIVE_PDF_PAGES_FAILED");
+        await page.waitForTimeout(1500);
+      }
+      await page.waitForTimeout(500);
+      const factsText=await page.locator("section[aria-label='Verify invoice details']").innerText();
+      assert(factsText.includes("Northstar"),"LIVE_FACTS_VENDOR_MISSING");
+      assert(factsText.includes("MG-SANDBOX-101-2026"),"LIVE_FACTS_INVOICE_MISSING");
+      assert(factsText.includes("1.01"),"LIVE_FACTS_AMOUNT_MISSING");
+      const reasonArea=page.locator('.invoice-review-reason textarea');
+      const currentReason=await reasonArea.inputValue();
+      if(currentReason.trim().length<16){
+        await reasonArea.fill("Verified Northstar test invoice USD 1.01 against the original PDF source text.");
+      }
+      const verifyResp=page.waitForResponse(r=>
+        /\/verify-pdf-facts$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+        {timeout:30000});
+      await page.getByRole("button",{name:/Verify invoice details/}).click();
+      const vr=await verifyResp;
+      assert.equal(vr.status(),200,"LIVE_VERIFY_FACTS_FAILED");
+      await stage("Facts verified from the original PDF · confirm the supplier");
+      await page.waitForTimeout(1200);
 
-        // Step 2: Confirm supplier
-        const step2=page.locator('button').filter({hasText:"Supplier"});
-        if(await step2.count()>0)await step2.first().click();
-        await page.waitForTimeout(500);
-        // Fill evidence reference if needed
-        const refInput=page.locator('section[aria-label="Confirm invoice supplier"] input');
-        if(await refInput.count()>0){
-          const val=await refInput.first().inputValue();
-          if(val.trim().length<16){
-            await refInput.first().fill("synthetic-fixture:northstar-sandbox-001");
-          }
-        }
-        // Check the confirmation checkbox
-        const confirmBox=page.locator('section[aria-label="Confirm invoice supplier"] input[type="checkbox"]');
-        if(await confirmBox.count()>0&&!(await confirmBox.first().isChecked())){
-          await confirmBox.first().check();
-        }
-        const confirmBtn=page.getByRole("button",{name:/Confirm supplier/});
-        if(await confirmBtn.isVisible()&&await confirmBtn.isEnabled()){
-          await confirmBtn.click();
-          await page.waitForTimeout(1500);
-        }
-        await stage("Supplier confirmed · payment check next");
-
-        // Step 3: Run payment checks → get binding
-        const step3=page.locator('button').filter({hasText:"Payment checks"});
-        if(await step3.count()>0)await step3.first().click();
-        await page.waitForTimeout(500);
-        const checkBtn=page.getByRole("button",{name:/Run payment checks/});
-        if(await checkBtn.isVisible()&&await checkBtn.isEnabled()){
-          await checkBtn.click();
-          await page.waitForTimeout(3000);
-        }
-        // Follow to binding page
-        const continueLink=page.getByRole("link",{name:/Continue to payment approval/});
-        if(await continueLink.isVisible()){
-          await continueLink.click();
-          await page.waitForURL(url=>/^\/invoice-bindings\//.test(url.pathname),{timeout:20000});
-        }
-        await stage("Payment authorized · preparing Sandbox payout");
-
-        // Prepare (does not pay)
-        const prepareBtn=page.getByRole("button",{name:/Prepare USD 1.01/});
-        if(await prepareBtn.isVisible()){
-          await prepareBtn.click();
-          await page.waitForURL(url=>/^\/payments\//.test(url.pathname),{timeout:20000});
-        }
-
-        if(doPayment){
-          // Actually execute the PayPal Sandbox payout — ONE SHOT
-          await page.waitForTimeout(1000);
-          const execDetails=page.locator('details summary').filter({hasText:/Manual Sandbox/});
-          if(await execDetails.count()>0)await execDetails.first().click();
-          const execBtn=page.getByRole("button",{name:/Execute PayPal Sandbox payout|Pay.*PayPal Sandbox/});
-          await execBtn.waitFor({timeout:10000});
-          await stage("Submitting to PayPal Sandbox · one-shot payout");
-          await execBtn.click();
-          // Wait for the execution response
-          await page.waitForTimeout(8000);
-          // Capture execution evidence from page
-          const paypalText=await page.locator("main").innerText();
-          evidence.paypalPageContents=paypalText.slice(0,2000);
-          evidence.paypalScene="LIVE_EXECUTED";
-          await stage("PayPal Sandbox payout submitted · reconciling");
-          await page.waitForTimeout(3000);
-          // Reload to see reconciled state
-          await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-          await page.waitForTimeout(2000);
-        }else{
-          evidence.paypalScene="PREPARED_NOT_EXECUTED";
-          await stage("Payment prepared · awaiting owner Execute authorization");
+      // Step 2: confirm supplier on the pre-enrolled Sandbox test channel
+      const step2Nav=page.locator('nav[aria-label="Invoice verification steps"] button').filter({hasText:"Supplier"});
+      if(await step2Nav.count()>0)await step2Nav.first().click();
+      await page.waitForTimeout(500);
+      const refInput=page.locator('section[aria-label="Confirm invoice supplier"] input:not([type="checkbox"])').first();
+      if(await refInput.count()>0){
+        const val=await refInput.inputValue();
+        if(val.trim().length<16){
+          await refInput.fill("synthetic-fixture:northstar-sandbox-001");
         }
       }
+      await page.locator('section[aria-label="Confirm invoice supplier"] input[type="checkbox"]').first().check();
+      const attestResp=page.waitForResponse(r=>
+        /\/origin-attestations$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+        {timeout:30000});
+      await page.getByRole("button",{name:/Confirm supplier/}).click();
+      const ar=await attestResp;
+      assert.equal(ar.status(),200,"LIVE_ATTEST_FAILED");
+      await stage("Supplier source confirmed · run the payment checks");
+      await page.waitForTimeout(1200);
+
+      // Step 3: payment checks → frozen proposal
+      const step3Nav=page.locator('nav[aria-label="Invoice verification steps"] button').filter({hasText:"Payment checks"});
+      if(await step3Nav.count()>0)await step3Nav.first().click();
+      await page.waitForTimeout(500);
+      const proposeResp=page.waitForResponse(r=>
+        /\/proposals$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+        {timeout:30000});
+      await page.getByRole("button",{name:/Run payment checks/}).click();
+      const prr=await proposeResp;
+      assert.equal(prr.status(),200,"LIVE_PROPOSAL_FAILED");
+      const proposal=await prr.json().catch(()=>({}));
+      assert(typeof proposal?.bindingId==="string","LIVE_PROPOSAL_BINDING_MISSING");
+      evidence.proposalBindingId=proposal.bindingId;
+      await page.getByText("Payment ready for your approval",{exact:false}).first().waitFor({timeout:15000});
+      await stage("Payment frozen for approval · exact amount and recipient");
+      await page.waitForTimeout(1200);
+      await page.getByRole("link",{name:/Continue to payment approval/}).click();
+      await page.waitForURL(url=>/^\/invoice-bindings\//.test(url.pathname),{timeout:20000});
+      await page.waitForTimeout(800);
+
+      // Prepare the canonical request (not a payment)
+      const prepareResp=page.waitForResponse(r=>
+        /prepare-sandbox$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+        {timeout:30000});
+      await page.getByRole("button",{name:/Prepare USD 1.01/}).click();
+      const prr2=await prepareResp;
+      assert.equal(prr2.status(),200,"LIVE_PREPARE_FAILED");
+      const prepared=await prr2.json();
+      assert(typeof prepared?.requestId==="string"&&prepared?.paymentSubmittedByThisAction===false,
+        "LIVE_PREPARE_SHAPE_INVALID");
+      evidence.paymentRequestId=prepared.requestId;
+      await page.waitForURL(url=>/^\/payments\//.test(url.pathname),{timeout:20000});
+      await page.waitForTimeout(1000);
+
+      if(!doPayment){
+        evidence.paypalScene="PREPARED_NOT_EXECUTED";
+        await stage("Payment prepared · execute requires explicit authorization");
+        return;
+      }
+
+      // ==== THE ONE-SHOT PAYPAL SANDBOX PAYOUT ====
+      // Exactly one execute click. No retry after this point, ever.
+      await stage("Approving the one-time PayPal Sandbox payout");
+      const summary=page.locator("details.ops-manual-test summary").first();
+      if(await summary.count()>0){
+        await summary.click();
+        await page.waitForTimeout(600);
+      }
+      const execBtn=page.getByRole("button",{name:/Pay .* with PayPal Sandbox|Execute PayPal Sandbox payout/});
+      await execBtn.waitFor({timeout:10000});
+      let executeResponse=null;
+      try{
+        const execResp=page.waitForResponse(r=>
+          /\/execute$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
+          {timeout:45000});
+        await execBtn.click();
+        executeResponse=await execResp;
+      }catch(e){
+        evidence.executeOutcome="UNCERTAIN_NO_RESPONSE";
+        evidence.executeError=String(e).slice(0,300);
+        console.error("LIVE_EXECUTE_UNCERTAIN — read-only investigation only, no retry");
+        throw Error("LIVE_EXECUTE_UNCERTAIN_NO_RETRY");
+      }
+      const execBody=await executeResponse.json().catch(()=>({}));
+      evidence.executeStatus=executeResponse.status();
+      evidence.executeBody=JSON.stringify(execBody).slice(0,1500);
+      if(executeResponse.status()!==200){
+        evidence.executeOutcome="REJECTED";
+        console.error("LIVE_EXECUTE_REJECTED status="+executeResponse.status());
+        throw Error("LIVE_EXECUTE_REJECTED_NO_RETRY");
+      }
+      evidence.executeOutcome="ACCEPTED";
+      evidence.paypalPayoutBatchId=execBody?.execution?.paypalPayoutBatchId??null;
+      evidence.paypalPayoutItemId=execBody?.execution?.paypalPayoutItemId??null;
+      evidence.executionStatus=execBody?.execution?.status??null;
+      await stage("Submitted to PayPal · waiting for reconciliation");
+
+      // Read-only reconciliation poll (never resubmits).
+      let reconciled=false;
+      for(let attempt=1;attempt<=9;attempt++){
+        await page.waitForTimeout(10000);
+        await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+        await page.waitForTimeout(1500);
+        const body=await page.locator("main").innerText();
+        await page.screenshot({path:join(output,`paypal-reconcile-${attempt}.jpg`),type:"jpeg",quality:80});
+        if(/SUCCESS/i.test(body)){
+          reconciled=true;
+          evidence.paypalPageFinal=body.slice(0,2500);
+          break;
+        }
+      }
+      evidence.paypalScene=reconciled?"LIVE_EXECUTED_RECONCILED":"LIVE_EXECUTED_RECONCILE_PENDING";
+      await stage(reconciled?"PayPal confirmed · payment reconciled automatically"
+        :"PayPal submission recorded · reconciliation continues");
     });
 
     // === SCENE 8: Business outcome ===
@@ -402,7 +490,7 @@ try{
       const manifest={
         contract:"mandategate/live-browser-demo/v1",
         origin,recordingType:"live_interactive_application",
-        doPayment,skipPayment,recordingComplete,
+        finalTake,executePayout:doPayment,recordingComplete,
         captureDurationSeconds:Number(length.toFixed(2)),
         file:"mandategate-live-demo.webm",bytes:statSync(to).size,
         scenes:traces,evidence,browserErrors,
