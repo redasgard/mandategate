@@ -26,7 +26,7 @@ paypal, ai agents, agentic commerce, ai security, fintech, accounts payable, nex
 
 UPLOAD SETTINGS:
 - File: /home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4
-  (SHA256 d8dee5d9eb6b16e22ec762e071b8c090abe9f55fb210fe5f61977003dde90adf; 165.75 s; 1440×810)
+  (SHA256 c4cee38a1a7c362508eb0306d0df8b80f546702d7a1c80339b430123e48736b9; 165.75 s; 1440×810)
 - Visibility: Public
 - Audience: "Not made for kids"
 - Category: Science & Technology

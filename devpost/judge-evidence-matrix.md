@@ -7,7 +7,7 @@
 **CI:** local full pipeline run 11 — PASS. 572 tests / 115 files, two migrations, two seeds, authenticated
 loopback smoke, 13/13 desktop+mobile visual captures, visual gate `VISUAL_PAYMENTS_GRID_BG=rgb(24, 30, 32)`
 with populated `.ag-row` ledger, production build, 8-scene interactive demo recording (163.23 s, 0 payout posts).
-**Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `d8dee5d9eb6b16e22ec762e071b8c090abe9f55fb210fe5f61977003dde90adf`,
+**Video:** `MandateGate_DEMO.mp4` — 165.75 s, SHA256 `c4cee38a1a7c362508eb0306d0df8b80f546702d7a1c80339b430123e48736b9`,
 Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). Master: `~/mandategate-submission/video/`
 (QA report + manifest there; mix rebuilt 2026-11-04 from the unchanged CI footage after a scratch cleanup — see the QA report's rebuild note).
 **Live:** https://mandategate-web.onrender.com — deploy `dep-dblneqom7kps73c3d1a0` live 2026-11-04 18:23Z at commit

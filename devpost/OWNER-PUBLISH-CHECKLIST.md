@@ -51,7 +51,7 @@ Why: submission requires a public repo with the license visible at the top of th
 Why: the form requires a public YouTube link.
 
 1. Upload file: `/home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4`
-   (SHA256 `d8dee5d9…`, 165.75 s, 1440×810, H.264/AAC — stable master dir, see its README)
+   (SHA256 `c4cee38a…`, 165.75 s, 1440×810, H.264/AAC — stable master dir, see its README)
 2. Title, description, tags, visibility: copy-paste from `devpost/youtube-description.txt`.
 3. Tell me the URL. I will verify: public viewable, duration < 3:00, description intact.
 
