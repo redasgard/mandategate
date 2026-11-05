@@ -11,6 +11,18 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 
 ---
 
+## Pre-submission verification (2026-11-05) — all green
+
+- **Cold-clone judge test (the functional-demo gate):** cloned the repo fresh, followed the README verbatim
+  (pnpm install --frozen-lockfile -> .env.local -> db:migrate (28 migrations) -> demo:seed -> pnpm dev),
+  then ran the three documented agent API cases: ALLOW `WITHIN_TRUSTED_BASELINE`, ESCALATE
+  `AMOUNT_OUTSIDE_VENDOR_BASELINE`, DENY `DESTINATION_MISMATCH`, all with `paymentExecuted:false`.
+  Browser sign-in + /payments ledger (3 rows, dark themed) verified on the clone.
+- **Default branch:** switched to `build/slice-3-invoice-intake` (main had diverged; no rewrite performed).
+  A judge cloning the repo now gets the real application directly.
+- **Docs:** README + judge instructions refreshed to current facts; stale links replaced.
+- **Live site:** deploy `00061cc` live 2026-11-05 18:01Z; `/api/health` OK.
+
 ## Step 1 — DONE (2026-11-04): deploy pipeline live, zero owner action
 
 Auto-deploy = **on** for `build/slice-3-invoice-intake`, and a Render API key
