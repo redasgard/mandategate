@@ -1,15 +1,15 @@
 # MandateGate | Judge access and reproduction
 
-**Status as of October 29, 2026:** Hosted service previously verified live; exact current external health and signed-in judge access must be rechecked. Never publish an administrator account or any real provider credentials.
+**Status as of November 4, 2026:** hosted service verified live (health OK; current build deployed); repository is MIT-licensed with default branch `build/slice-3-invoice-intake`. Never publish an administrator account or any real provider credentials.
 
 ## Public links
 
 - Application: https://mandategate-web.onrender.com
-- Repository: https://github.com/redasgard/mandategate **(PRIVATE until release action)**
-- Current tested application branch: `build/slice-3-invoice-intake` (the `main` branch is stale; do not judge `main` until corrected)
+- Repository: https://github.com/redasgard/mandategate (MIT License)
+- Application branch: `build/slice-3-invoice-intake` — the repository default branch.
 - Recorded tests: see `devpost/continuation-status-20261025.md` and latest Render CI evidence
 - Historical, separate PayPal Sandbox receipt: `devpost/reviews/slice-2-critical-review.md`
-- Public demo video: not yet provided
+- Public demo video: linked from the Devpost submission (YouTube, under 3 minutes)
 
 ## Reproducible local path: deterministic, no financial transfers
 

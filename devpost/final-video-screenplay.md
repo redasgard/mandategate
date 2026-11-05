@@ -100,7 +100,7 @@ in `qa-report/full-qa.log`; the v6 audit is `qa-report/full-qa-v6.log`.
 
 | Shot ID | Evidence                                    |
 |---------|---------------------------------------------|
-| S01     | Dashboard screenshot, CI host at ae886ff    |
+| S01     | Dashboard screenshot, CI host at 4b98f27 (run 11) |
 | S02     | artifact upload response, source SHA-256    |
 | S02-GLM | Archived GLM observation (separate invoice) |
 | S03     | 3 scenario request IDs from POST response   |

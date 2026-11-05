@@ -2,7 +2,7 @@
 
 **The firewall between autonomous agents and your money.**
 
-MandateGate is the **PayPal AI Hackathon application**. AI interprets
+MandateGate is built for the **PayPal AI Hackathon**. AI interprets
 invoices; deterministic vendor, source, risk and payment-authority rules
 control whether a requested payout may execute. Agents never receive
 PayPal credentials or independent payment authority.
@@ -11,15 +11,15 @@ PayPal credentials or independent payment authority.
 
 - **Hosted application:** https://mandategate-web.onrender.com (sign-in required).
 - **Complete local setup:** follow *Run locally* below with an isolated PostgreSQL 18 database and generated secrets; disable payments for local review.
-- **Devpost submission text:** [final-submission-copy.md](devpost/final-submission-copy.md)
+- **Devpost submission text:** [submission-copy-final.md](devpost/submission-copy-final.md)
 - **Judge testing instructions:** [final-judge-instructions.md](devpost/final-judge-instructions.md)
 - **Real-browser demonstration plan:** [final-demo-script.md](devpost/final-demo-script.md)
-- **Current evidence and publication blockers:** [final-release-gate-20261029.md](devpost/final-release-gate-20261029.md)
+- **Judge evidence matrix:** [judge-evidence-matrix.md](devpost/judge-evidence-matrix.md)
 - **Historical PayPal Sandbox receipt:** [Slice 2 verification](devpost/reviews/slice-2-critical-review.md). The application also exposes an authenticated read-only `/sandbox-evidence` page.
 
 The three persisted demonstration decisions are synthetic and **do not** represent three payments. Saved GLM observations are advisory and do not create permission to pay. The earlier recorded PayPal Sandbox SUCCESS arose from a **separate direct-payment request**, not from those AI-reviewed invoices. Strict end-to-end invoice authorization and a fresh invoice-derived Sandbox settlement remain unverified.
 
-**Release check:** The GitHub organization repository must be made public, the tested branch must be selected as default without overwriting divergent `main` history, a real public YouTube video under three minutes must be attached, and judge access must be verified. The project is not marked submitted until Devpost returns a confirmation URL.
+**Submission target:** the PayPal AI Hackathon on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `build/slice-3-invoice-intake`; the release is under the MIT License.
 
 ## Operational workflow: agent → MandateGate → PayPal
 
@@ -74,12 +74,11 @@ and [current checklist](devpost/checklist.md) for exact evidence and blockers.
 
 Prerequisites: **Node.js 24**, **pnpm 12.9.1**, **PostgreSQL 18**, and a private local development database.
 
-The currently hosted application follows **`build/slice-3-invoice-intake`**, not the default `main` branch.
+The application lives on **`build/slice-3-invoice-intake`**, which is the repository default branch.
 
 ```sh
 git clone https://github.com/redasgard/mandategate.git
 cd mandategate
-git switch build/slice-3-invoice-intake
 pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
@@ -121,10 +120,8 @@ pnpm build
 - The hackathon AI route does not require account-level ZDR. Invoice content may be retained by the external provider. Keep test data separate from live customer information.
 - Read-only policy tests must not produce an outbound PayPal Payouts request; an independently approved invoice can be sent through the real Sandbox API.
 
-## Delivery status and hackathon submission
+## Hackathon submission
 
-**Internal hard target: submitted Devpost entry by October 29, 2026, 6 PM Pacific.** October 30–31 are emergency buffer only; work is not planned into November. This is earlier than the competition's published deadline.
+Built for the **PayPal AI Hackathon** on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `build/slice-3-invoice-intake`; the release is under the [MIT License](LICENSE). The demo video and hosted-application links are provided in the Devpost submission; the judge path (local run + reproducible agent API cases) is documented in [devpost/final-judge-instructions.md](devpost/final-judge-instructions.md).
 
-The repository is currently **private**, and the default `main` branch has not yet received the current hackathon application build. Before declaring submission-ready we must independently verify: public MIT-licensed release with correct default branch/tag, clean-clone setup, actual judge access and stable data service through judging, a public YouTube video showing the functioning application under three minutes, accurate Devpost content and the platform's **submitted entry confirmation URL**. None of those publication outcomes is implied by this README.
-
-See [devpost/october-2026-execution-plan.md](devpost/october-2026-execution-plan.md), [devpost/gate-h-live-runbook.md](devpost/gate-h-live-runbook.md), the [historical payout review](devpost/reviews/slice-2-critical-review.md), and [LICENSE](LICENSE).
+See the [judge instructions](devpost/final-judge-instructions.md), the [evidence matrix](devpost/judge-evidence-matrix.md), the [historical payout review](devpost/reviews/slice-2-critical-review.md), and [LICENSE](LICENSE).
