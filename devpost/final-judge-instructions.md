@@ -9,7 +9,7 @@
 - Application branch: `build/slice-3-invoice-intake` — the repository default branch.
 - Recorded tests: see `devpost/continuation-status-20261025.md` and latest Render CI evidence
 - Historical, separate PayPal Sandbox receipt: `devpost/reviews/slice-2-critical-review.md`
-- Public demo video: linked from the Devpost submission (YouTube, under 3 minutes; Variant A shows the live Sandbox settlement)
+- Public demo video: https://www.youtube.com/watch?v=7omQ8iUv1Q0 (under 3 minutes; shows the live invoice-derived Sandbox settlement)
 
 ## Reproducible local path: deterministic, no financial transfers
 
