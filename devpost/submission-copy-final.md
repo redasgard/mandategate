@@ -8,7 +8,7 @@
 
 **Source repository:** https://github.com/redasgard/mandategate (set to PUBLIC with MIT license before submission)
 
-**Video:** [YouTube URL — to be inserted after upload and owner approval]
+**Video:** https://www.youtube.com/watch?v=7omQ8iUv1Q0
 
 **Primary categories:** PayPal + AI, agentic commerce, business operations and security.
 **Sponsor tools:** AG Grid (the payment-decision ledger), Render (hosting).

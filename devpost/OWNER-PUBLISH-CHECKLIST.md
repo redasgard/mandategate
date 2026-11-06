@@ -51,7 +51,10 @@ Why: submission requires a public repo with the license visible at the top of th
    already detects `mit`; making the repo public is the only missing step).
 3. Tell me. I will verify: anonymous clone works, About shows the license, README run instructions reachable.
 
-## Step 3 — Upload the video to YouTube (10 minutes, you)
+## Step 3 — DONE (2026-11-06): video live on YouTube
+
+URL: https://www.youtube.com/watch?v=7omQ8iUv1Q0 — verified public, 171 s (2:51), description intact
+(chapters + links + settlement ids). Original instructions kept for reference:
 
 Why: the form requires a public YouTube link.
 
