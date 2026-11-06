@@ -39,6 +39,7 @@ export async function inspectCurrentAuthorityBinding(
       "a.proof_sha256 as origin_proof_sha256,a.independent_evidence_reference,",
       "a.expires_at as origin_expires_at,a.artifact_sha256 as origin_artifact_sha256,",
       "ch.kind as channel_kind,ch.active as channel_active,",
+      "ch.enrolled_by_user_id as channel_enroller,",
       "(ch.created_at < art.created_at) as channel_predates_artifact,",
       "art.sha256 as current_artifact_sha256,",
       "v.name as current_vendor_name,v.normal_max_amount_cents,",
