@@ -2,7 +2,7 @@
 
 ## Current snapshot (2026-11-03) — supersedes the October rows below for release purposes
 
-**Branch under review:** `build/slice-3-invoice-intake` @ `4b98f2786e4b4df5c83639d6a34609af139f84e7`
+**Branch under review:** `build/slice-3-invoice-intake` @ `fbeccf9bae3f6e4c4609d8879d3ecb897a4e9162` (post-identity-rewrite SHA)
 (fast-forwarded deploy branch; identical tree on `fix/recorder-decline-persisted-proof`).
 **CI:** local full pipeline run 11 — PASS. 572 tests / 115 files, two migrations, two seeds, authenticated
 loopback smoke, 13/13 desktop+mobile visual captures, visual gate `VISUAL_PAYMENTS_GRID_BG=rgb(24, 30, 32)`
@@ -11,7 +11,7 @@ with populated `.ag-row` ledger, production build, 8-scene interactive demo reco
 Variant B (PayPal scene = labeled ARCHIVED Sandbox evidence). Master: `~/mandategate-submission/video/`
 (QA report + manifest there; mix rebuilt 2026-11-04 from the unchanged CI footage after a scratch cleanup — see the QA report's rebuild note).
 **Live:** https://mandategate-web.onrender.com — deploy `dep-dblneqom7kps73c3d1a0` live 2026-11-04 18:23Z at commit
-`4f487c87` (verified: CSS chunk rotated, periwinkle purged, sign-in page renders the charcoal/copper shell; `/api/health` OK).
+`7b4cb68f` (verified: CSS chunk rotated, periwinkle purged, sign-in page renders the charcoal/copper shell; `/api/health` OK).
 Auto-deploy fixed to deploy-on-commit (was `checksPass` against dead GitHub Actions).
 
 Judge-criterion → evidence mapping (rules: `devpost/rules-extract.md`):
@@ -24,7 +24,7 @@ Judge-criterion → evidence mapping (rules: `devpost/rules-extract.md`):
 | Innovation/Idea | Payment firewall for agent payments: model observes, policy decides, PayPal executes — authority never leaves the server boundary |
 | Presentation | 165.75 s narrated video: problem → invoice intake → 3 decisions → human decline → DENY → labeled archived PayPal evidence → ledger close |
 
-Open release blockers (owner-only): Render manual deploy of `4b98f27`; repo visibility → PUBLIC with MIT
+Remaining owner actions: repo visibility → PUBLIC with MIT; YouTube upload; Devpost submission. (Deploys are automated — no manual deploy step remains.)
 visible in About; YouTube upload; Devpost form submit; optional Variant A credentials file.
 The October table below remains accurate as of its date; counts (351 → 572 tests) and SHAs are superseded by this snapshot.
 

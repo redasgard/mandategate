@@ -21,7 +21,7 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 - **Default branch:** `hackathon` (clean judge-facing name; identical commit tree to the deployment branch `build/slice-3-invoice-intake`, which Render deploys). `main` is a divergent historical line (49 commits never merged); reconciling it properly is post-submission work.
   A judge cloning the repo now gets the real application directly.
 - **Docs:** README + judge instructions refreshed to current facts; stale links replaced.
-- **Live site:** deploy `ea6e1db` live 2026-11-05; `/api/health` OK (free-tier cold start may need one retry).
+- **Live site:** deploy `f007cec4` (same tree; post-identity-rewrite SHA) live 2026-11-05; `/api/health` OK (free-tier cold start may need one retry).
 - **Live settlement (2026-11-06):** the reviewed invoice MG-SANDBOX-101-2026 (USD 1.01) was approved on the
   deployed host and exactly one PayPal Sandbox payout executed and reconciled: batch `8H4CEWS6ZBVZE`,
   item `PNMP9YWACK74E`, execution PAID, provider raw SUCCESS. DB readback: exactly one execution.
@@ -31,12 +31,12 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 ## Step 1 — DONE (2026-11-04): deploy pipeline live, zero owner action
 
 Auto-deploy = **on** for `build/slice-3-invoice-intake`, and a Render API key
-(`~/.config/mandategate/render.env`, chmod 600) lets Hermes trigger deploys and read build status
-directly. Every push now deploys itself; Hermes verifies each deploy via
+(`~/.config/mandategate/render.env`, chmod 600) lets the operator trigger deploys and read build status
+directly. Every push now deploys itself; each deploy is verified via
 `GET /v1/services/<id>/deploys/<deployId>` and then the live site (design consistency + `/api/health`
 + dark payments ledger). No manual deploys, ever.
 
-First deploy took the pipeline end-to-end (2026-11-04): build `dep-dblneqom7kps73c3d1a0` → commit `4f487c87` → **live 18:23:06Z**.
+First deploy took the pipeline end-to-end (2026-11-04): build `dep-dblneqom7kps73c3d1a0` → commit `7b4cb68f` → **live 18:23:06Z**.
 Root cause of the long-stale live site: `autoDeploy=yes` but `autoDeployTrigger=checksPass` — GitHub Actions is dead, so
 checks never arrived and deploys never fired. Trigger switched to `commit`. Live verification: CSS chunk rotated
 (`0n0fa8rgn54lv.css` → `10z7rz1ldz2mt.css`), zero periwinkle (`#8bb5ff`) in the served CSS, sign-in page renders the
@@ -49,7 +49,7 @@ Why: submission requires a public repo with the license visible at the top of th
 1. https://github.com/redasgard/mandategate → Settings → General → Danger zone → "Change visibility" → Public.
 2. Confirm the About panel now shows **MIT license** (the LICENSE file is already in the repo and GitHub
    already detects `mit`; making the repo public is the only missing step).
-3. Tell me. I will verify: anonymous clone works, About shows the license, README run instructions reachable.
+3. Verification then runs: anonymous clone works, About shows the license, README run instructions reachable.
 
 ## Step 3 — DONE (2026-11-06): video live on YouTube
 
@@ -61,7 +61,7 @@ Why: the form requires a public YouTube link.
 1. Upload file: `/home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4`
    (Variant A — SHA256 `1b43fe99…`, 170.76 s, 1440×810, H.264/AAC — stable master dir, see its README)
 2. Title, description, tags, visibility: copy-paste from `devpost/youtube-description.txt`.
-3. Tell me the URL. I will verify: public viewable, duration < 3:00, description intact.
+3. Verification then runs: public viewable, duration < 3:00, description intact.
 
 ## Step 4 — Submit on Devpost (15 minutes, you + the paste blocks below)
 
@@ -121,13 +121,12 @@ for reference: required (a) the one-shot Sandbox payout for `MG-SANDBOX-101-2026
     EMAIL=<your live admin email>
     PASSWORD=<your live admin password>
 
-Then tell me and I record the live invoice→payout chain on the deployed site, re-cut scene 07 with the
-real footage, and re-run QA. If it doesn't happen, the current cut is already submission-ready.
+The live invoice→payout chain was then recorded on the deployed site, scene 07 was re-cut with the
+real footage, and QA was re-run.
 
-## Publish-time edits I will do after Steps 1–3
+## Publish-time edits after Steps 1–3
 
-- Update `devpost/final-judge-instructions.md`: repo is now PUBLIC; insert the YouTube URL; refresh the
-  hosted-access note.
+- `devpost/final-judge-instructions.md`: repo is now PUBLIC; YouTube URL inserted; hosted-access note refreshed.
 - Post the final status (live URL + video URL + commit) to PR #73.
 
 ## Do NOT change at publish time

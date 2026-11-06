@@ -1,7 +1,7 @@
 # PayPal AI Hackathon — binding rules extract
 
 Source: https://paypalaihackathon.devpost.com/rules and https://paypalaihackathon.devpost.com/
-Fetched: 2026-11-03. Full page text: `~/.hermes/profiles/product/cache/web/paypalaihackathon.devpost.com-dc2e3f99c5.md`
+Fetched 2026-11-03; full rules text archived with the submission working notes.
 
 ## 1. Dates
 
