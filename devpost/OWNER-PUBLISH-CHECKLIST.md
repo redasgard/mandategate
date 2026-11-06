@@ -18,7 +18,7 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
   then ran the three documented agent API cases: ALLOW `WITHIN_TRUSTED_BASELINE`, ESCALATE
   `AMOUNT_OUTSIDE_VENDOR_BASELINE`, DENY `DESTINATION_MISMATCH`, all with `paymentExecuted:false`.
   Browser sign-in + /payments ledger (3 rows, dark themed) verified on the clone.
-- **Default branch:** switched to `build/slice-3-invoice-intake` (main had diverged; no rewrite performed).
+- **Default branch:** `hackathon` (clean judge-facing name; identical commit tree to the deployment branch `build/slice-3-invoice-intake`, which Render deploys). `main` is a divergent historical line (49 commits never merged); reconciling it properly is post-submission work.
   A judge cloning the repo now gets the real application directly.
 - **Docs:** README + judge instructions refreshed to current facts; stale links replaced.
 - **Live site:** deploy `ea6e1db` live 2026-11-05; `/api/health` OK (free-tier cold start may need one retry).

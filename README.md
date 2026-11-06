@@ -19,7 +19,7 @@ PayPal credentials or independent payment authority.
 
 The three persisted demonstration decisions are synthetic and **do not** represent three payments. Saved GLM observations are advisory and do not create permission to pay. A separate bounded end-to-end settlement has been executed on the Sandbox demo: the reviewed invoice `MG-SANDBOX-101-2026` (USD 1.01) completed human approval and **exactly one** PayPal Sandbox payout (batch `8H4CEWS6ZBVZE`, item `PNMP9YWACK74E`), reconciled automatically to PAID; the demo video shows this live. The earlier Slice 2 PayPal Sandbox receipt remains a **separate historical transaction**. Production PayPal remains out of scope.
 
-**Submission target:** the PayPal AI Hackathon on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `build/slice-3-invoice-intake`; the release is under the MIT License.
+**Submission target:** the PayPal AI Hackathon on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `hackathon`; the release is under the MIT License.
 
 ## Operational workflow: agent → MandateGate → PayPal
 
@@ -74,7 +74,7 @@ and [current checklist](devpost/checklist.md) for exact evidence and blockers.
 
 Prerequisites: **Node.js 24**, **pnpm 12.9.1**, **PostgreSQL 18**, and a private local development database.
 
-The application lives on **`build/slice-3-invoice-intake`**, which is the repository default branch.
+The application lives on the repository default branch (**`hackathon`** — the same commit tree the hosted deployment follows via `build/slice-3-invoice-intake`).
 
 ```sh
 git clone https://github.com/redasgard/mandategate.git
@@ -122,6 +122,6 @@ pnpm build
 
 ## Hackathon submission
 
-Built for the **PayPal AI Hackathon** on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `build/slice-3-invoice-intake`; the release is under the [MIT License](LICENSE). The demo video and hosted-application links are provided in the Devpost submission; the judge path (local run + reproducible agent API cases) is documented in [devpost/final-judge-instructions.md](devpost/final-judge-instructions.md).
+Built for the **PayPal AI Hackathon** on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `hackathon`; the release is under the [MIT License](LICENSE). The demo video and hosted-application links are provided in the Devpost submission; the judge path (local run + reproducible agent API cases) is documented in [devpost/final-judge-instructions.md](devpost/final-judge-instructions.md).
 
 See the [judge instructions](devpost/final-judge-instructions.md), the [evidence matrix](devpost/judge-evidence-matrix.md), the [historical payout review](devpost/reviews/slice-2-critical-review.md), and [LICENSE](LICENSE).
