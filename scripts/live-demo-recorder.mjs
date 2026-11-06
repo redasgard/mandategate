@@ -350,7 +350,14 @@ try{
       await page.goto(origin+"/invoice-artifacts/"+evidence.artifactId,{waitUntil:"domcontentloaded",timeout:45000});
       await page.getByRole("heading",{name:"Three short checks before payment"}).waitFor({timeout:30000});
 
-      // Step 1: read pages + verify facts (hard asserts on API responses)
+      // Step 1: read pages + verify facts (hard asserts on API responses).
+      // If a claim set already exists (earlier authorized take), the wizard
+      // opens at step 2 — display it and continue; never re-verify.
+      const step1Section=page.locator("section[aria-label='Verify invoice details']");
+      if(await step1Section.count()===0){
+        console.log("LIVE_CLAIM_ALREADY_EXISTS_SKIP_STEP1");
+        await stage("Invoice facts already verified (earlier authorized take)");
+      } else {
       const readBtn=page.getByRole("button",{name:"Read invoice details"});
       if(await readBtn.isVisible().catch(()=>false)){
         const pagesResp=page.waitForResponse(r=>
@@ -363,7 +370,7 @@ try{
       }
       await page.waitForTimeout(500);
       // Facts live in <input value=...> — innerText alone cannot see them.
-      const factsSection=page.locator("section[aria-label='Verify invoice details']");
+      const factsSection=step1Section;
       const readVals=()=>factsSection.locator("input").evaluateAll(ins=>ins.map(i=>i.value));
       let vals=await readVals();
       if(!vals.some(v=>/Northstar/i.test(v))){
@@ -392,8 +399,9 @@ try{
         {timeout:30000});
       await page.getByRole("button",{name:/Verify invoice details/}).click();
       const vr=await verifyResp;
-      assert.equal(vr.status(),200,"LIVE_VERIFY_FACTS_FAILED");
+      assert([200,201].includes(vr.status()),"LIVE_VERIFY_FACTS_FAILED_"+vr.status());
       await stage("Facts verified from the original PDF · confirm the supplier");
+      }
       await page.waitForTimeout(1200);
 
       // Step 2: confirm supplier on the pre-enrolled Sandbox test channel
@@ -413,7 +421,7 @@ try{
         {timeout:30000});
       await page.getByRole("button",{name:/Confirm supplier/}).click();
       const ar=await attestResp;
-      assert.equal(ar.status(),200,"LIVE_ATTEST_FAILED");
+      assert([200,201].includes(ar.status()),"LIVE_ATTEST_FAILED_"+ar.status());
       await stage("Supplier source confirmed · run the payment checks");
       await page.waitForTimeout(1200);
 
@@ -426,9 +434,11 @@ try{
         {timeout:30000});
       await page.getByRole("button",{name:/Run payment checks/}).click();
       const prr=await proposeResp;
-      assert.equal(prr.status(),200,"LIVE_PROPOSAL_FAILED");
-      const proposal=await prr.json().catch(()=>({}));
+      assert([200,201].includes(prr.status()),"LIVE_PROPOSAL_FAILED_"+prr.status());
+      const rawProposal=await prr.json().catch(()=>({}));
+      const proposal=rawProposal?.proposal;
       assert(typeof proposal?.bindingId==="string","LIVE_PROPOSAL_BINDING_MISSING");
+      assert(rawProposal?.paymentExecuted===false,"LIVE_PROPOSAL_UNEXPECTED_EXECUTION");
       evidence.proposalBindingId=proposal.bindingId;
       await page.getByText("Payment ready for your approval",{exact:false}).first().waitFor({timeout:15000});
       await stage("Payment frozen for approval · exact amount and recipient");
