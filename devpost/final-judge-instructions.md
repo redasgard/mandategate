@@ -1,6 +1,6 @@
 # MandateGate | Judge access and reproduction
 
-**Status as of November 6, 2026:** hosted service verified live (health OK; deploy `f007cec4`); repository is MIT-licensed with default branch `hackathon`. A bounded live settlement has been executed on the Sandbox demo (reviewed invoice USD 1.01 → one PayPal Sandbox payout, batch `8H4CEWS6ZBVZE`, reconciled PAID) and the demo video shows it. Never publish an administrator account or any real provider credentials.
+**Status as of November 6, 2026:** hosted service verified live (health OK; deploy `f007cec4`); repository is **public**, MIT-licensed, with default branch `hackathon`. A bounded live settlement has been executed on the Sandbox demo (reviewed invoice USD 1.01 → one PayPal Sandbox payout, batch `8H4CEWS6ZBVZE`, reconciled PAID) and the demo video shows it. Never publish an administrator account or any real provider credentials.
 
 ## Public links
 

@@ -42,7 +42,10 @@ checks never arrived and deploys never fired. Trigger switched to `commit`. Live
 (`0n0fa8rgn54lv.css` → `10z7rz1ldz2mt.css`), zero periwinkle (`#8bb5ff`) in the served CSS, sign-in page renders the
 charcoal/copper shell (screenshot-verified).
 
-## Step 2 — Make the repository public (2 minutes, you)
+## Step 2 — DONE (2026-11-06): repository is PUBLIC
+
+Verified anonymously: clone works (default branch `hackathon` @ `ec730c9`), About shows **MIT**,
+README + judge docs reachable; branch list pruned to the four meaningful lines. Original instructions kept for reference:
 
 Why: submission requires a public repo with the license visible at the top of the page.
 
