@@ -21,6 +21,16 @@ The three persisted demonstration decisions are synthetic and **do not** represe
 
 **Submission target:** the PayPal AI Hackathon on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `hackathon`; the release is under the MIT License.
 
+## Tools and technologies
+
+- **PayPal Payouts REST API (Sandbox)** — the payment execution layer: server-side OAuth, durable idempotency (exactly one POST per approved payment), asynchronous payout tracking (batch + item ids), signed webhook receipts and automated reconciliation.
+- **GLM-5.3 Flash (Experiential Labs)** — advisory AI: extracts invoice fields and risk observations. Its output is stored as untrusted evidence and can never grant payment authority.
+- **AG Grid (Community)** — the payment-decision ledger on the investigation surface: sortable columns, quick filtering and pagination over the administrator's scoped records, themed to the product shell.
+- **Render** — hosting and push-to-deploy for the Next.js application (this repository deploys to it automatically).
+- **Neon PostgreSQL** — persistence for payment requests, decisions, invoices, authority records and evidence.
+- **Next.js · React · TypeScript · Better Auth · Drizzle ORM** — application and authentication stack.
+- **Playwright / Vitest** — browser testing and demo recording pipeline / the 572-test suite.
+
 ## Operational workflow: agent → MandateGate → PayPal
 
 MandateGate is **agent-driven**. A company operations agent, not the dashboard
