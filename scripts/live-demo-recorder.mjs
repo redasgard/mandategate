@@ -417,7 +417,14 @@ try{
       }
       await page.waitForTimeout(1200);
 
-      // Step 2: confirm supplier on the pre-enrolled Sandbox test channel
+      // Step 2: confirm supplier on the pre-enrolled Sandbox test channel.
+      // If an earlier authorized take already recorded the confirmation the
+      // wizard opens at step 3 — display it instead of re-confirming.
+      const supplierSection=page.locator('section[aria-label="Confirm invoice supplier"]');
+      if(await supplierSection.count()===0){
+        console.log("LIVE_ATTESTATION_ALREADY_RECORDED_SKIP_STEP2");
+        await stage("Supplier source already confirmed (earlier authorized take)");
+      } else {
       const step2Nav=page.locator('nav[aria-label="Invoice verification steps"] button').filter({hasText:"Supplier"});
       if(await step2Nav.count()>0)await step2Nav.first().click();
       await page.waitForTimeout(500);
@@ -437,6 +444,7 @@ try{
       assert([200,201].includes(ar.status()),"LIVE_ATTEST_FAILED_"+ar.status());
       await stage("Supplier source confirmed · run the payment checks");
       await page.waitForTimeout(1200);
+      }
 
       // Step 3: payment checks → frozen proposal
       const step3Nav=page.locator('nav[aria-label="Invoice verification steps"] button').filter({hasText:"Payment checks"});
@@ -459,6 +467,28 @@ try{
       await page.getByRole("link",{name:/Continue to payment approval/}).click();
       await page.waitForURL(url=>/^\/invoice-bindings\//.test(url.pathname),{timeout:20000});
       await page.waitForTimeout(800);
+
+      // Authority decision (T4): the frozen tuple must be approved before the
+      // Sandbox prepare control appears. Skip when already authorized by an
+      // earlier authorized take.
+      const approveBtn=page.getByRole("button",{name:/Approve payment/});
+      if(await approveBtn.isVisible().catch(()=>false)){
+        await page.locator("#review-reason").fill(
+          "Verified the invoice, the registered recipient and the exact USD 1.01 amount against the trusted supplier source.");
+        await page.locator('section[aria-label="Authorize payment"] input[type="checkbox"]').check();
+        const approveResp=page.waitForResponse(r=>{
+          const p=new URL(r.url()).pathname;
+          return /\/api\/admin\/invoice-bindings\/[0-9a-f-]{36}$/.test(p)&&r.request().method()==="POST";
+        },{timeout:30000});
+        await approveBtn.click();
+        const apr=await approveResp;
+        assert([200,201].includes(apr.status()),"LIVE_BINDING_APPROVE_FAILED_"+apr.status());
+        await stage("Human authority locked the exact amount and recipient");
+        await page.getByRole("button",{name:/Prepare USD 1.01/}).waitFor({timeout:20000});
+        await page.waitForTimeout(1000);
+      }else{
+        console.log("LIVE_BINDING_ALREADY_AUTHORIZED_OR_NO_APPROVAL_UI");
+      }
 
       // Prepare the canonical request (not a payment)
       const prepareResp=page.waitForResponse(r=>
