@@ -186,7 +186,10 @@ try{
         const buf=await r.arrayBuffer();
         return Array.from(new Uint8Array(buf));
       },origin);
-      assert(pdfResponse&&pdfResponse.length>1000,"LIVE_PDF_DOWNLOAD_FAILED");
+      // Validity check, not a size check: minimal generated PDFs can be <1 KB.
+      const pdfOk=Array.isArray(pdfResponse)&&pdfResponse.length>500&&
+        pdfResponse[0]===0x25&&pdfResponse[1]===0x50&&pdfResponse[2]===0x44&&pdfResponse[3]===0x46;
+      assert(pdfOk,"LIVE_PDF_DOWNLOAD_FAILED");
       const pdfBuffer=Buffer.from(pdfResponse);
 
       const input=page.locator('input[type="file"]').first();
