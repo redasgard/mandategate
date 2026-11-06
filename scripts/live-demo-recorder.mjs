@@ -224,9 +224,14 @@ try{
       await stage("Invoice source text preserved · Northstar Components · USD 1.01");
       await page.waitForTimeout(1200);
 
-      // Show GLM archive
+      // Show GLM archive (CI-only section: on the live host the
+      // isolatedCiDemoEnabled gate hides it — skip gracefully).
       await navigate("/demo","Three decisions");
       const earlier=page.locator("#demo-historical-glm");
+      if(await earlier.count()===0){
+        console.log("LIVE_SKIP_GLM_SECTION_NOT_RENDERED_ON_HOST");
+        return;
+      }
       await scrollTo(earlier);
       await stage("AI detected suspicious instructions in a prior invoice");
     });
