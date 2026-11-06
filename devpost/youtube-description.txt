@@ -8,15 +8,16 @@ MandateGate is a payment firewall for autonomous operations agents: an agent can
 
 What you'll see:
 0:00 The problem: agents that can read invoices shouldn't be able to pay them
-0:19 Invoice intake: a PDF is stored with its source hash; the AI reads it as an observation, never as authority
-0:51 An operations agent submits three payment requests through the agent API
-1:11 Request 1 → ALLOW: trusted vendor, normal amount
-1:27 Request 2 → ESCALATE: unusual amount → human review with a mandatory written explanation (declined on camera; no payout)
-1:50 Request 3 → DENY: the recipient was changed — blocked before any money could move
-2:04 PayPal Payouts Sandbox: archived, verified payout evidence (clearly labeled in-video; this cut does not claim a live payout for the fictional invoice)
-2:23 The result: every request lands in one auditable payment-decision ledger (AG Grid)
+0:14 Invoice intake: a PDF is stored with its source hash; the AI reads it as an observation, never as authority
+0:44 An operations agent submits three payment requests through the agent API
+0:58 Request 1 → ALLOW: trusted vendor, normal amount
+1:12 Request 2 → ESCALATE: unusual amount → human review with a mandatory written explanation (declined; no payout)
+1:28 Request 3 → DENY: the recipient was changed — blocked before any money could move
+1:41 The reviewed invoice becomes a real payment: human approval → exactly one PayPal Sandbox payout
+2:12 Reconciliation reads SUCCESS — MANDATEGATE EXECUTION: PAID — with the batch and item ids on screen
+2:26 The result: every request lands in one auditable payment-decision ledger (AG Grid)
 
-Built with Next.js, TypeScript, PostgreSQL (Neon), Drizzle ORM, Better Auth, the PayPal Payouts REST API (Sandbox), GLM-5.3 Flash for advisory invoice observations, AG Grid Community for the ledger, and Render for hosting. 572 automated tests; the demo was recorded on an isolated CI instance with payments disabled — sandbox only, no production money, ever.
+Built with Next.js, TypeScript, PostgreSQL (Neon), Drizzle ORM, Better Auth, the PayPal Payouts REST API (Sandbox), GLM-5.3 Flash for advisory invoice observations, AG Grid Community for the ledger, and Render for hosting. 572 automated tests. The $1.01 invoice-derived payout was executed live on the deployed Sandbox instance under a single-POST fence (batch 8H4CEWS6ZBVZE, item PNMP9YWACK74E) and reconciled automatically — sandbox only, no production money, ever.
 
 Code: https://github.com/redasgard/mandategate
 Live (supplementary): https://mandategate-web.onrender.com
@@ -26,7 +27,7 @@ paypal, ai agents, agentic commerce, ai security, fintech, accounts payable, nex
 
 UPLOAD SETTINGS:
 - File: /home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4
-  (SHA256 c4cee38a1a7c362508eb0306d0df8b80f546702d7a1c80339b430123e48736b9; 165.75 s; 1440×810)
+  (Variant A — SHA256 1b43fe992e2d05f66da535b891c11adcce3c32909374ef3499e0edc978bc0203; 170.76 s; 1440×810)
 - Visibility: Public
 - Audience: "Not made for kids"
 - Category: Science & Technology

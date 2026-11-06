@@ -1,7 +1,7 @@
 # OWNER PUBLISH CHECKLIST — MandateGate → Devpost (deadline Nov 12, 12:00 PT)
 
-Everything below is paste-ready. Steps 1–4 are the ship path (Variant B, current final video).
-Step 5 is the optional upgrade (Variant A live payout) — only if you want it before the deadline.
+Everything below is paste-ready. Steps 1–4 are the ship path; the current final video is **Variant A**
+(the live invoice-derived payout cut — Step 5 is DONE, completed 2026-11-06).
 
 Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 - Functional demo = repo setup/run instructions OR hosted URL (we will have both).
@@ -21,7 +21,12 @@ Rule basis (saved verbatim in `devpost/rules-extract.md`, fetched 2026-11-03):
 - **Default branch:** switched to `build/slice-3-invoice-intake` (main had diverged; no rewrite performed).
   A judge cloning the repo now gets the real application directly.
 - **Docs:** README + judge instructions refreshed to current facts; stale links replaced.
-- **Live site:** deploy `00061cc` live 2026-11-05 18:01Z; `/api/health` OK.
+- **Live site:** deploy `ea6e1db` live 2026-11-05; `/api/health` OK (free-tier cold start may need one retry).
+- **Live settlement (2026-11-06):** the reviewed invoice MG-SANDBOX-101-2026 (USD 1.01) was approved on the
+  deployed host and exactly one PayPal Sandbox payout executed and reconciled: batch `8H4CEWS6ZBVZE`,
+  item `PNMP9YWACK74E`, execution PAID, provider raw SUCCESS. DB readback: exactly one execution.
+  Footage: `~/mandategate-submission/take10/`. Video master: Variant A
+  (`1b43fe99…`, 170.76 s) — see `video/QA_REPORT.md`.
 
 ## Step 1 — DONE (2026-11-04): deploy pipeline live, zero owner action
 
@@ -51,7 +56,7 @@ Why: submission requires a public repo with the license visible at the top of th
 Why: the form requires a public YouTube link.
 
 1. Upload file: `/home/valh4x/mandategate-submission/video/MandateGate_DEMO.mp4`
-   (SHA256 `c4cee38a…`, 165.75 s, 1440×810, H.264/AAC — stable master dir, see its README)
+   (Variant A — SHA256 `1b43fe99…`, 170.76 s, 1440×810, H.264/AAC — stable master dir, see its README)
 2. Title, description, tags, visibility: copy-paste from `devpost/youtube-description.txt`.
 3. Tell me the URL. I will verify: public viewable, duration < 3:00, description intact.
 
@@ -83,7 +88,8 @@ Inspiration → What's next), then the Tools section below.
 - **Edge neural TTS:** the demo's narrated voice-over (US English).
 - **Playwright:** automated browser testing + the demo recording pipeline.
 
-**Sponsor prizes to select (if the form asks):** Best Use of AG Grid; Best Use of Render.
+**Sponsor prizes to select (if the form asks): ALL sponsor prizes offered** (owner decision 2026-11-06).
+Known sponsor prizes: Best Use of AG Grid; Best Use of Render.
 **Categories:** PayPal + AI; Agentic Commerce; Business operations/security (choose what the form offers).
 
 **Testing instructions for judges (paste):**
@@ -95,14 +101,19 @@ Inspiration → What's next), then the Tools section below.
 > `devpost/final-judge-instructions.md`. No PayPal credentials, real invoices or production money are
 > required or used. The hosted URL is supplementary.
 
-**Honest-evidence note (keep the wording truthful):** the video's PayPal scene shows ARCHIVED Sandbox
-evidence, labeled as archived. Do not change it to claim a live invoice-derived payout unless Variant A
-is actually recorded (Step 5).
+**Honest-evidence note (keep the wording truthful):** the video's PayPal scene shows the REAL live
+invoice-derived Sandbox payout (batch `8H4CEWS6ZBVZE`, item `PNMP9YWACK74E`, reconciled to PAID/SUCCESS),
+captured on the deployed host under the single-POST fence. It is a bounded $1.01 sandbox test on the
+reviewed invoice — do not alter the video or description to claim anything beyond that (no production
+PayPal, no real supplier).
 
-## Step 5 — OPTIONAL upgrade: Variant A (real Sandbox payout on camera)
+## Step 5 — DONE (2026-11-06): Variant A recorded (real Sandbox payout on camera)
 
-Only if you want it. Requires: (a) the one-shot Sandbox payout you already authorized for
-`MG-SANDBOX-101-2026`, USD 1.01 (see below); (b) create `~/.config/mandategate/live-admin.env` (chmod 600):
+Completed. The authorized one-shot payout for `MG-SANDBOX-101-2026` (USD 1.01) was executed on the
+deployed host and reconciled; the recut (Variant A master) replaces the archived-evidence scene with
+that live chain and passed the full QA battery (see `video/QA_REPORT.md`). Original instructions kept
+for reference: required (a) the one-shot Sandbox payout for `MG-SANDBOX-101-2026`, USD 1.01;
+(b) `~/.config/mandategate/live-admin.env` (chmod 600):
 
     EMAIL=<your live admin email>
     PASSWORD=<your live admin password>
