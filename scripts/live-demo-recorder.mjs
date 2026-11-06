@@ -205,11 +205,15 @@ try{
       const resp=await uploadResp;
       assert([200,201].includes(resp.status()),"LIVE_UPLOAD_STATUS_"+resp.status());
       const stored=await resp.json();
-      evidence.artifactId=stored?.id;
-      evidence.artifactSha256=stored?.sha256;
+      // Response shape: {artifact:{artifactId,sha256,...},...}; deterministic
+      // fixture PDFs replay to the existing artifact (200 + replayed).
+      evidence.artifactId=stored?.artifact?.artifactId??stored?.id??null;
+      evidence.artifactSha256=stored?.artifact?.sha256??stored?.sha256??null;
       evidence.trustState=stored?.trustState;
+      evidence.uploadReplayed=resp.status()===200;
 
       await page.waitForURL(url=>/^\/invoice-artifacts\/[a-f0-9-]{36}$/.test(url.pathname),{timeout:30000});
+      if(!evidence.artifactId)evidence.artifactId=page.url().split("/").pop();
       await page.getByRole("heading",{name:"Three short checks before payment"})
         .waitFor({timeout:30000});
       await stage("PDF saved · AI extracts facts · reviewer checks source");
@@ -289,6 +293,15 @@ try{
       await detail(expected[1]);
       if(!finalTake){
         await stage("ESCALATE · human review required (smoke: nothing submitted)");
+        return;
+      }
+      // Idempotent: if the human DECLINE was already recorded (earlier
+      // authorized take), show the persisted decision instead of re-declining.
+      const prior=await page.getByText("Prior human decision",{exact:false}).count();
+      if(prior>0){
+        console.log("LIVE_DECLINE_ALREADY_CONSUMED_FROM_EARLIER_TAKE");
+        evidence.declineReadback="prior DECLINE decision persisted (earlier authorized take)";
+        await stage("Human review: declined with a reason · no payout");
         return;
       }
       const explanation=page.locator('section[aria-label="Human escalation review"] textarea').first();
