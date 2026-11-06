@@ -1,6 +1,6 @@
 # MandateGate | Judge access and reproduction
 
-**Status as of November 4, 2026:** hosted service verified live (health OK; current build deployed); repository is MIT-licensed with default branch `build/slice-3-invoice-intake`. Never publish an administrator account or any real provider credentials.
+**Status as of November 6, 2026:** hosted service verified live (health OK; deploy `ea6e1db`); repository is MIT-licensed with default branch `build/slice-3-invoice-intake`. A bounded live settlement has been executed on the Sandbox demo (reviewed invoice USD 1.01 → one PayPal Sandbox payout, batch `8H4CEWS6ZBVZE`, reconciled PAID) and the demo video shows it. Never publish an administrator account or any real provider credentials.
 
 ## Public links
 
@@ -9,7 +9,7 @@
 - Application branch: `build/slice-3-invoice-intake` — the repository default branch.
 - Recorded tests: see `devpost/continuation-status-20261025.md` and latest Render CI evidence
 - Historical, separate PayPal Sandbox receipt: `devpost/reviews/slice-2-critical-review.md`
-- Public demo video: linked from the Devpost submission (YouTube, under 3 minutes)
+- Public demo video: linked from the Devpost submission (YouTube, under 3 minutes; Variant A shows the live Sandbox settlement)
 
 ## Reproducible local path: deterministic, no financial transfers
 

@@ -17,7 +17,7 @@ PayPal credentials or independent payment authority.
 - **Judge evidence matrix:** [judge-evidence-matrix.md](devpost/judge-evidence-matrix.md)
 - **Historical PayPal Sandbox receipt:** [Slice 2 verification](devpost/reviews/slice-2-critical-review.md). The application also exposes an authenticated read-only `/sandbox-evidence` page.
 
-The three persisted demonstration decisions are synthetic and **do not** represent three payments. Saved GLM observations are advisory and do not create permission to pay. The earlier recorded PayPal Sandbox SUCCESS arose from a **separate direct-payment request**, not from those AI-reviewed invoices. Strict end-to-end invoice authorization and a fresh invoice-derived Sandbox settlement remain unverified.
+The three persisted demonstration decisions are synthetic and **do not** represent three payments. Saved GLM observations are advisory and do not create permission to pay. A separate bounded end-to-end settlement has been executed on the Sandbox demo: the reviewed invoice `MG-SANDBOX-101-2026` (USD 1.01) completed human approval and **exactly one** PayPal Sandbox payout (batch `8H4CEWS6ZBVZE`, item `PNMP9YWACK74E`), reconciled automatically to PAID; the demo video shows this live. The earlier Slice 2 PayPal Sandbox receipt remains a **separate historical transaction**. Production PayPal remains out of scope.
 
 **Submission target:** the PayPal AI Hackathon on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `build/slice-3-invoice-intake`; the release is under the MIT License.
 

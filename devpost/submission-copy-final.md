@@ -44,7 +44,7 @@ The service runs on Render. Automated CI covers isolated PostgreSQL 18 migration
 Built during the hackathon window:
 - Invoice-derived payment lane: PDF upload → AI extraction → three-step verification (facts, supplier, policy) → PayPal Sandbox payout
 - Unified operations shell with fixed sidebar across all pages
-- Professional narrated demo video (2:46, US English neural TTS, captioned scenes)
+- Professional narrated demo video (2:51, US English neural TTS, captioned scenes)
 - Human escalation review with mandatory decline explanation and database-proven zero-payout enforcement
 - Payment-decision ledger (AG Grid Community): sortable, quick-filterable and paginated investigation surface, themed to the product shell
 - Visual QA pipeline (13 viewport captures, desktop + mobile, overflow detection, populated-ledger assertion)
