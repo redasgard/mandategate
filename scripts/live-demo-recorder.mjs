@@ -490,19 +490,30 @@ try{
         console.log("LIVE_BINDING_ALREADY_AUTHORIZED_OR_NO_APPROVAL_UI");
       }
 
-      // Prepare the canonical request (not a payment)
+      // Prepare the canonical request (not a payment). If an earlier take
+      // already consumed the binding, follow the execution link instead of
+      // trying to prepare twice (consume is one-shot by design).
+      const prepareBtn=page.getByRole("button",{name:/Prepare USD 1.01/});
+      const preparedLink=page.getByRole("link",{name:/Continue to PayPal execution/});
+      if(await prepareBtn.count()===0&&await preparedLink.count()>0){
+        console.log("LIVE_BINDING_ALREADY_CONSUMED_FOLLOW_LINK");
+        await preparedLink.first().click();
+        await page.waitForURL(url=>/^\/payments\//.test(url.pathname),{timeout:20000});
+        await page.waitForTimeout(1000);
+      } else {
       const prepareResp=page.waitForResponse(r=>
         /prepare-sandbox$/.test(new URL(r.url()).pathname)&&r.request().method()==="POST",
         {timeout:30000});
-      await page.getByRole("button",{name:/Prepare USD 1.01/}).click();
+      await prepareBtn.click();
       const prr2=await prepareResp;
-      assert.equal(prr2.status(),200,"LIVE_PREPARE_FAILED");
+      assert.equal(prr2.status(),200,"LIVE_PREPARE_FAILED_"+prr2.status());
       const prepared=await prr2.json();
       assert(typeof prepared?.requestId==="string"&&prepared?.paymentSubmittedByThisAction===false,
         "LIVE_PREPARE_SHAPE_INVALID");
       evidence.paymentRequestId=prepared.requestId;
       await page.waitForURL(url=>/^\/payments\//.test(url.pathname),{timeout:20000});
       await page.waitForTimeout(1000);
+      }
 
       if(!doPayment){
         evidence.paypalScene="PREPARED_NOT_EXECUTED";
