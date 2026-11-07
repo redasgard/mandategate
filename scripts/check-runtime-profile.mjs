@@ -152,6 +152,18 @@ for (const [name, patch, error] of [
   ['wrong port', { PORT:'0' }, 'RUNTIME_PORT_INVALID'],
 ]) test(`refuse ${name}`, () => assert.throws(() => runtimeProfile({ ...env, ...patch }), new RegExp(error)));
 
+test('AG Studio licence is a reviewed client-side value; secrets stay out', () => {
+  const licence='[TRIAL]_this_{AG_Studio_Pro}_Enterprise_key_{AG-150895}_is_granted_for_evaluation_only';
+  const p=runtimeProfile({...env,AG_STUDIO_LICENSE_KEY:'  '+licence+'  ',DEMO_AGENT_API_KEY:'never'});
+  assert.equal(p.childEnv.AG_STUDIO_LICENSE_KEY,licence);
+  assert.equal(p.childEnv.DEMO_AGENT_API_KEY,undefined);
+  assert.equal(runtimeProfile(env).childEnv.AG_STUDIO_LICENSE_KEY,undefined);
+  assert.equal(runtimeProfile({...env,AG_STUDIO_LICENSE_KEY:'   '}).childEnv.AG_STUDIO_LICENSE_KEY,undefined);
+  assert.equal(runtimeProfile({...env,AG_STUDIO_LICENSE_KEY:'x'.repeat(9000)}).childEnv.AG_STUDIO_LICENSE_KEY,undefined);
+  const sandbox=runtimeProfile({...env,MANDATEGATE_RUNTIME_MODE:'neon-sandbox',AG_STUDIO_LICENSE_KEY:licence});
+  assert.equal(sandbox.childEnv.AG_STUDIO_LICENSE_KEY,licence);
+});
+
 test('migration and seeding skip without importing any database or auth dependency', () => {
   const script = fileURLToPath(new URL('./runtime-command.mjs', import.meta.url));
   for (const mode of ['neon-preview', 'neon-sandbox', 'render-preview']) {

@@ -63,6 +63,14 @@ export function runtimeProfile(env) {
     BETTER_AUTH_URL: auth.origin, PORT: port, PREVIEW_HOST: host,
     MANDATEGATE_DISABLE_PAYMENTS: mode === 'neon-sandbox' ? env.MANDATEGATE_DISABLE_PAYMENTS : '1',
     MANDATEGATE_RUNTIME_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' });
+  // AG Studio is a client-side dashboard licence: it ships to browsers by
+  // design (it only removes the evaluation watermark) and grants no server
+  // capability. Forward it trimmed so a pasted value with stray whitespace
+  // still works; secrets remain governed by the blocks below.
+  if (typeof env.AG_STUDIO_LICENSE_KEY === 'string') {
+    const license = env.AG_STUDIO_LICENSE_KEY.trim();
+    if (license && license.length <= 8192) childEnv.AG_STUDIO_LICENSE_KEY = license;
+  }
   if (mode === 'neon-sandbox') {
     // The reviewed-invoice experiment is bound to the already provisioned
     // PayPal Sandbox deployment. Parent env values never cross the child
