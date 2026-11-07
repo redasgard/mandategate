@@ -43,8 +43,10 @@ export default async function JudgePage() {
         historical PayPal proof are separate evidence paths.
       </p>
       {blocked ? <p role="alert" className="error">
-        Replay halted: payment-execution records exist in the demo organization.
-        No policy demonstrations are available until an administrator investigates.
+        Replay paused — this synthetic demo contains the recorded settlement:
+        one reconciled PayPal Sandbox payout (shown in the demo video). Live
+        policy replay is fail-closed after settlement by design; the saved
+        evidence remains available below.
       </p> : <JudgeScenarioReplay cases={DEMO_CASES.map(item => ({
         id: item.id, title: item.title, expectedOutcome: item.expectedOutcome,
       }))}/>}
@@ -57,8 +59,9 @@ export default async function JudgePage() {
           rows. They were submitted as synthetic demo fixtures. They are not
           derived from GLM invoice observations, and none executed PayPal.
         </p>
-        {blocked ? <p role="alert">Stored decisions are hidden while payment
-          execution records require investigation.</p>
+        {blocked ? <p role="alert">Saved decisions are hidden while this
+          demonstration organization contains payment activity (fail-closed
+          policy).</p>
           : <div className="risk-evidence-list">
             {canonical.map(record => <article className="risk-evidence-card" key={record.id}>
               <h3>{record.invoiceNumber}</h3>

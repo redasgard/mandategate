@@ -83,7 +83,8 @@ describe("read-only signed-in judge presentation", () => {
   it("removes all scenario controls if any execution row exists", async () => {
     mocks.count.mockResolvedValue(1);
     const html = await render();
-    expect(html).toContain("Replay halted");
+    expect(html).toContain("Replay paused");
+    expect(html).toContain("fail-closed after settlement");
     expect(html).not.toContain("JUDGE_READONLY_REPLAY");
     expect(html).not.toContain("DEMO-NORMAL-2026");
   });

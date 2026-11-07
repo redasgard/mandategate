@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
  * Restricted judge-browser HTTP acceptance, never an API payment test.
  * The only POSTs are Better Auth sign-in and sign-out; all business calls are GETs.
  * Run only after owner-approved reviewer provisioning and exact SHA deploy.
+ * Post-settlement expectations: the page presents the settled fail-closed state and
+ * every replay request is refused with JUDGE_REPLAY_HALTED (no live scenario runs).
  */
 if (process.env.JUDGE_SMOKE_APPROVED !== "YES")
   throw new Error("JUDGE_SMOKE_OPERATOR_APPROVAL_REQUIRED");
@@ -60,7 +62,11 @@ const html = await page.text();
 assert(html.includes("judge-only synthetic sandbox"), "JUDGE_PAGE_CONTENT_MISSING");
 assert(html.includes("Model observations, not authorization"), "JUDGE_AI_BOUNDARY_MISSING");
 assert(html.includes("Recorded earlier PayPal Sandbox payout"), "JUDGE_HISTORICAL_PAYPAL_MISSING");
-assert(!html.includes("Replay halted:"), "JUDGE_PAYMENT_EXECUTIONS_PRESENT");
+// Post-settlement: the demo organization contains the disclosed, reconciled
+// payout, so the page must present the settled fail-closed state instead of
+// live scenario controls.
+assert(html.includes("Replay paused"), "JUDGE_SETTLED_STATE_MISSING");
+assert(html.includes("fail-closed after settlement"), "JUDGE_SETTLED_FENCE_MISSING");
 console.log("PASS authenticated reviewer-only judge page and separate evidence paths");
 
 const dashboard = await req("/dashboard", { headers });
@@ -87,30 +93,18 @@ if (probePayment) {
 }
 console.log("PASS reviewer denied access to selected ADMIN routes");
 
-const cases = [
-  ["normal", "ALLOW", "WITHIN_TRUSTED_BASELINE"],
-  ["anomaly", "ESCALATE", "AMOUNT_OUTSIDE_VENDOR_BASELINE"],
-  ["substitution", "DENY", "DESTINATION_MISMATCH"],
-];
-for (let pass = 1; pass <= 2; pass++) {
-  for (const [id, outcome, reason] of cases) {
-    const response = await req("/api/judge/scenario?case=" + id, { headers });
-    expectedStatus(response, 200, "JUDGE_CASE_" + id);
-    assert((response.headers.get("cache-control") ?? "").includes("no-store"),
-      "JUDGE_CACHEABLE_DECISION");
-    const data = await response.json();
-    assert.equal(data.id, id);
-    assert.equal(data.outcome, outcome);
-    assert(data.reasonCodes.includes(reason), "JUDGE_REASON_MISSING_" + id);
-    assert.equal(data.proofClass, "DETERMINISTIC_POLICY_SIMULATION");
-    assert.equal(data.noPaymentPerformed, true);
-    assert.equal(data.noPaymentStateMutation, true);
-    assert.equal(data.aiInvoiceDerived, false);
-  }
+// Post-settlement: every replay request must fail closed. The settlement was
+// disclosed and reconciled; this fence proves no further demonstration run is
+// possible from a judge session, for any case id.
+for (const id of ["normal", "anomaly", "substitution", "nonexistent"]) {
+  const response = await req("/api/judge/scenario?case=" + id, { headers });
+  expectedStatus(response, 409, "JUDGE_CASE_" + id);
+  assert((response.headers.get("cache-control") ?? "").includes("no-store"),
+    "JUDGE_CACHEABLE_RESPONSE");
+  const data = await response.json();
+  assert.equal(data.error, "JUDGE_REPLAY_HALTED", "JUDGE_SETTLED_FENCE_" + id);
 }
-const unknown = await req("/api/judge/scenario?case=nonexistent", { headers });
-expectedStatus(unknown, 404, "JUDGE_UNKNOWN_CASE_MUST_NOT_EXECUTE");
-console.log("PASS six deterministic, read-only policy evaluations and invalid-case denial");
+console.log("PASS settled fail-closed replay fence across every judge case");
 const signout = await req("/api/auth/sign-out", {
   method: "POST",
   headers: { ...headers, origin: base, "content-type": "application/json" },

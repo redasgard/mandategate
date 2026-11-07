@@ -4,6 +4,7 @@ import { demoPreviewEnabled } from "../src/demo/scenarios";
 
 const read = (path: string) => readFileSync(path, "utf8");
 const readme = read("README.md");
+const readJudge = read("devpost/final-judge-instructions.md");
 const matrix = read("devpost/judge-evidence-matrix.md");
 const plan = read("devpost/october-2026-execution-plan.md");
 const archivedLedger = read("devpost/build-state.md");
@@ -11,7 +12,7 @@ const archivedReview = read("devpost/reviews/slice-2-critical-review.md");
 
 describe("judge documentation and evidence-bound claims", () => {
   it("keeps GLM T1, synthetic policy decisions and historical PayPal proof separate", () => {
-    expect(readme).toContain("PayPal AI Hackathon application");
+    expect(readme).toContain("Built for the **PayPal AI Hackathon**");
     expect(readme).toContain("A prepared request or");
     expect(readme).toContain("An earlier independent Sandbox payment was completed");
     expect(readme).toContain("it **does not**");
@@ -50,7 +51,7 @@ describe("judge documentation and evidence-bound claims", () => {
     const seed = read("scripts/seed.ts");
     const scope = read("src/auth/principal-provisioning.ts");
     const demo = read("src/demo/scenarios.ts");
-    expect(readme).toContain("git switch build/slice-3-invoice-intake");
+    expect(readme).toContain("pnpm demo:start");
     expect(readme).toContain("DEMO_ADMIN_PASSWORD");
     expect(readme).toContain("set before the first seed");
     expect(readme).toContain("The seed **does not print the password**");
@@ -71,13 +72,13 @@ describe("judge documentation and evidence-bound claims", () => {
     expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox"})).toBe(false);
     expect(demoPreviewEnabled({...neonEnv,MANDATEGATE_RUNTIME_MODE:"neon-sandbox",MANDATEGATE_JUDGE_PREVIEW_ENABLED:"1"})).toBe(true);
     expect(readme).toContain("pnpm smoke");
-    expect(readme).toContain("actual judge access");
+    expect(readJudge).toContain("restricted, non-admin REVIEWER");
   });
 
-  it("uses the owner's October deadline, while explicitly leaving publication incomplete", () => {
-    expect(readme).toContain("October 29, 2026, 6 PM Pacific");
-    expect(readme).toContain("currently **private**");
-    expect(readme).toContain("default `main` branch has not yet received");
+  it("tracks the submission deadline and the now-complete public release", () => {
+    expect(readme).toContain("November 12, 2026, 12:00 PM PT");
+    expect(readJudge).toContain("repository is **public**");
+    expect(readJudge).toContain("Hosted judge access");
     expect(matrix).toContain("actual Devpost confirmation");
     expect(plan).toContain("**Status:** ACTIVE on the development branch");
     expect(plan).toContain("THURSDAY OCTOBER 29, 2026, 6:00 PM PACIFIC");

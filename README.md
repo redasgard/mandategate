@@ -26,6 +26,8 @@ The three persisted demonstration decisions are synthetic and **do not** represe
 - **PayPal Payouts REST API (Sandbox)** — the payment execution layer: server-side OAuth, durable idempotency (exactly one POST per approved payment), asynchronous payout tracking (batch + item ids), signed webhook receipts and automated reconciliation.
 - **GLM-5.3 Flash (Experiential Labs)** — advisory AI: extracts invoice fields and risk observations. Its output is stored as untrusted evidence and can never grant payment authority.
 - **AG Grid (Community)** — the payment-decision ledger on the investigation surface: sortable columns, quick filtering and pagination over the administrator's scoped records, themed to the product shell.
+- **AG Studio (AG Grid)** — the self-serve analytics dashboard at `/analytics`: KPI tiles, charts and a grid over the same authority records, editable in place (runs with the AG Studio trial evaluation notice until a licence key is configured).
+- **MCP server** — `mcp/mandategate-mcp.mjs` exposes the scoped agent API to MCP clients as two tools: submit a payment request and re-read its persisted decision. Deliberately no approve, execute, refund or limit tools — authority stays with the policy kernel and a human.
 - **Render** — hosting and push-to-deploy for the Next.js application (this repository deploys to it automatically).
 - **Neon PostgreSQL** — persistence for payment requests, decisions, invoices, authority records and evidence.
 - **Next.js · React · TypeScript · Better Auth · Drizzle ORM** — application and authentication stack.
@@ -82,7 +84,9 @@ and [current checklist](devpost/checklist.md) for exact evidence and blockers.
 
 ## Run locally (no paid services needed for core checks)
 
-Prerequisites: **Node.js 24**, **pnpm 12.9.1**, **PostgreSQL 18**, and a private local development database.
+**Fastest path: `pnpm demo:start`** (after `pnpm install`). It boots an isolated embedded PostgreSQL 18, applies migrations, seeds the demo fixtures, prints the local login and starts the app — no PostgreSQL install, no credentials and no paid services; outbound payments are hard-disabled in this mode. Ctrl+C stops everything and discards the database.
+
+The manual path below needs: **Node.js 24**, **pnpm 12.9.1**, **PostgreSQL 18**, and a private local development database.
 
 The application lives on the repository default branch (**`hackathon`** — the same commit tree the hosted deployment follows via `build/slice-3-invoice-intake`).
 
@@ -120,6 +124,19 @@ pnpm build
 
 `pnpm smoke` additionally requires an authenticated local running server and the configured synthetic admin/agent test credentials. It changes **test** database state; keep it off shared accounts. `pnpm gate-h:inventory` is read-only and always reports a non-authorizing evidence inventory. **Do not run `pnpm gate-h:sandbox submit`**, `pnpm verify:slice2:sandbox`, or payment execution endpoints as routine setup or judge replay. They are financial test actions with separate approval rules.
 
+## From an MCP client (optional)
+
+The dependency-free MCP server at `mcp/mandategate-mcp.mjs` exposes the scoped agent payment API to any MCP client (Claude Code, Claude Desktop, Cursor, …):
+
+```sh
+claude mcp add mandategate \
+  --env MANDATEGATE_BASE_URL=http://localhost:3000 \
+  --env MANDATEGATE_AGENT_KEY=<scoped agent key> \
+  -- node "$PWD/mcp/mandategate-mcp.mjs"
+```
+
+Tools: `submit_payment_request` (returns the recorded decision, reason codes and `paymentExecuted=false`) and `check_payment_request` (idempotent re-read of the same logical request). There is deliberately no tool to approve, execute, refund or change limits.
+
 ## Security and evidence boundaries
 
 - An invoice, PDF text, model response, assistant action or tool result is untrusted input, never a source of issuer identity or payment permission.
@@ -132,6 +149,6 @@ pnpm build
 
 ## Hackathon submission
 
-Built for the **PayPal AI Hackathon** on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `hackathon`; the release is under the [MIT License](LICENSE). The demo video and hosted-application links are provided in the Devpost submission; the judge path (local run + reproducible agent API cases) is documented in [devpost/final-judge-instructions.md](devpost/final-judge-instructions.md).
+Built for the **PayPal AI Hackathon** on Devpost (submission window closes **November 12, 2026, 12:00 PM PT**). The repository default branch is `hackathon`; the release is under the [MIT License](LICENSE). The demo video and hosted-application links are provided in the Devpost submission; the judge path (local run — fastest via `pnpm demo:start` — plus reproducible agent API cases) is documented in [devpost/final-judge-instructions.md](devpost/final-judge-instructions.md). A restricted, non-admin reviewer account for the hosted `/judge` lane is available to judges through the submission's testing-instructions field only (never published in this repository).
 
 See the [judge instructions](devpost/final-judge-instructions.md), the [evidence matrix](devpost/judge-evidence-matrix.md), the [historical payout review](devpost/reviews/slice-2-critical-review.md), and [LICENSE](LICENSE).

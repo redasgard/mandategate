@@ -89,10 +89,13 @@ describe("bound human escalation decisions",()=>{
     expect(allowed?.decisionOutcome).toBe("APPROVED");
     expect(blocked?.decisionOutcome).toBe("ESCALATE");
     const posts:PayoutSubmission[]=[];
+    // Unique per run: the database enforces UNIQUE payout ids, so constant
+    // values would collide when the suite is re-run against a non-fresh DB.
+    const fakeBatchId="CI-FAKE-BATCH-"+randomUUID(),fakeItemId="CI-FAKE-ITEM-"+randomUUID();
     const gateway:PaymentGateway={
-      createSinglePayout:async input=>{posts.push(input);return{payoutBatchId:"CI-FAKE-BATCH-123"};},
-      getBatchItem:async batch=>({payoutItemId:"CI-FAKE-ITEM",payoutBatchId:batch,transactionStatus:"SUCCESS"}),
-      getPayoutItem:async item=>({payoutItemId:item,payoutBatchId:"CI-FAKE-BATCH-123",transactionStatus:"SUCCESS"}),
+      createSinglePayout:async input=>{posts.push(input);return{payoutBatchId:fakeBatchId};},
+      getBatchItem:async batch=>({payoutItemId:fakeItemId,payoutBatchId:batch,transactionStatus:"SUCCESS"}),
+      getPayoutItem:async item=>({payoutItemId:item,payoutBatchId:fakeBatchId,transactionStatus:"SUCCESS"}),
     };
     await expect(executeAuthorizedPayment(payDecline,{store:postgresExecutionStore,gateway}))
       .rejects.toThrow("PAYMENT_NOT_AUTHORIZED");

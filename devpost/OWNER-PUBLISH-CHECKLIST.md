@@ -98,14 +98,18 @@ Inspiration → What's next), then the Tools section below.
 Known sponsor prizes: Best Use of AG Grid; Best Use of Render.
 **Categories:** PayPal + AI; Agentic Commerce; Business operations/security (choose what the form offers).
 
-**Testing instructions for judges (paste):**
-> Run locally (deterministic, no financial transfers): clone the repo, `pnpm install --frozen-lockfile`,
-> copy `.env.example` to `.env.local`, configure an isolated PostgreSQL 18 `DATABASE_URL`, a fresh 32+ char
-> `BETTER_AUTH_SECRET`, local admin credentials and two local-only agent keys, and set
-> `MANDATEGATE_DISABLE_PAYMENTS=1`; then `pnpm db:migrate`, `pnpm demo:seed`, `pnpm dev`. Full runbook
-> including the three fictional agent API cases (ALLOW / ESCALATE / DENY) is in
-> `devpost/final-judge-instructions.md`. No PayPal credentials, real invoices or production money are
-> required or used. The hosted URL is supplementary.
+**Testing instructions for judges (paste — updated 2026-11-06 with hosted reviewer access):**
+> Fastest local run: clone the repo, `pnpm install`, then `pnpm demo:start` — it boots an isolated
+> embedded PostgreSQL 18, applies migrations, seeds the demo, prints the local login and starts the
+> app; no PostgreSQL install and no credentials needed; payments are hard-disabled. The manual path
+> and the three fictional agent API cases (ALLOW / ESCALATE / DENY) are in
+> `devpost/final-judge-instructions.md`. No PayPal credentials, real invoices or production money
+> are required or used.
+> Hosted (supplementary): https://mandategate-web.onrender.com — sign-in required. A restricted
+> non-admin reviewer account for the `/judge` lane exists; its credentials are delivered in this
+> Devpost testing-instructions field only (values live in `~/.config/mandategate/judge-preview.env`
+> on the owner's machine — never in the repository). The judge page shows the settled fail-closed
+> state by design (replay is disabled after the recorded settlement).
 
 **Honest-evidence note (keep the wording truthful):** the video's PayPal scene shows the REAL live
 invoice-derived Sandbox payout (batch `8H4CEWS6ZBVZE`, item `PNMP9YWACK74E`, reconciled to PAID/SUCCESS),
@@ -137,3 +141,23 @@ real footage, and QA was re-run.
 - Do not enable production PayPal. Sandbox only.
 - Do not paste credentials anywhere public (repo, form, video, description).
 - Do not alter the video or description to claim a live payout for the fictional invoice.
+
+## 2026-11-06 — post-submission upgrades (before the Nov 12 edit deadline)
+
+- **Hosted judge access LIVE:** restricted non-admin REVIEWER account provisioned on the live service
+  via the approved payment-disabled preview procedure and verified with `scripts/verify-judge-hosted.mjs`
+  (updated for the settled fail-closed state: sign-in, ADMIN-route denial, replay refusal, session
+  revocation). Judge page copy reframed for the settled state. Credentials are delivered via the
+  Devpost testing-instructions field only.
+- **One-command local demo:** `pnpm demo:start` boots an embedded PostgreSQL 18, migrates, seeds,
+  prints the local login and starts the app (payments hard-disabled; database discarded on exit).
+  README and judge instructions updated; embedded-postgres platform builds allowed via
+  `pnpm-workspace.yaml` (`allowBuilds`).
+- **MCP server:** `mcp/mandategate-mcp.mjs` exposes the scoped agent API as `submit_payment_request`
+  and `check_payment_request` (deliberately no approve/execute/refund tools), with unit tests.
+- **AG Studio analytics:** `/analytics` dashboard (AG Studio 3.0 + AG Grid Community 36.2) over the
+  authority records, with KPI tiles, charts and a grid; theme matches the product shell.
+- **Remaining owner actions:** (1) flip the YouTube demo to **Public** (the rules require the video to
+  be "publicly visible"); (2) optional — request the free AG Studio 45-day trial licence key
+  (removes the evaluation notice) and share it for the deployment; (3) optional — replace the Devpost
+  thumbnail (currently the old hero image) with a product screenshot.

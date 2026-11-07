@@ -169,7 +169,7 @@ export async function readJudgeCanonicalDecisions(userId: string): Promise<Judge
     if (typeof key !== "string" || !keys.includes(key) || seen.has(key) ||
         row.source !== "demo_fixture" || row.has_execution !== false ||
         !["ALLOW", "ESCALATE", "DENY"].includes(row.outcome) ||
-        !["ALLOWED", "ESCALATED", "DENIED"].includes(row.status) ||
+        !["ALLOWED", "ESCALATED", "DENIED", "DECLINED"].includes(row.status) ||
         !Array.isArray(row.reason_codes) || !row.reason_codes.every(
           (reason: unknown) => typeof reason === "string" &&
           /^[A-Z][A-Z0-9_]{0,119}$/.test(reason))) {
@@ -182,10 +182,13 @@ export async function readJudgeCanonicalDecisions(userId: string): Promise<Judge
     const row = seen.get(key);
     if (row && (row.outcome !== item.expectedOutcome ||
         row.invoice_number !== item.invoiceNumber ||
-        row.status !== (
-          item.expectedOutcome === "ALLOW" ? "ALLOWED" :
-          item.expectedOutcome === "DENY" ? "DENIED" : "ESCALATED"
-        ))) {
+        !(item.expectedOutcome === "ALLOW" ? ["ALLOWED"] :
+          item.expectedOutcome === "DENY" ? ["DENIED"] :
+          // The synthetic escalation may legitimately be resolved by a human
+          // decline (as shown in the video); the decision outcome stays
+          // ESCALATE. Any approved/executed path still fails has_execution.
+          ["ESCALATED", "DECLINED"]
+        ).includes(row.status as string))) {
       throw new JudgeDemoError("JUDGE_CANONICAL_LEDGER_CHANGED", 503);
     }
     return {

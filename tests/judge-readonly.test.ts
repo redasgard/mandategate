@@ -2,9 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("../src/db/pool", () => ({ pool: { query: mocks.query } }));
 
+// Canonical three-case ledger rows as the live demo actually resolves them:
+// the escalation is resolved by a human decline (status DECLINED) while the
+// decision outcome remains ESCALATE.
+const canonicalRow = (id: string, over: Record<string, unknown> = {}) => ({
+  id: "req-" + id, idempotency_key: "mandategate-p0-synthetic-20261015-" + id + "-v1",
+  invoice_number: "DEMO-" + id.toUpperCase() + "-2026", source: "demo_fixture",
+  status: "ALLOWED", outcome: "ALLOW", reason_codes: ["WITHIN_TRUSTED_BASELINE"],
+  has_execution: false, ...over,
+});
+const validCanonical = () => [
+  canonicalRow("normal"),
+  canonicalRow("anomaly", { status: "DECLINED", outcome: "ESCALATE",
+    reason_codes: ["AMOUNT_OUTSIDE_VENDOR_BASELINE"] }),
+  canonicalRow("substitution", { status: "DENIED", outcome: "DENY",
+    reason_codes: ["DESTINATION_MISMATCH"] }),
+];
+let canonicalRows: Record<string, unknown>[] = [];
+
 import {
-  evaluateJudgeCase, judgeApprovedSourceShas, readJudgeExecutionCount,
-  readJudgeModelEvidence, requireJudgeReadAccess,
+  evaluateJudgeCase, judgeApprovedSourceShas, readJudgeCanonicalDecisions,
+  readJudgeExecutionCount, readJudgeModelEvidence, requireJudgeReadAccess,
 } from "../src/demo/judge-readonly";
 
 beforeEach(() => {
@@ -13,6 +31,7 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL",
     "postgresql://ci:ci@ep-silent-poetry-arjowm4d-pooler.c-4.us-west-2.aws.neon.tech/neondb");
   vi.stubEnv("JUDGE_SYNTHETIC_SOURCE_SHAS", "");
+  canonicalRows = validCanonical();
   mocks.query.mockReset();
   mocks.query.mockImplementation(async (sql: string, args: unknown[]) => {
     const q = sql.trim().toLowerCase();
@@ -39,6 +58,10 @@ beforeEach(() => {
         id: "fictional-artifact", sha256: "a".repeat(64), model: "glm-5.3-flash",
         extraction: null, reason_codes: ["SYNTHETIC_NON_ZDR_TEST_ONLY"],
       }] };
+    }
+    if (sql.includes("from payment_requests pr")) {
+      expect(sql).toContain("pr.idempotency_key=any($3::text[])");
+      return { rows: canonicalRows };
     }
     throw new Error("UNEXPECTED_QUERY:" + sql);
   });
@@ -128,5 +151,33 @@ describe("restricted judge replay with no payment authority", () => {
       .rejects.toMatchObject({
         code: "JUDGE_EXECUTION_COUNT_UNAVAILABLE", httpStatus: 503,
       });
+  });
+});
+
+describe("canonical judge ledger integrity (post-demo states)", () => {
+  it("accepts the human-declined escalation and returns the three canonical decisions", async () => {
+    const decisions = await readJudgeCanonicalDecisions("judge-user");
+    expect(decisions).toHaveLength(3);
+    expect(decisions.find(d => d.id === "anomaly")).toMatchObject({
+      outcome: "ESCALATE", status: "DECLINED", hasExecution: false,
+      proofClass: "PERSISTED_SYNTHETIC_CANONICAL_DECISION",
+    });
+    expect(decisions.find(d => d.id === "normal")).toMatchObject({
+      outcome: "ALLOW", status: "ALLOWED",
+    });
+  });
+
+  it("still fails closed when a canonical request has an execution row", async () => {
+    canonicalRows = canonicalRows.map(r =>
+      r.id === "req-normal" ? { ...r, has_execution: true } : r);
+    await expect(readJudgeCanonicalDecisions("judge-user"))
+      .rejects.toMatchObject({ code: "JUDGE_CANONICAL_LEDGER_INVALID", httpStatus: 503 });
+  });
+
+  it("still fails closed when the allow case is somehow declined", async () => {
+    canonicalRows = canonicalRows.map(r =>
+      r.id === "req-normal" ? { ...r, status: "DECLINED" } : r);
+    await expect(readJudgeCanonicalDecisions("judge-user"))
+      .rejects.toMatchObject({ code: "JUDGE_CANONICAL_LEDGER_CHANGED", httpStatus: 503 });
   });
 });

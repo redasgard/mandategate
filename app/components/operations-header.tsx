@@ -6,10 +6,11 @@ export const PRIMARY_OPERATIONS_AREAS = [
   { key: "vendors", label: "Vendors", href: "/vendors", icon: "vendors" },
   { key: "policies", label: "Policies", href: "/policies", icon: "policies" },
   { key: "activity", label: "Activity", href: "/activity", icon: "activity" },
+  { key: "analytics", label: "Analytics", href: "/analytics", icon: "analytics" },
 ] as const;
 
 export type OperationsArea = (typeof PRIMARY_OPERATIONS_AREAS)[number]["key"] | "documents" | "assistant" | "autopay" | "obligations" | "none";
-type Glyph = "overview" | "payments" | "vendors" | "policies" | "activity" | "mandates" | "history" | "documents";
+type Glyph = "overview" | "payments" | "vendors" | "policies" | "activity" | "analytics" | "mandates" | "history" | "documents";
 
 function NavIcon({name}:{name:Glyph}) {
   const common = { fill:"none", stroke:"currentColor", strokeWidth:1.65, strokeLinecap:"round" as const, strokeLinejoin:"round" as const };
@@ -19,6 +20,7 @@ function NavIcon({name}:{name:Glyph}) {
     {name === "vendors" ? <><path d="M4 20v-13l8-4 8 4v13M3 20h18M9 20v-7h6v7M8 9h1m6 0h1"/></> : null}
     {name === "policies" ? <><path d="m12 2 8 4v6c0 5-3.5 8.2-8 10-4.5-1.8-8-5-8-10V6z"/><path d="m8.7 12 2.4 2.4 4.8-5"/></> : null}
     {name === "activity" ? <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.4 2"/></> : null}
+    {name === "analytics" ? <><path d="M4 20v-8M10 20V5M16 20v-5M3 20h18"/></> : null}
     {name === "mandates" ? <><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M9 2.5v3h6v-3M8.5 11h7M8.5 15h5"/></> : null}
     {name === "history" ? <><path d="M4 8a9 9 0 1 1-1 5M4 3v5h5M12 7v5l4 2"/></> : null}
     {name === "documents" ? <><path d="M6 2.8h8l4 4V21H6zM14 2.8v4h4M9 12h6M9 16h6"/></> : null}

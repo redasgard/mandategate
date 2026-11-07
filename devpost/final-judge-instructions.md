@@ -1,6 +1,6 @@
 # MandateGate | Judge access and reproduction
 
-**Status as of November 6, 2026:** hosted service verified live (health OK; deploy `f007cec4`); repository is **public**, MIT-licensed, with default branch `hackathon`. A bounded live settlement has been executed on the Sandbox demo (reviewed invoice USD 1.01 → one PayPal Sandbox payout, batch `8H4CEWS6ZBVZE`, reconciled PAID) and the demo video shows it. Never publish an administrator account or any real provider credentials.
+**Status as of November 6, 2026:** hosted service verified live (health OK); repository is **public**, MIT-licensed, with default branch `hackathon`. A bounded live settlement has been executed on the Sandbox demo (reviewed invoice USD 1.01 → one PayPal Sandbox payout, batch `8H4CEWS6ZBVZE`, reconciled PAID) and the demo video shows it. A restricted non-admin REVIEWER account for the hosted `/judge` lane is provisioned and verified (see "Hosted judge access" below). Never publish an administrator account or any real provider credentials.
 
 ## Public links
 
@@ -13,7 +13,7 @@
 
 ## Reproducible local path: deterministic, no financial transfers
 
-Prerequisites: Node.js 24, pnpm 12.9.1, PostgreSQL 18, Git.
+**Fastest path:** after `pnpm install`, run `pnpm demo:start`. It boots an isolated embedded PostgreSQL 18, applies migrations, seeds the demo fixtures, prints the local login and starts the app — no PostgreSQL install, no credentials and no paid services; payments are hard-disabled. Ctrl+C stops everything and discards the database. The manual path below is equivalent and needs Node.js 24, pnpm 12.9.1, PostgreSQL 18 and Git.
 
 ```bash
 git clone https://github.com/redasgard/mandategate.git
@@ -60,11 +60,13 @@ Repeat with the other two case values and distinct idempotency keys. An imported
 
 To run the automated test suite, use `pnpm test`, `pnpm typecheck` and `pnpm build` against the isolated database. The fully provisioned Render CI additionally exercises two migrations, two seeds, authenticated loopback smoke and real Chromium desktop/mobile checks.
 
-## Hosted judge credentials
+## Hosted judge access
 
-This site requires sign-in. A **restricted, non-admin REVIEWER** account is supported for the special `/judge` route, but it must be provisioned through the approved, payment-disabled procedure, independently checked and delivered privately via Devpost testing instructions. No approved judge email/password or current live successful sign-in was established during final packaging. Do **not** publish credentials in GitHub.
+The hosted site requires sign-in. A **restricted, non-admin REVIEWER** account for the `/judge` lane is provisioned on the live service (provisioned 2026-11-06 from the payment-disabled preview posture and verified with `scripts/verify-judge-hosted.mjs`: reviewer sign-in, ADMIN-route denial, original-document and payment-detail denial, revoked-session checks). Credentials are delivered **only** through the Devpost submission's testing-instructions field — never published in this repository.
 
-If restricted access is not confirmed, the complete reproducible local path above is the primary rule-compliant judge access mechanism. A live sign-in screen alone is not a functional judge demo.
+The demo organization contains the recorded settlement, so the judge page shows the settled **fail-closed** state by design: live policy replay is disabled after settlement (every replay request is refused with `JUDGE_REPLAY_HALTED`) and the page presents the saved AI evidence and the separate historical PayPal Sandbox proof. The interactive policy walkthrough is the local path above (and in the video); the hosted reviewer lane is a supplementary read-only view.
+
+The complete reproducible local path above remains the primary rule-compliant judge access mechanism.
 
 ## Evidence classes
 
